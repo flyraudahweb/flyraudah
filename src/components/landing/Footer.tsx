@@ -21,10 +21,11 @@ const Footer = () => {
       <div className="relative z-10 container mx-auto px-4">
         {/* Logo wordmark */}
         <div className="text-center mb-12">
-          <h3 className="font-heading text-3xl md:text-4xl font-bold">
-            <span className="text-secondary">Raudah</span>{" "}
-            <span className="text-primary-foreground">Travels & Tours</span>
-          </h3>
+          <img
+            src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+            alt="Raudah Travels & Tours"
+            className="h-14 md:h-16 w-auto object-contain mx-auto"
+          />
           <p className="text-primary-foreground/60 text-sm mt-2 tracking-widest uppercase">
             Your Gateway to the Holy Lands
           </p>
