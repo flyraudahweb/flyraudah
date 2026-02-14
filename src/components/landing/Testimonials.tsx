@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Star } from "lucide-react";
+import { Star, CheckCircle2, Quote } from "lucide-react";
 import { motion } from "framer-motion";
 
 const testimonials = [
@@ -30,16 +30,19 @@ const Testimonials = () => {
   const { t } = useTranslation();
 
   return (
-    <section className="py-20 bg-background">
+    <section className="py-24 bg-background">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-14">
-          <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground">
+        <div className="text-center mb-16">
+          <h2 className="font-heading text-4xl md:text-5xl font-bold text-foreground">
             {t("testimonials.title")}
           </h2>
-          <p className="mt-3 text-muted-foreground">{t("testimonials.subtitle")}</p>
+          <div className="ornament-divider mt-4 mb-4">
+            <div className="diamond" />
+          </div>
+          <p className="text-muted-foreground tracking-wide">{t("testimonials.subtitle")}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {testimonials.map((test, i) => (
             <motion.div
               key={test.name}
@@ -47,25 +50,33 @@ const Testimonials = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.15 }}
-              className="bg-card border border-border rounded-xl p-6 hover:shadow-gold transition-shadow"
+              className="relative bg-card border border-border rounded-xl p-8 hover:shadow-gold transition-shadow overflow-hidden"
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                  {test.avatar}
+              {/* Decorative quote mark */}
+              <Quote className="absolute top-4 right-4 h-16 w-16 text-secondary/10 rotate-180" />
+
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg ring-3 ring-secondary/30 ring-offset-2 ring-offset-card">
+                    {test.avatar}
+                  </div>
+                  <div>
+                    <p className="font-heading font-bold text-foreground flex items-center gap-1.5">
+                      {test.name}
+                      <CheckCircle2 className="h-4 w-4 text-secondary fill-secondary/20" />
+                    </p>
+                    <p className="text-xs text-muted-foreground">{test.package}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-heading font-bold text-foreground">{test.name}</p>
-                  <p className="text-xs text-muted-foreground">{test.package}</p>
+                <div className="flex gap-0.5 mb-4">
+                  {Array.from({ length: test.rating }).map((_, idx) => (
+                    <Star key={idx} className="h-4 w-4 fill-secondary text-secondary" />
+                  ))}
                 </div>
+                <p className="text-sm text-muted-foreground italic leading-relaxed">
+                  "{test.quote}"
+                </p>
               </div>
-              <div className="flex gap-0.5 mb-3">
-                {Array.from({ length: test.rating }).map((_, idx) => (
-                  <Star key={idx} className="h-4 w-4 fill-secondary text-secondary" />
-                ))}
-              </div>
-              <p className="text-sm text-muted-foreground italic leading-relaxed">
-                "{test.quote}"
-              </p>
             </motion.div>
           ))}
         </div>
