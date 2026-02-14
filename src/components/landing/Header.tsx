@@ -98,12 +98,16 @@ const Header = () => {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm" className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground">
-            {t("nav.login")}
-          </Button>
-          <Button size="sm" className="gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg hover:-translate-y-0.5 transition-all">
-            {t("nav.signup")}
-          </Button>
+          <a href="/login">
+            <Button variant="outline" size="sm" className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground">
+              {t("nav.login")}
+            </Button>
+          </a>
+          <a href="/register">
+            <Button size="sm" className="gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg hover:-translate-y-0.5 transition-all">
+              {t("nav.signup")}
+            </Button>
+          </a>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -150,12 +154,16 @@ const Header = () => {
               ))}
             </div>
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1 border-secondary text-secondary">
-                {t("nav.login")}
-              </Button>
-              <Button className="flex-1 gold-gradient text-secondary-foreground shadow-gold">
-                {t("nav.signup")}
-              </Button>
+              <a href="/login" className="flex-1">
+                <Button variant="outline" className="w-full border-secondary text-secondary">
+                  {t("nav.login")}
+                </Button>
+              </a>
+              <a href="/register" className="flex-1">
+                <Button className="w-full gold-gradient text-secondary-foreground shadow-gold">
+                  {t("nav.signup")}
+                </Button>
+              </a>
             </div>
           </nav>
         </div>
