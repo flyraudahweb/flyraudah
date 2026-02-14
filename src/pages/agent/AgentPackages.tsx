@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Package, Star, Percent } from "lucide-react";
 
 const AgentPackages = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Fetch agent's commission rate
   const { data: agent } = useQuery({
@@ -123,7 +125,11 @@ const AgentPackages = () => {
                     </div>
                   )}
 
-                  <Button className="w-full mt-auto" disabled={pkg.available <= 0}>
+                  <Button
+                    className="w-full mt-auto"
+                    disabled={pkg.available <= 0}
+                    onClick={() => navigate(`/agent/book/${pkg.id}`)}
+                  >
                     {pkg.available > 0 ? "Book for Client" : "Sold Out"}
                   </Button>
                 </CardContent>

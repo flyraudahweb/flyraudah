@@ -24,15 +24,23 @@ const AgentOverview = () => {
 
       if (!agentData) return;
 
-      // Fetch bookings made by this agent (via agent's clients)
-      // For now, show agent's own record stats
-      const { count: bookingCount } = await supabase
+      // Fetch client count
+      const { count: clientCount } = await supabase
+        .from("agent_clients")
+        .select("id", { count: "exact", head: true })
+        .eq("agent_id", agentData.id);
+
+      // Fetch bookings made by this agent
+      const { data: agentBookings } = await supabase
         .from("bookings")
-        .select("id", { count: "exact", head: true });
+        .select("id, status")
+        .eq("agent_id", agentData.id);
+
+      const activeBookings = agentBookings?.filter(b => b.status !== "cancelled").length || 0;
 
       setStats({
-        clients: 0,
-        bookings: bookingCount || 0,
+        clients: clientCount || 0,
+        bookings: activeBookings,
         totalRevenue: 0,
         commissionEarned: 0,
       });

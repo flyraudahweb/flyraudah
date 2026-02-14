@@ -20,9 +20,19 @@ const AgentBookings = () => {
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["agent-bookings"],
     queryFn: async () => {
+      // Fetch agent record first
+      const { data: agentData } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", (await supabase.auth.getUser()).data.user!.id)
+        .maybeSingle();
+
+      if (!agentData) return [];
+
       const { data, error } = await supabase
         .from("bookings")
         .select("id, full_name, reference, status, created_at, departure_city, package_id")
+        .eq("agent_id", agentData.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;

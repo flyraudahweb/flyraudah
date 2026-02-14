@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_clients: {
+        Row: {
+          agent_id: string
+          created_at: string
+          date_of_birth: string | null
+          email: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          notes: string | null
+          passport_expiry: string | null
+          passport_number: string | null
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          notes?: string | null
+          passport_expiry?: string | null
+          passport_number?: string | null
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          notes?: string | null
+          passport_expiry?: string | null
+          passport_number?: string | null
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_clients_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           agent_code: string
@@ -58,6 +111,8 @@ export type Database = {
       }
       bookings: {
         Row: {
+          agent_client_id: string | null
+          agent_id: string | null
           created_at: string
           date_of_birth: string | null
           departure_city: string | null
@@ -79,6 +134,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          agent_client_id?: string | null
+          agent_id?: string | null
           created_at?: string
           date_of_birth?: string | null
           departure_city?: string | null
@@ -100,6 +157,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          agent_client_id?: string | null
+          agent_id?: string | null
           created_at?: string
           date_of_birth?: string | null
           departure_city?: string | null
@@ -121,6 +180,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_agent_client_id_fkey"
+            columns: ["agent_client_id"]
+            isOneToOne: false
+            referencedRelation: "agent_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_package_date_id_fkey"
             columns: ["package_date_id"]
