@@ -26,7 +26,7 @@ const Footer = () => {
             alt="Raudah Travels & Tours"
             className="h-14 md:h-16 w-auto object-contain mx-auto brightness-0 invert"
           />
-          <p className="text-primary-foreground/60 text-sm mt-2 tracking-widest uppercase">
+          <p className="text-white text-sm mt-2 tracking-widest uppercase">
             Your Gateway to the Holy Lands
           </p>
         </div>
