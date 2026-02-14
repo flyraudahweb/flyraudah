@@ -42,10 +42,26 @@ const DashboardOverview = () => {
     enabled: bookings.length > 0,
   });
 
+  const { data: documents = [] } = useQuery({
+    queryKey: ["user-documents", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("id")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
   const activeBookings = bookings.filter((b) => b.status !== "cancelled").length;
   const totalPaid = payments
     .filter((p) => p.status === "verified")
     .reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalAmount = bookings
+    .reduce((sum, b) => sum + Number((b as any).packages?.price || 0), 0);
+  const outstanding = totalAmount - totalPaid;
 
   const stats = [
     {
@@ -64,7 +80,7 @@ const DashboardOverview = () => {
     },
     {
       label: t("dashboard.stats.documents"),
-      value: "0",
+      value: String(documents.length),
       icon: FileText,
       color: "text-muted-foreground",
       bg: "bg-muted",

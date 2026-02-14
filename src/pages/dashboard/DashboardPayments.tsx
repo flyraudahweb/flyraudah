@@ -3,32 +3,59 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Zap } from "lucide-react";
 import { formatPrice } from "@/data/packages";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const DashboardPayments = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
 
+  const { data: bookings = [] } = useQuery({
+    queryKey: ["user-bookings-payments", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("id, package_id, status")
+        .eq("user_id", user!.id);
+      if (!error && data?.length) return data;
+      return [];
+    },
+    enabled: !!user?.id,
+  });
+
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["user-payments-full", user?.id],
     queryFn: async () => {
-      const { data: bookings } = await supabase
+      const { data: bookingsData } = await supabase
         .from("bookings")
         .select("id")
         .eq("user_id", user!.id);
-      if (!bookings?.length) return [];
+      if (!bookingsData?.length) return [];
 
       const { data, error } = await supabase
         .from("payments")
-        .select("*, bookings(reference, packages(name))")
-        .in("booking_id", bookings.map((b) => b.id))
+        .select("*, bookings(reference, packages(name, price))")
+        .in("booking_id", bookingsData.map((b) => b.id))
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
     enabled: !!user?.id,
   });
+
+  const totalOwed = bookings.reduce((sum, booking) => {
+    const bookingPayments = payments.filter((p: any) => {
+      const bookingRef = p.bookings?.id;
+      return bookingRef === booking.id;
+    });
+    const paid = bookingPayments
+      .filter((p: any) => p.status === "verified")
+      .reduce((s: number, p: any) => s + Number(p.amount), 0);
+    const packagePrice = (payments.find((py: any) => py.booking_id === booking.id) as any)?.bookings?.packages?.price || 0;
+    return sum + Math.max(0, Number(packagePrice) - paid);
+  }, 0);
 
   const statusColors: Record<string, string> = {
     pending: "bg-secondary/10 text-secondary",
@@ -40,13 +67,35 @@ const DashboardPayments = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-foreground">
-          {t("dashboard.payments.title")}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {t("dashboard.payments.subtitle")}
-        </p>
-      </div>
+         <h1 className="font-heading text-2xl font-bold text-foreground">
+           {t("dashboard.payments.title")}
+         </h1>
+         <p className="text-sm text-muted-foreground mt-1">
+           {t("dashboard.payments.subtitle")}
+         </p>
+       </div>
+
+       {/* Balance Card */}
+       {totalOwed > 0 && (
+         <Card className="border-destructive/20 bg-destructive/5">
+           <CardContent className="p-5 md:p-6">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm text-muted-foreground">Outstanding Balance</p>
+                 <p className="text-2xl font-bold text-destructive mt-1">
+                   {formatPrice(totalOwed)}
+                 </p>
+               </div>
+               <Link to="/dashboard/bookings">
+                 <Button className="gold-gradient text-secondary-foreground font-semibold">
+                   <Zap className="h-4 w-4 mr-2" />
+                   Make Payment
+                 </Button>
+               </Link>
+             </div>
+           </CardContent>
+         </Card>
+       )}
 
       {isLoading ? (
         <div className="space-y-3">

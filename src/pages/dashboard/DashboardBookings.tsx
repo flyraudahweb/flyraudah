@@ -26,6 +26,19 @@ const DashboardBookings = () => {
     enabled: !!user?.id,
   });
 
+  const { data: payments = [] } = useQuery({
+    queryKey: ["user-payments-bookings", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("amount, status, booking_id")
+        .in("booking_id", bookings.map((b) => b.id));
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: bookings.length > 0,
+  });
+
   const statusColors: Record<string, string> = {
     pending: "bg-secondary/10 text-secondary",
     confirmed: "bg-primary/10 text-primary",
@@ -76,43 +89,56 @@ const DashboardBookings = () => {
         </Card>
       ) : (
         <div className="space-y-3">
-          {bookings.map((booking) => {
-            const pkg = (booking as any).packages;
-            return (
-              <Card key={booking.id} className="border-border hover:shadow-md transition-shadow">
-                <CardContent className="p-4 md:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                        <Package className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-medium text-foreground truncate">
-                          {pkg?.name || "Package"}
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Ref: {booking.reference || booking.id.slice(0, 8)} • {pkg?.duration || "—"}
-                        </p>
-                        {pkg?.price && (
-                          <p className="text-sm font-semibold text-secondary mt-1">
-                            {formatPrice(pkg.price)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 sm:flex-col sm:items-end">
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[booking.status] || ""}`}>
-                        {booking.status}
-                      </span>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(booking.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+           {bookings.map((booking) => {
+             const pkg = (booking as any).packages;
+             const bookingTotal = pkg?.price || 0;
+             const bookingPayments = payments.filter((p) => p.booking_id === booking.id);
+             const bookingPaid = bookingPayments
+               .filter((p) => p.status === "verified")
+               .reduce((sum, p) => sum + Number(p.amount), 0);
+             const bookingOutstanding = bookingTotal - bookingPaid;
+             return (
+               <Card key={booking.id} className="border-border hover:shadow-md transition-shadow">
+                 <CardContent className="p-4 md:p-5">
+                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                     <div className="flex items-start gap-3 min-w-0">
+                       <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                         <Package className="h-5 w-5 text-primary" />
+                       </div>
+                       <div className="min-w-0">
+                         <h3 className="font-medium text-foreground truncate">
+                           {pkg?.name || "Package"}
+                         </h3>
+                         <p className="text-xs text-muted-foreground mt-0.5">
+                           Ref: {booking.reference || booking.id.slice(0, 8)} • {pkg?.duration || "—"}
+                         </p>
+                         {pkg?.price && (
+                           <div className="flex gap-3 text-sm mt-1">
+                             <p className="font-semibold text-secondary">
+                               {formatPrice(pkg.price)}
+                             </p>
+                             {bookingOutstanding > 0 && (
+                               <p className="text-destructive">
+                                 Outstanding: {formatPrice(bookingOutstanding)}
+                               </p>
+                             )}
+                           </div>
+                         )}
+                       </div>
+                     </div>
+                     <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[booking.status] || ""}`}>
+                         {booking.status}
+                       </span>
+                       <p className="text-xs text-muted-foreground">
+                         {new Date(booking.created_at).toLocaleDateString()}
+                       </p>
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
+             );
+           })}
         </div>
       )}
     </div>
