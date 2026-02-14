@@ -27,7 +27,7 @@ const Hero = () => {
       <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/70 to-primary/30" />
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 pt-24 pb-36 text-center">
+      <div className="relative z-10 container mx-auto px-4 pt-40 pb-36 text-center">
         {/* Staggered title */}
         <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-tight max-w-5xl mx-auto">
           {titleWords.map((word, i) => (
@@ -116,16 +116,6 @@ const Hero = () => {
         </motion.div>
       </div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1"
-      >
-        <span className="text-background/50 text-xs uppercase tracking-[0.2em] font-medium">Scroll</span>
-        <ChevronDown className="h-5 w-5 text-secondary animate-scroll-bounce" />
-      </motion.div>
     </section>
   );
 };
