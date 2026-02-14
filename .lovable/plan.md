@@ -1,83 +1,41 @@
 
-# Fix Login Redirect + Create Printable Proposal Page
 
-## 1. Login Redirect Fix
+# Fix Booking Form Issues
 
-Testing confirmed that the admin and agent redirects are **working correctly** with the current code. The issue you're experiencing is likely caused by a **stale session cached in your browser**. When you click a demo button while already logged in as another user, the old session interferes.
+## Issue 1: Travel Date Not Selectable
+The travel dates exist in the database and the booking wizard code renders them as clickable buttons. The dates **should** be selectable in the user booking wizard (Step 1). However, in the **Agent Booking** form (`AgentBookForClient.tsx`), the Select component for dates works correctly based on the code.
 
-**Fix:** Add a check at the top of the `onSubmit` handler to sign out any existing session before signing in with the new credentials. This ensures a clean login every time.
+If the issue is specifically in the user booking wizard, the date buttons should be working -- but we will add better visual feedback and ensure the click handler fires correctly by switching from raw `<button>` elements to proper interactive components.
 
-**File:** `src/pages/Login.tsx`
-- Before calling `signIn`, call `signOut()` to clear any cached session
-- Import `signOut` from `useAuth`
+## Issue 2: Room Preference Not Selecting
+**Root cause found:** The database stores city names in **lowercase** (`makkah`, `madinah`), but the code filters with **capitalized** names (`"Makkah"`, `"Madinah"`). This means `makkahAccom` and `madinahAccom` are always `undefined`, resulting in an empty room dropdown.
 
-## 2. Printable A4 Proposal Page
+**File:** `src/pages/dashboard/BookingWizard.tsx` (lines 171-172)
+- Change `a.city === "Makkah"` to `a.city?.toLowerCase() === "makkah"`
+- Change `a.city === "Madinah"` to `a.city?.toLowerCase() === "madinah"`
 
-Create a new page at `/proposal` with a professional, printable A4 layout for the Raudah Hajj & Umrah platform proposal from BINAH INNOVATION LTD.
+## Issue 3: Paystack Checkout Not Working
+**Root cause found:** The `onSubmitBooking` function creates the booking and payment record in the database, but when the user selects "Card Payment (Paystack)", it **never calls the `create-paystack-checkout` edge function**. It just jumps to the confirmation page (Step 5) with a "pending" payment.
 
-### Page Structure (A4 print-optimized):
+**Fix in** `src/pages/dashboard/BookingWizard.tsx`:
+- After creating the booking and payment record, if `paymentMethod === "card"`, call the `create-paystack-checkout` edge function with the user's email, amount, and booking ID
+- Redirect the user to the Paystack authorization URL returned by the edge function
+- Only show the confirmation page (Step 5) for bank transfer payments
+- For Paystack, the user will return via `/payment-callback` after completing payment on Paystack's hosted page
 
-**Cover Page**
-- BINAH INNOVATION LTD company header
-- "Software Development Proposal"
-- "Raudah Hajj & Umrah Digital Platform"
-- Prepared for: The Chairman, Raudah Hajj & Umrah
-- Date: February 2026
+## Files to Modify
 
-**Executive Summary**
-- Problem statement: Manual booking processes, lack of transparency, no digital presence
-- Solution: Full-stack digital platform for Hajj & Umrah management
+| File | Changes |
+|------|---------|
+| `src/pages/dashboard/BookingWizard.tsx` | Fix city case comparison for room types; add Paystack checkout redirect after booking creation |
 
-**Problems Addressed**
-- Manual pilgrim registration and tracking
-- No online booking or payment system
-- Lack of agent/B2B management tools
-- No real-time analytics or reporting
-- Paper-based document management
+## Technical Details
 
-**Features & Deliverables**
-- User Portal (booking wizard, payments, documents, profile, support)
-- Admin Dashboard (pilgrim management, analytics, payments, packages, AI assistant)
-- Agent/B2B Portal (client management, wholesale booking, commissions)
-- Landing Page (package showcase, search, agent application)
-- Payment Gateway Integration (Paystack)
-- PWA Support (offline, installable)
-- Multi-language Support (English, Arabic, French, Hausa)
+The Paystack flow after the fix:
+1. User clicks "Complete Booking" with Paystack selected
+2. Booking + payment records created in DB (status: pending)
+3. Edge function `create-paystack-checkout` is called with email, amount, booking ID
+4. User is redirected to Paystack's hosted payment page
+5. After payment, Paystack redirects to `/payment-callback?reference=xxx`
+6. The existing `verify-paystack-payment` edge function verifies and updates the payment status
 
-**Pricing Breakdown**
-
-| Item | Cost (NGN) |
-|------|-----------|
-| Backend Development | 250,000 |
-| Frontend Development | 310,000 |
-| Payment Gateway Integration (Paystack) | 500,000 |
-| Feature Modules (Agent, User, Admin Portals) | 260,000 - 290,000 |
-| Hosting, Backend Services & Email (1 Year) | 480,000 |
-| Domain Registration | 50,000 |
-| **Total** | **1,850,000 - 1,880,000** |
-
-**Timeline**
-- 5-7 business days for development, testing, and deployment
-
-**Contact Information**
-- Fatima Dauda Kurfi - PROJECT DIRECTOR - 09160628769
-- Abubakar Lawal Abba - PROJECT LEAD - 07034681817
-- Aliyu Wada Umar - PROJECT TECHNICAL DIRECTOR - 09063412927
-
-**Print Button** at the top (hidden when printing) to trigger `window.print()`
-
-### Files to Create/Modify
-
-| File | Action |
-|------|--------|
-| `src/pages/Proposal.tsx` | **Create** - Full printable A4 proposal page |
-| `src/App.tsx` | **Modify** - Add `/proposal` route |
-| `src/pages/Login.tsx` | **Modify** - Add `signOut` before `signIn` to clear stale sessions |
-
-### Technical Details
-
-- The proposal page uses `@media print` CSS for clean A4 printing
-- Page breaks between sections using `break-before: page`
-- No navigation/header - standalone printable document
-- Professional typography using existing Playfair Display + Inter fonts
-- Brand colors (emerald green + gold) used throughout
