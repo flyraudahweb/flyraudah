@@ -44,6 +44,7 @@ const AgentBookForClient = lazy(() => import("./pages/agent/AgentBookForClient")
 const AgentPackages = lazy(() => import("./pages/agent/AgentPackages"));
 const AgentBookings = lazy(() => import("./pages/agent/AgentBookings"));
 const AgentCommissions = lazy(() => import("./pages/agent/AgentCommissions"));
+const Proposal = lazy(() => import("./pages/Proposal"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/install" element={<Install />} />
+                <Route path="/proposal" element={<Proposal />} />
                 <Route
                   path="/dashboard"
                   element={
