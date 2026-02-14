@@ -1,85 +1,57 @@
 
-# Dynamic Search Widget in Hero Section
+# Replace Packages with Real Data from Flyers
 
-## Problem
-The hero search widget has hardcoded month options (February, March, June, July). When new packages are added with different travel dates, these months won't appear. The search needs to pull real data from the database.
+## Overview
+Delete all existing mock packages from the database and insert the 7 real packages extracted from the uploaded flyers. Also update the local `src/data/packages.ts` file to match.
 
-## Solution
+No bookings exist yet, so it's safe to do a clean replacement.
 
-### 1. Fetch available months dynamically from the database
-**File:** `src/components/landing/Hero.tsx`
+## Packages to Insert (from flyers)
 
-- Import `useQuery` from TanStack React Query and `supabase` client
-- Query `package_dates` table (joined through active packages) to get all available travel months
-- Parse outbound dates into unique `yyyy-MM` values and derive display labels (e.g., "February 2026")
-- Replace the hardcoded `<option>` list with dynamically generated options
+| # | Package Name | Type | Category | Price | Airline | City |
+|---|---|---|---|---|---|---|
+| 1 | Hajj 2026 | hajj | premium | N7,800,000 | EgyptAir/Saudi Airlines | Abuja, Kano, Lagos |
+| 2 | Ramadan Umrah 2026 - Premium (Abuja) | umrah | premium | N5,500,000 | EgyptAir | Abuja |
+| 3 | Ramadan Umrah 2026 - Premium (Kano) | umrah | premium | N5,500,000 | Saudi Airlines | Kano |
+| 4 | Ramadan Umrah 2026 - Standard (Kano) | umrah | standard | N4,500,000 | MaxAir | Kano |
+| 5 | Sha'ban Umrah 2026 - Budget | umrah | budget | N3,000,000 | Fly Adeal | Kano |
+| 6 | Sha'ban Umrah 2026 - Standard (EgyptAir) | umrah | standard | N3,700,000 | EgyptAir | Kano |
+| 7 | Sha'ban Umrah 2026 - Standard (Fly Adeal) | umrah | standard | N3,700,000 | Fly Adeal | Kano |
 
-### 2. Pass the actual `yyyy-MM` value as the month parameter
-**File:** `src/components/landing/Hero.tsx`
+## Key Differences from Current Data
+- Standard Ramadan now Kano-only (was Abuja/Kano), with 9 departure dates (was 6)
+- Sha'ban Standard split into 2 separate packages (EgyptAir and Fly Adeal versions, was 1 combined)
+- Total: 7 packages (was 6)
 
-- Instead of passing abbreviations like `feb`, `mar`, pass the actual `yyyy-MM` value (e.g., `2026-02`) as the `month` query param
-- This removes the need for a hardcoded month mapping and works with any future dates
+## Steps
 
-### 3. Update Packages page to accept `yyyy-MM` month format directly
-**File:** `src/pages/Packages.tsx`
+### Step 1: Clear existing data from database
+Delete all rows from `package_accommodations`, `package_dates`, then `packages` (in that order due to foreign keys).
 
-- Update the `useEffect` that reads URL params to accept both the old abbreviation format (backward compat) AND the new `yyyy-MM` format directly
-- If `month` param matches `yyyy-MM` pattern, use it directly as the filter value
-- Otherwise fall back to the existing `MONTH_MAP` lookup
+### Step 2: Insert new packages into database
+Insert 7 packages with correct details, then their dates and accommodations.
+
+Travel dates per package:
+- **Hajj**: Jun 1 -> Jul 12 (Nigeria to Saudi Arabia)
+- **Premium Abuja**: Mar 3 Abuja->Madina, Mar 20 Jeddah->Abuja
+- **Premium Kano**: Mar 6 Kano->Jeddah, Mar 20 Jeddah->Kano
+- **Standard Kano (MaxAir)**: 9 dates -- Feb 18, 23, 25, Mar 1, 2, 5, 6, 8, 11 departures
+- **Sha'ban Budget**: Feb 3 Kano->Jed, Feb 16 Jed->Kano
+- **Sha'ban Standard (EgyptAir)**: Feb 15 Kano->Madina, Mar 3 Jeddah->Kano
+- **Sha'ban Standard (Fly Adeal)**: Feb 16 Kano->Jed, Mar 3 Jeddah->Kano
+
+### Step 3: Update `src/data/packages.ts`
+Replace the hardcoded package array to match the new 7 packages (this file is used as a local fallback/reference).
 
 ## Technical Details
 
-### Hero.tsx Changes
-```typescript
-// Add imports
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO } from "date-fns";
+### Database Operations (using insert/update/delete tool)
+1. `DELETE FROM package_accommodations` -- clear accommodations
+2. `DELETE FROM package_dates` -- clear dates
+3. `DELETE FROM packages` -- clear packages
+4. `INSERT INTO packages (...)` -- 7 rows with correct name, type, category, season, year, price, currency, agent_discount, deposit_allowed, minimum_deposit, capacity, available, inclusions, airlines, departure_cities, duration, status, featured
+5. `INSERT INTO package_dates (...)` -- 13 date rows total (1 Hajj + 1 Premium Abuja + 1 Premium Kano + 9 Standard Kano + 1 Budget + 1 Standard EgyptAir + 1 Standard Fly Adeal = ~15 rows, including returns embedded in each row)
+6. `INSERT INTO package_accommodations (...)` -- 14 rows (2 per package: makkah + madinah)
 
-// Fetch active package dates
-const { data: monthOptions = [] } = useQuery({
-  queryKey: ["hero-month-options"],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from("packages")
-      .select("package_dates(outbound)")
-      .eq("status", "active");
-    const months = new Set<string>();
-    data?.forEach((pkg) =>
-      pkg.package_dates?.forEach((d) => {
-        months.add(format(parseISO(d.outbound), "yyyy-MM"));
-      })
-    );
-    return Array.from(months).sort().map((m) => ({
-      value: m,
-      label: format(parseISO(`${m}-01`), "MMMM yyyy"),
-    }));
-  },
-});
-
-// Replace hardcoded options with:
-{monthOptions.map((opt) => (
-  <option key={opt.value} value={opt.value}>{opt.label}</option>
-))}
-```
-
-### Packages.tsx Changes
-```typescript
-// Updated useEffect to handle both formats
-useEffect(() => {
-  const typeParam = searchParams.get("type");
-  if (typeParam === "hajj" || typeParam === "umrah") {
-    setSelectedType(typeParam);
-  }
-  const monthParam = searchParams.get("month");
-  if (monthParam) {
-    if (/^\d{4}-\d{2}$/.test(monthParam)) {
-      setSelectedMonth(monthParam); // direct yyyy-MM format
-    } else if (MONTH_MAP[monthParam]) {
-      setSelectedMonth(MONTH_MAP[monthParam]); // legacy abbreviation
-    }
-  }
-}, [searchParams]);
-```
-
-This ensures the search widget always shows current travel months from the database and works correctly as new packages are added.
+### File Change: `src/data/packages.ts`
+Update the `packages` array to reflect the 7 new packages with matching data.
