@@ -12,7 +12,7 @@ interface AuthContextType {
   roles: AppRole[];
   loading: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; roles: AppRole[] }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (password: string) => Promise<{ error: Error | null }>;
@@ -89,12 +89,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error: error as Error | null };
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<{ error: Error | null; roles: AppRole[] }> => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error && data.user) {
-      await fetchUserData(data.user.id);
+      const [, rolesRes] = await Promise.all([
+        supabase.from("profiles").select("full_name, phone, avatar_url").eq("id", data.user.id).maybeSingle().then(r => { if (r.data) setProfile(r.data); }),
+        supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+      ]);
+      const fetchedRoles = rolesRes.data?.map((r) => r.role) ?? [];
+      setRoles(fetchedRoles);
+      return { error: null, roles: fetchedRoles };
     }
-    return { error: error as Error | null };
+    return { error: error as Error | null, roles: [] };
   };
 
   const signOut = async () => {
