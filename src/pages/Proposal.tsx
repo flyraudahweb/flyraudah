@@ -119,6 +119,16 @@ const Proposal = () => {
               "Commission tracking & payout management",
               "Dedicated agent dashboard with performance metrics",
             ]} />
+            <FeatureBlock title="💳 Payment Gateway Integration" items={[
+              "Paystack payment gateway (Nigeria's leading processor)",
+              "Multiple payment channels: Card, Bank Transfer, USSD",
+              "Server-side secure transaction initialization",
+              "Automated payment verification & callback handling",
+              "Deposit/installment payment support for Hajj packages",
+              "Manual bank transfer verification (WEMA Bank)",
+              "Payment receipts & transaction history",
+              "Real-time payment status tracking & notifications",
+            ]} />
             <FeatureBlock title="⚙️ Technical Infrastructure" items={[
               "Secure authentication with role-based access control",
               "PostgreSQL database with row-level security",
