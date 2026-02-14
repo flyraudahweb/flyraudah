@@ -6,7 +6,7 @@ import WhyChoose from "@/components/landing/WhyChoose";
 import Testimonials from "@/components/landing/Testimonials";
 import CTABanner from "@/components/landing/CTABanner";
 import Footer from "@/components/landing/Footer";
-import WhatsAppFloat from "@/components/landing/WhatsAppFloat";
+
 
 const Index = () => {
   return (
@@ -26,7 +26,7 @@ const Index = () => {
           <CTABanner />
         </main>
         <Footer />
-        <WhatsAppFloat />
+        
       </div>
     </>
   );
