@@ -1,23 +1,11 @@
 
-## Replace Text Logo with Image Logo
+## Fix Packages Section Padding
 
-### What Changes
-Replace the "Raudah Travels" text-based logo with the provided image logo (`https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png`) in the two places it appears as a visual brand mark:
+### Problem
+The "2026 Hajj & Umrah Packages" section has extra horizontal padding (`px-4 sm:px-8 lg:px-12`) that doesn't match the header's container padding (`px-4`).
 
-### Files to Modify
+### Solution
+Update `src/components/landing/PackagesSection.tsx` line 12 to change the container padding from `px-4 sm:px-8 lg:px-12` to just `px-4`, matching the header's `container mx-auto px-4` pattern.
 
-**1. `src/components/landing/Header.tsx` (lines 56-68)**
-- Replace the two `<span>` elements ("Raudah" + "Travels") with an `<img>` tag
-- The logo image will be sized appropriately for the header (h-10 on mobile, h-12 on desktop)
-- Maintain the link wrapping so clicking the logo still navigates home
-
-**2. `src/components/landing/Footer.tsx` (lines 23-27)**
-- Replace the "Raudah Travels & Tours" heading text with the logo image
-- Center it and size it slightly larger for the footer context (h-14 or h-16)
-- Keep the tagline "Your Gateway to the Holy Lands" below
-
-### Technical Details
-- Use the external URL directly as the `src` for the `<img>` tag
-- Add appropriate `alt="Raudah Travels & Tours"` for accessibility
-- Apply `object-contain` to preserve aspect ratio
-- In the header, the logo will adapt between scrolled/unscrolled states using brightness or invert filters if needed for contrast against the transparent hero background
+### File to Modify
+- `src/components/landing/PackagesSection.tsx` — change `px-4 sm:px-8 lg:px-12` to `px-4` on the container div (line 12)
