@@ -1,67 +1,58 @@
 
-# Add Logo to ID Cards, Fix Auth Session Bug, and Ensure Agent Form Works
 
-## Overview
+# Fix Post-Login Redirect Not Going to Admin/Agent Dashboard
 
-Three improvements: (1) Add the Raudah logo to ID card headers in white, (2) Fix the login session getting stuck after logout/re-login, and (3) Ensure agent application form submissions appear in the admin panel.
+## Problem
 
----
+After the auth deadlock fix, login always redirects to `/dashboard` regardless of the user's role (admin/agent). This happens because:
 
-## 1. Add Logo to Pilgrim ID Card Header
+1. `signIn()` completes and sets `loginSuccess = true`
+2. The `useEffect` checks `loginSuccess && !loading` -- but `loading` is already `false` (it was set during initial page load)
+3. The redirect fires **immediately**, before `fetchUserData` (dispatched via `setTimeout`) has loaded the user's roles
+4. Since `roles` is still an empty array, `hasRole("admin")` returns `false`, so every user lands on `/dashboard`
 
-**File: `src/components/admin/PilgrimIdCard.tsx`**
+## Solution
 
-Replace the crescent/star SVG icon in the card header with the actual Raudah logo image, inverted to white since the header background is emerald green.
+Two changes are needed:
 
-- Use `<img src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png" className="h-5 w-auto brightness-0 invert" />` (same pattern used in sidebars and footer)
-- Keep the card title "PILGRIM ID CARD" and subtitle "Raudah Travels & Tours" next to the logo
+### File: `src/contexts/AuthContext.tsx`
 
-**File: `src/pages/admin/AdminIdTags.tsx`**
+Add a mechanism to let the Login page know when roles have been freshly loaded after a sign-in. The simplest approach: make `signIn` return a promise that also waits for roles to load.
 
-Update the PDF generation to also embed the logo in the PDF card header. Since jsPDF can't load external images easily inline, we'll pre-load the logo image as a data URL on component mount and use `pdf.addImage()` in the header area.
+- Modify `signIn` to call `fetchUserData` directly after successful authentication (not relying on the `onAuthStateChange` setTimeout)
+- Return the fetched roles alongside the error so the caller has them immediately
+- Keep the `onAuthStateChange` setTimeout for other auth events (token refresh, etc.)
 
----
-
-## 2. Fix Auth Session Stuck on Re-Login
-
-**Root Cause:** The `onAuthStateChange` callback in `AuthContext.tsx` calls `await fetchUserData()` directly inside the callback. This causes a deadlock -- Supabase's auth listener blocks while waiting for Supabase database calls to complete, preventing the auth state from resolving. After logout and re-login, the loading state never resolves.
-
-**File: `src/contexts/AuthContext.tsx`**
-
-Apply the proven fix pattern:
-- Use `setTimeout(() => fetchUserData(...), 0)` inside `onAuthStateChange` to dispatch database calls after the callback completes, avoiding the deadlock
-- Separate initial load (controls `loading` state) from ongoing auth changes
-- Add an `isMounted` flag for cleanup safety
-- Ensure `loading` is only set to `false` after the initial `getSession()` + `fetchUserData()` completes (not after every auth change)
-
-```text
-Before (broken):
-  onAuthStateChange -> await fetchUserData() -> DEADLOCK
-
-After (fixed):
-  onAuthStateChange -> setTimeout(fetchUserData, 0) -> works
-  getSession() -> await fetchUserData() -> setLoading(false)
+```
+signIn flow (fixed):
+  1. signInWithPassword() -> success
+  2. await fetchUserData() -> roles loaded
+  3. return { error: null } -> Login page redirects with correct roles
 ```
 
----
+### File: `src/pages/Login.tsx`
 
-## 3. Ensure Agent Applications Reach Admin
+Update the redirect logic:
 
-**Current state:** The `BecomeAgentDialog` inserts into `agent_applications` with `as any` type casts. The RLS INSERT policy is `WITH CHECK (true)`, meaning anyone can insert. The admin page queries with the admin role's SELECT policy.
+- Instead of using `loginSuccess` state + useEffect that races with role loading, perform the redirect directly in `onSubmit` after `signIn` completes (since `signIn` now awaits role fetching)
+- Remove the `loginSuccess` state and its `useEffect` entirely
+- Read `hasRole` after signIn resolves to get the correct destination
 
-The code itself is correct, but the `as any` casts suggest the table isn't in the generated TypeScript types. This won't block functionality but may cause confusion. The actual fix needed:
+```
+onSubmit (fixed):
+  1. await signIn(email, password)
+  2. if no error -> roles are now loaded
+  3. navigate(hasRole("admin") ? "/admin" : hasRole("agent") ? "/agent" : "/dashboard")
+```
 
-- Verify the insert works for unauthenticated users (the form can be submitted without logging in, but the `supabase` client may need the anon key to pass RLS). The current INSERT policy allows this.
-- No code changes needed for this -- the flow already works. The admin panel at `AdminAgentApplications.tsx` already queries and displays all applications.
+## Why This Works
 
-If there's an edge case where submissions fail silently, we'll add better error toasting and ensure the `user_id` field is properly set to `null` for anonymous submissions.
+By awaiting `fetchUserData` inside `signIn` before returning, the Login page's redirect logic executes only after roles are available. No race condition, no timing issues.
 
----
+## Files Changed
 
-## Technical Details
+| File | Change |
+|------|--------|
+| `src/contexts/AuthContext.tsx` | `signIn` calls `await fetchUserData()` after successful auth before returning |
+| `src/pages/Login.tsx` | Remove `loginSuccess` state/effect, redirect directly in `onSubmit` after `signIn` resolves |
 
-| File | Changes |
-|------|---------|
-| `src/components/admin/PilgrimIdCard.tsx` | Replace crescent SVG with Raudah logo `<img>` tag, white-inverted |
-| `src/pages/admin/AdminIdTags.tsx` | Pre-load logo as data URL, embed in PDF header via `pdf.addImage()` |
-| `src/contexts/AuthContext.tsx` | Fix deadlock: use `setTimeout` in `onAuthStateChange`, separate initial load, add `isMounted` guard |
