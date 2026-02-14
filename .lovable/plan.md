@@ -1,136 +1,116 @@
+# Raudah Travels & Tours Ltd. — Complete Implementation Plan
 
+## Overview
+A luxury Islamic travel portal for Hajj and Umrah bookings, built incrementally across 4 phases. The platform features a stunning emerald-and-gold design system, four distinct interfaces (Public, User, Agent B2B, Admin), multi-language support (English, Hausa, Arabic with RTL, French), and real Paystack payment integration.
 
-# Phase 1 (Part 2): Database Foundation Setup
-
-## Summary
-
-Set up the complete backend database schema on Lovable Cloud, including authentication, all core tables with Row Level Security, storage buckets, and seed the 6 existing packages into the database.
-
----
-
-## Step 1: Authentication Configuration
-
-- Enable email/password authentication
-- Keep email confirmation enabled (users must verify before signing in)
-
-## Step 2: Database Schema (Single Migration)
-
-Create all tables, enums, functions, triggers, and RLS policies in one migration:
-
-### Enums
-
-- `app_role` -- `admin`, `moderator`, `agent`, `user`
-- `booking_status` -- `pending`, `confirmed`, `cancelled`, `completed`
-- `payment_status` -- `pending`, `verified`, `rejected`, `refunded`
-- `payment_method` -- `paystack`, `bank_transfer`, `ussd`
-- `document_type` -- `passport`, `vaccine_certificate`, `visa`, `flight_ticket`, `hotel_voucher`, `booking_confirmation`, `payment_receipt`, `pre_departure_guide`
-- `agent_status` -- `active`, `suspended`, `pending`
-- `package_status` -- `active`, `draft`, `archived`
-- `package_type` -- `hajj`, `umrah`
-- `package_category` -- `premium`, `standard`, `budget`
-
-### Tables
-
-1. **profiles** -- `id` (FK to auth.users), `full_name`, `phone`, `language_preference` (default 'en'), `avatar_url`, `created_at`, `updated_at`
-
-2. **user_roles** -- `id`, `user_id` (FK to auth.users), `role` (app_role, default 'user'), unique on (user_id, role)
-
-3. **packages** -- `id`, `name`, `type` (package_type), `category` (package_category), `season`, `year`, `price`, `currency`, `agent_discount`, `deposit_allowed`, `minimum_deposit`, `capacity`, `available`, `inclusions` (text[]), `airlines` (text[]), `departure_cities` (text[]), `duration`, `description`, `image_url`, `status` (package_status), `featured`, `created_at`, `updated_at`
-
-4. **package_dates** -- `id`, `package_id` (FK), `outbound`, `outbound_route`, `return_date`, `return_route`, `airline`, `islamic_date`, `islamic_return_date`
-
-5. **package_accommodations** -- `id`, `package_id` (FK), `city` ('makkah' or 'madinah'), `hotel`, `distance_from_haram`, `distance_from_masjid`, `rating`, `room_types` (text[])
-
-6. **bookings** -- `id`, `reference` (unique, format RTT-2026-XXXXXX), `user_id` (FK), `package_id` (FK), `package_date_id` (FK), `status` (booking_status), `full_name`, `passport_number`, `passport_expiry`, `date_of_birth`, `gender`, `emergency_contact_name`, `emergency_contact_phone`, `emergency_contact_relationship`, `departure_city`, `room_preference`, `special_requests`, `created_at`, `updated_at`
-
-7. **payments** -- `id`, `booking_id` (FK), `amount`, `method` (payment_method), `status` (payment_status), `paystack_reference`, `proof_of_payment_url`, `verified_by`, `verified_at`, `notes`, `created_at`
-
-8. **documents** -- `id`, `booking_id` (FK), `user_id` (FK), `type` (document_type), `file_url`, `file_name`, `uploaded_at`
-
-9. **agents** -- `id`, `user_id` (FK to auth.users), `business_name`, `contact_person`, `email`, `phone`, `agent_code` (unique), `commission_rate` (numeric), `status` (agent_status), `created_at`, `updated_at`
-
-### Helper Function
-
-- `has_role(user_id, role)` -- Security definer function to check roles without RLS recursion
-
-### Auto-Profile Trigger
-
-- Trigger on `auth.users` insert to auto-create a profile row and assign default 'user' role
-
-### Booking Reference Function
-
-- Database function to generate unique `RTT-2026-XXXXXX` references on booking insert
-
-### RLS Policies
-
-| Table | Policy |
-|---|---|
-| **profiles** | Users read/update own profile; admins read all |
-| **user_roles** | Users read own roles; admins manage all |
-| **packages** | Public read for active packages; admins full CRUD |
-| **package_dates** | Public read; admins full CRUD |
-| **package_accommodations** | Public read; admins full CRUD |
-| **bookings** | Users read/create own; agents read their clients'; admins read all |
-| **payments** | Users read own; admins full access |
-| **documents** | Users read/upload own; admins full access |
-| **agents** | Agents read own; admins full CRUD |
-
-## Step 3: Storage Buckets
-
-Create three storage buckets with appropriate RLS:
-
-- **passport-photos** -- private, users upload own, admins read all
-- **payment-receipts** -- private, users upload own, admins read all
-- **documents** -- private, users upload own, admins read all
-
-## Step 4: Seed Package Data
-
-Insert the 6 existing packages from `src/data/packages.ts` into the `packages`, `package_dates`, and `package_accommodations` tables using the data insert tool.
-
-## Step 5: Code Updates
-
-No major frontend changes in this step -- the landing page continues using static data. The database is being prepared for Phase 2 (User Portal & Booking System) where we'll switch to querying from the database.
+**Backend:** Lovable Cloud (managed Supabase)
+**Payments:** Real Paystack integration
+**Languages:** English, Hausa, Arabic (RTL), French from the start
+**Packages:** 6 pre-seeded packages (Hajj 2026, Ramadan Premium Abuja, Ramadan Standard Abuja/Kano, Sha'ban Budget, Sha'ban Standard, Ramadan Premium Kano)
 
 ---
 
-## Technical Details
+## Phase 1: Foundation & Public Landing Page ✅
 
-### Full Table Relationships
+### Design System Setup ✅
+- Emerald green (#064E3B) + metallic gold (#D4AF37) color palette with dark mode
+- Playfair Display for headings, Inter for body, Amiri for Arabic text
+- Luxury component styles with gold-bordered cards, gradient CTAs, emerald price badges
 
-```text
-auth.users
-  |-- profiles (1:1)
-  |-- user_roles (1:many)
-  |-- bookings (1:many)
-  |-- documents (1:many)
-  |-- agents (1:1, optional)
+### Internationalization (i18n) ✅
+- react-i18next with English, Hausa, Arabic (RTL), French
+- Full RTL layout support, language switcher with flags
 
-packages
-  |-- package_dates (1:many)
-  |-- package_accommodations (1:many)
-  |-- bookings (1:many)
+### Public Landing Page ✅
+- Sticky header, full-screen hero, 6 package cards, Why Choose section, testimonials, CTA banner, footer, WhatsApp float
 
-bookings
-  |-- payments (1:many)
-  |-- documents (1:many)
-```
+### Database Foundation (Lovable Cloud) ✅
+- 9 enums, 9 tables with RLS, has_role() security definer function
+- Auto-profile trigger on signup, booking reference generator
+- 3 storage buckets (passport-photos, payment-receipts, documents)
+- 6 packages seeded with dates and accommodations
 
-### Migration Order
+---
 
-1. Create enums
-2. Create `has_role` function
-3. Create tables (profiles, user_roles, packages, package_dates, package_accommodations, bookings, payments, documents, agents)
-4. Enable RLS on all tables
-5. Create all RLS policies
-6. Create auto-profile trigger
-7. Create booking reference function
-8. Create storage buckets with policies
+## Phase 2: User Portal & Booking System
 
-### Security Notes
+### Authentication
+- Registration with Nigerian phone format (+234), strong password validation
+- Login with email/password, forgot password flow
+- Protected routes with role-based redirects
 
-- Roles stored in separate `user_roles` table (never on profiles)
-- `has_role()` uses `SECURITY DEFINER` to avoid RLS recursion
-- All tables have RLS enabled with appropriate policies
-- No files stored in database -- only URLs to storage buckets
-- Package read access is public (no auth required) for the landing page
+### User Dashboard
+- Sidebar navigation: Dashboard, My Bookings, Browse Packages, Payment History, Documents, Profile, Support
+- Mobile: bottom tab navigation
+- Quick stats cards, current booking summary
 
+### Package Browsing & Search
+- Advanced filtering: type, season, price range, departure city, date, airline, hotel rating
+- Detailed package view with all inclusions, accommodations, dates, availability
+
+### 5-Step Booking Flow
+1. Package Selection
+2. Pilgrim Information (passport, photo upload, emergency contact)
+3. Travel Preferences (departure city, date, room, special requests)
+4. Payment Selection (Paystack card, bank transfer with receipt upload, USSD)
+5. Confirmation (reference, status, receipt download)
+
+### Payments & Installments
+- Hajj installment tracking with timeline visualization
+- Additional payments on existing bookings
+- Payment history with downloadable receipts
+
+### Documents Section
+- View/download booking confirmation, receipts, pre-departure guide
+- Upload passport copy, vaccine certificate
+
+### WhatsApp Integration
+- Pre-filled messages with booking reference
+
+---
+
+## Phase 3: Agent Portal (B2B)
+
+### Agent Authentication
+- Separate /agent-login with Agent ID + password
+- Agent accounts created by admin only
+
+### Agent Dashboard
+- Stats: bookings, revenue, pending, commission earned
+- Wholesale pricing: crossed-out retail with bold agent price
+- Agent Price = Public Price - Admin Discount
+
+### Agent Booking Management
+- Book on behalf of clients at wholesale price
+- Client bookings table with search/filter
+
+### Commission Tracking
+- Per-agent commission rate, summary, payout requests, history
+
+---
+
+## Phase 4: Admin Dashboard
+
+### Dashboard Overview
+- KPI cards with trends, revenue chart, package distribution, bookings by city, activity feed
+
+### Package Management (Full CRUD)
+- Create/edit/duplicate/archive packages with all details
+
+### Pilgrim Management
+- Searchable records, individual profiles, export to CSV
+
+### Pilgrim ID Tag Generator
+- Printable ID cards (85.60 × 53.98mm) with QR code, bulk print PDF
+
+### Payment Management
+- Verification queue, payment history, installment tracking
+
+### Agent Management
+- Create/activate/suspend agents, performance table
+
+### Analytics
+- Revenue, booking metrics, capacity utilization, geographic distribution, agent rankings
+
+### Global Settings
+- Company info, bank details, agent discounts, notification preferences
