@@ -18,6 +18,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Install = lazy(() => import("./pages/Install"));
 const DashboardLayout = lazy(() => import("./components/dashboard/DashboardLayout"));
 const DashboardOverview = lazy(() => import("./pages/dashboard/DashboardOverview"));
 const DashboardBookings = lazy(() => import("./pages/dashboard/DashboardBookings"));
@@ -70,6 +71,7 @@ const App = () => (
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/install" element={<Install />} />
                 <Route
                   path="/dashboard"
                   element={
