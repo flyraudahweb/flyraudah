@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Plane, MapPin, Check, Star, ChevronDown, ChevronUp, Hotel } from "lucide-react";
 import { motion } from "framer-motion";
-import { formatPrice, type TravelPackage } from "@/data/packages";
+import { formatPrice } from "@/data/packages";
 
 export const tierConfig: Record<string, { border: string; badge: string; badgeLabel: string; glowClass: string }> = {
   premium: {
@@ -27,7 +28,7 @@ export const tierConfig: Record<string, { border: string; badge: string; badgeLa
   },
 };
 
-const PackageCard = ({ pkg, index }: { pkg: TravelPackage; index: number }) => {
+const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const tier = tierConfig[pkg.category];
@@ -89,17 +90,17 @@ const PackageCard = ({ pkg, index }: { pkg: TravelPackage; index: number }) => {
           </div>
           <div className="flex items-center gap-2">
             <Plane className="h-4 w-4 text-secondary" />
-            <span>{pkg.airlines.join(" / ")}</span>
+            <span>{pkg.airlines?.join(" / ")}</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-secondary" />
-            <span>{pkg.departureCities.join(", ")}</span>
+            <span>{pkg.departure_cities?.join(", ")}</span>
           </div>
         </div>
 
         {/* Inclusions - 2 column */}
         <div className="grid grid-cols-2 gap-x-2 gap-y-1 mb-4">
-          {pkg.inclusions.slice(0, 4).map((item) => (
+          {(pkg.inclusions || []).slice(0, 4).map((item: string) => (
             <div key={item} className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Check className="h-3 w-3 text-secondary shrink-0" />
               <span className="truncate">{item}</span>
@@ -132,7 +133,7 @@ const PackageCard = ({ pkg, index }: { pkg: TravelPackage; index: number }) => {
               <div>
                 <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">All Inclusions</p>
                 <div className="grid grid-cols-1 gap-1">
-                  {pkg.inclusions.map((item) => (
+                  {(pkg.inclusions || []).map((item: string) => (
                     <div key={item} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Check className="h-3 w-3 text-secondary shrink-0" />
                       <span>{item}</span>
@@ -197,12 +198,16 @@ const PackageCard = ({ pkg, index }: { pkg: TravelPackage; index: number }) => {
 
         {/* Actions */}
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 border-secondary/40 text-secondary hover:bg-secondary/10 font-medium">
-            {t("packages.viewDetails")}
-          </Button>
-          <Button className="flex-1 gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold">
-            {t("packages.bookNow")}
-          </Button>
+          <Link to={`/packages/${pkg.id}`} className="flex-1">
+            <Button variant="outline" className="w-full border-secondary/40 text-secondary hover:bg-secondary/10 font-medium">
+              {t("packages.viewDetails")}
+            </Button>
+          </Link>
+          <Link to={`/dashboard/book/${pkg.id}`} className="flex-1">
+            <Button className="w-full gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold">
+              {t("packages.bookNow")}
+            </Button>
+          </Link>
         </div>
       </div>
     </motion.div>
