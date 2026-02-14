@@ -1,41 +1,33 @@
 
+# Fix: Stale Module Cache Error on Dashboard
 
-# Fix Booking Form Issues
+## Problem
+After a new deployment, the PWA service worker or browser cache serves old JavaScript chunk filenames (e.g., `DashboardOverview-nvugvt5h.js`) that no longer exist on the server. This causes a `TypeError: error loading dynamically imported module` when navigating to the dashboard.
 
-## Issue 1: Travel Date Not Selectable
-The travel dates exist in the database and the booking wizard code renders them as clickable buttons. The dates **should** be selectable in the user booking wizard (Step 1). However, in the **Agent Booking** form (`AgentBookForClient.tsx`), the Select component for dates works correctly based on the code.
+## Solution
+Wrap all `lazy()` imports with a retry mechanism that automatically reloads the page when a chunk fails to load. This is a standard pattern for Vite + PWA apps.
 
-If the issue is specifically in the user booking wizard, the date buttons should be working -- but we will add better visual feedback and ensure the click handler fires correctly by switching from raw `<button>` elements to proper interactive components.
+## Changes
 
-## Issue 2: Room Preference Not Selecting
-**Root cause found:** The database stores city names in **lowercase** (`makkah`, `madinah`), but the code filters with **capitalized** names (`"Makkah"`, `"Madinah"`). This means `makkahAccom` and `madinahAccom` are always `undefined`, resulting in an empty room dropdown.
+### 1. Create a `lazyWithRetry` helper (`src/lib/lazyWithRetry.ts`)
+A utility function that wraps `React.lazy()` and catches chunk load errors. On failure, it forces a full page reload (once) to fetch the latest assets from the server.
 
-**File:** `src/pages/dashboard/BookingWizard.tsx` (lines 171-172)
-- Change `a.city === "Makkah"` to `a.city?.toLowerCase() === "makkah"`
-- Change `a.city === "Madinah"` to `a.city?.toLowerCase() === "madinah"`
+```text
+lazyWithRetry(importFn)
+  --> try import()
+      --> success: return module
+      --> fail (chunk error): 
+          --> check sessionStorage flag to prevent infinite reload loop
+          --> set flag, window.location.reload()
+```
 
-## Issue 3: Paystack Checkout Not Working
-**Root cause found:** The `onSubmitBooking` function creates the booking and payment record in the database, but when the user selects "Card Payment (Paystack)", it **never calls the `create-paystack-checkout` edge function**. It just jumps to the confirmation page (Step 5) with a "pending" payment.
+### 2. Update `src/App.tsx`
+Replace all `lazy(() => import(...))` calls with `lazyWithRetry(() => import(...))`.
 
-**Fix in** `src/pages/dashboard/BookingWizard.tsx`:
-- After creating the booking and payment record, if `paymentMethod === "card"`, call the `create-paystack-checkout` edge function with the user's email, amount, and booking ID
-- Redirect the user to the Paystack authorization URL returned by the edge function
-- Only show the confirmation page (Step 5) for bank transfer payments
-- For Paystack, the user will return via `/payment-callback` after completing payment on Paystack's hosted page
+### 3. Update `src/components/ui/error-boundary.tsx`
+Add detection for chunk loading errors specifically -- if the error message contains "dynamically imported module" or "Failed to fetch", offer a "Reload Page" button that does a hard refresh instead of just retrying the render.
 
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/dashboard/BookingWizard.tsx` | Fix city case comparison for room types; add Paystack checkout redirect after booking creation |
-
-## Technical Details
-
-The Paystack flow after the fix:
-1. User clicks "Complete Booking" with Paystack selected
-2. Booking + payment records created in DB (status: pending)
-3. Edge function `create-paystack-checkout` is called with email, amount, booking ID
-4. User is redirected to Paystack's hosted payment page
-5. After payment, Paystack redirects to `/payment-callback?reference=xxx`
-6. The existing `verify-paystack-payment` edge function verifies and updates the payment status
-
+## Why This Works
+- First visit after deployment: old chunk fails to load, page auto-reloads, fresh chunks are fetched
+- The `sessionStorage` flag prevents an infinite reload loop if the server itself is down
+- The error boundary provides a manual fallback if auto-reload doesn't resolve it
