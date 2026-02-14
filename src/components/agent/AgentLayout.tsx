@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AgentSidebar from "./AgentSidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const AgentLayout = () => {
@@ -27,10 +28,13 @@ const AgentLayout = () => {
                 <span className="font-heading text-sm font-semibold text-foreground">Agent Portal</span>
               </div>
             </div>
-            <Avatar className="h-8 w-8 border border-border">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-muted text-muted-foreground text-xs">{initials}</AvatarFallback>
-            </Avatar>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <Avatar className="h-8 w-8 border border-border">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-muted text-muted-foreground text-xs">{initials}</AvatarFallback>
+              </Avatar>
+            </div>
           </header>
 
           <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
