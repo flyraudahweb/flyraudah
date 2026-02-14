@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import BecomeAgentDialog from "@/components/landing/BecomeAgentDialog";
@@ -7,8 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronDown } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
+
+const heroImages = [
+  heroBg,
+  "https://i.ibb.co/d4SNVd8w/peopleattheairport.jpg",
+  "https://i.ibb.co/fVmC1j7k/medinamosque.jpg",
+];
 
 const Hero = () => {
   const { t } = useTranslation();
@@ -16,6 +22,14 @@ const Hero = () => {
   const [selectedType, setSelectedType] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   const { data: monthOptions = [] } = useQuery({
     queryKey: ["hero-month-options"],
@@ -42,13 +56,17 @@ const Hero = () => {
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Parallax Background */}
-      <motion.div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-110"
-        style={{ backgroundImage: `url(${heroBg})` }}
-        initial={{ scale: 1.15 }}
-        animate={{ scale: 1.05 }}
-        transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
-      />
+      <AnimatePresence mode="sync">
+        <motion.div
+          key={currentSlide}
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroImages[currentSlide]})` }}
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1.05 }}
+          exit={{ opacity: 0 }}
+          transition={{ opacity: { duration: 2, ease: "easeInOut" }, scale: { duration: 20, ease: "linear" } }}
+        />
+      </AnimatePresence>
 
       {/* Geometric Islamic pattern overlay */}
       <div className="absolute inset-0 geometric-overlay opacity-40" />
