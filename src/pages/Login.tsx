@@ -19,7 +19,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const Login = () => {
-  const { signIn, roles, hasRole } = useAuth();
+  const { signIn, loading, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -35,13 +35,13 @@ const Login = () => {
 
   const [loginSuccess, setLoginSuccess] = useState(false);
 
-  // After login, wait for roles to load then redirect
+  // After login, wait for loading to finish then redirect based on roles
   useEffect(() => {
-    if (loginSuccess && roles.length > 0) {
+    if (loginSuccess && !loading) {
       const target = from || (hasRole("admin") ? "/admin" : hasRole("agent") ? "/agent" : "/dashboard");
       navigate(target, { replace: true });
     }
-  }, [loginSuccess, roles]);
+  }, [loginSuccess, loading]);
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
@@ -52,10 +52,6 @@ const Login = () => {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
       setLoginSuccess(true);
-      // Fallback: if roles don't load within 2s, go to dashboard
-      setTimeout(() => {
-        navigate(from || "/dashboard", { replace: true });
-      }, 2000);
     }
   };
 
