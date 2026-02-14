@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "home": "Home",
+    "packages": "Packages",
+    "about": "About",
+    "contact": "Contact",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "hero": {
+    "title": "Begin Your Spiritually Uplifting Journey",
+    "subtitle": "Experience Hajj and Umrah with Nigeria's Most Trusted Travel Partner",
+    "explore": "Explore Packages",
+    "contact": "Contact Us",
+    "search": "Find Your Perfect Pilgrimage Package",
+    "type": "Package Type",
+    "month": "Month",
+    "budget": "Budget Range",
+    "searchBtn": "Search"
+  },
+  "packages": {
+    "title": "2026 Hajj & Umrah Packages",
+    "subtitle": "Carefully curated spiritual journeys for every pilgrim",
+    "viewDetails": "View Details",
+    "bookNow": "Book Now",
+    "from": "From",
+    "perPerson": "per person",
+    "spotsLeft": "spots left",
+    "duration": "Duration",
+    "airline": "Airlines",
+    "departure": "Departure",
+    "hajj": "Hajj",
+    "umrah": "Umrah",
+    "premium": "Premium",
+    "standard": "Standard",
+    "budget": "Budget",
+    "all": "All Packages",
+    "deposit": "Deposit from"
+  },
+  "why": {
+    "title": "Why Choose Raudah",
+    "subtitle": "Nigeria's Premier Islamic Travel Partner",
+    "licensed": "Licensed & Trusted",
+    "licensedDesc": "NAHCON & NSCIA approved agency with years of trusted service",
+    "luxury": "Luxury Experience",
+    "luxuryDesc": "Premium hotels close to Haram with VIP ground services",
+    "guides": "Expert Guides",
+    "guidesDesc": "Experienced multilingual guides for spiritual guidance",
+    "payment": "Flexible Payment",
+    "paymentDesc": "Convenient installment plans and multiple payment options"
+  },
+  "testimonials": {
+    "title": "What Our Pilgrims Say",
+    "subtitle": "Hear from those who've journeyed with us"
+  },
+  "cta": {
+    "title": "Ready to Begin Your Spiritual Journey?",
+    "subtitle": "Book now and secure your spot for 2026 Hajj & Umrah",
+    "book": "Book Now",
+    "whatsapp": "Chat on WhatsApp"
+  },
+  "footer": {
+    "quickLinks": "Quick Links",
+    "about": "About Us",
+    "services": "Services",
+    "faq": "FAQ",
+    "terms": "Terms & Conditions",
+    "privacy": "Privacy Policy",
+    "packages": "Packages",
+    "contact": "Contact Us",
+    "social": "Follow Us",
+    "rights": "All Rights Reserved",
+    "nahcon": "NAHCON Licensed | NSCIA Certified"
+  }
+}

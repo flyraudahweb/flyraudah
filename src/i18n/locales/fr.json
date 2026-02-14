@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "packages": "Forfaits",
+    "about": "À propos",
+    "contact": "Contact",
+    "login": "Connexion",
+    "signup": "Inscription"
+  },
+  "hero": {
+    "title": "Commencez Votre Voyage Spirituel Édifiant",
+    "subtitle": "Vivez le Hajj et l'Omra avec le partenaire de voyage le plus fiable du Nigéria",
+    "explore": "Explorer les Forfaits",
+    "contact": "Nous Contacter",
+    "search": "Trouvez Votre Forfait de Pèlerinage Idéal",
+    "type": "Type de Forfait",
+    "month": "Mois",
+    "budget": "Budget",
+    "searchBtn": "Rechercher"
+  },
+  "packages": {
+    "title": "Forfaits Hajj & Omra 2026",
+    "subtitle": "Des voyages spirituels soigneusement sélectionnés pour chaque pèlerin",
+    "viewDetails": "Voir les Détails",
+    "bookNow": "Réserver",
+    "from": "À partir de",
+    "perPerson": "par personne",
+    "spotsLeft": "places restantes",
+    "duration": "Durée",
+    "airline": "Compagnies",
+    "departure": "Départ",
+    "hajj": "Hajj",
+    "umrah": "Omra",
+    "premium": "Premium",
+    "standard": "Standard",
+    "budget": "Économique",
+    "all": "Tous les Forfaits",
+    "deposit": "Acompte à partir de"
+  },
+  "why": {
+    "title": "Pourquoi Choisir Raudah",
+    "subtitle": "Le Premier Partenaire de Voyage Islamique du Nigéria",
+    "licensed": "Licencié et Fiable",
+    "licensedDesc": "Agence approuvée NAHCON & NSCIA avec des années de service fiable",
+    "luxury": "Expérience de Luxe",
+    "luxuryDesc": "Hôtels premium proches du Haram avec services VIP",
+    "guides": "Guides Experts",
+    "guidesDesc": "Guides expérimentés et multilingues pour l'accompagnement spirituel",
+    "payment": "Paiement Flexible",
+    "paymentDesc": "Plans de versement pratiques et plusieurs options de paiement"
+  },
+  "testimonials": {
+    "title": "Ce Que Disent Nos Pèlerins",
+    "subtitle": "Écoutez ceux qui ont voyagé avec nous"
+  },
+  "cta": {
+    "title": "Prêt à Commencer Votre Voyage Spirituel ?",
+    "subtitle": "Réservez maintenant et assurez votre place pour le Hajj & Omra 2026",
+    "book": "Réserver Maintenant",
+    "whatsapp": "Discuter sur WhatsApp"
+  },
+  "footer": {
+    "quickLinks": "Liens Rapides",
+    "about": "À propos",
+    "services": "Services",
+    "faq": "FAQ",
+    "terms": "Conditions",
+    "privacy": "Confidentialité",
+    "packages": "Forfaits",
+    "contact": "Contact",
+    "social": "Suivez-nous",
+    "rights": "Tous Droits Réservés",
+    "nahcon": "Licence NAHCON | Certifié NSCIA"
+  }
+}
