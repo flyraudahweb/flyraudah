@@ -14,16 +14,459 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agents: {
+        Row: {
+          agent_code: string
+          business_name: string
+          commission_rate: number
+          contact_person: string
+          created_at: string
+          email: string
+          id: string
+          phone: string
+          status: Database["public"]["Enums"]["agent_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_code: string
+          business_name: string
+          commission_rate?: number
+          contact_person: string
+          created_at?: string
+          email: string
+          id?: string
+          phone: string
+          status?: Database["public"]["Enums"]["agent_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_code?: string
+          business_name?: string
+          commission_rate?: number
+          contact_person?: string
+          created_at?: string
+          email?: string
+          id?: string
+          phone?: string
+          status?: Database["public"]["Enums"]["agent_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bookings: {
+        Row: {
+          created_at: string
+          date_of_birth: string | null
+          departure_city: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          package_date_id: string | null
+          package_id: string
+          passport_expiry: string | null
+          passport_number: string | null
+          reference: string | null
+          room_preference: string | null
+          special_requests: string | null
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_of_birth?: string | null
+          departure_city?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          package_date_id?: string | null
+          package_id: string
+          passport_expiry?: string | null
+          passport_number?: string | null
+          reference?: string | null
+          room_preference?: string | null
+          special_requests?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_of_birth?: string | null
+          departure_city?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          package_date_id?: string | null
+          package_id?: string
+          passport_expiry?: string | null
+          passport_number?: string | null
+          reference?: string | null
+          room_preference?: string | null
+          special_requests?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_package_date_id_fkey"
+            columns: ["package_date_id"]
+            isOneToOne: false
+            referencedRelation: "package_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          booking_id: string | null
+          file_name: string | null
+          file_url: string
+          id: string
+          type: Database["public"]["Enums"]["document_type"]
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          file_name?: string | null
+          file_url: string
+          id?: string
+          type: Database["public"]["Enums"]["document_type"]
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          file_name?: string | null
+          file_url?: string
+          id?: string
+          type?: Database["public"]["Enums"]["document_type"]
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_accommodations: {
+        Row: {
+          city: string
+          distance_from_haram: string | null
+          distance_from_masjid: string | null
+          hotel: string
+          id: string
+          package_id: string
+          rating: number
+          room_types: string[] | null
+        }
+        Insert: {
+          city: string
+          distance_from_haram?: string | null
+          distance_from_masjid?: string | null
+          hotel: string
+          id?: string
+          package_id: string
+          rating?: number
+          room_types?: string[] | null
+        }
+        Update: {
+          city?: string
+          distance_from_haram?: string | null
+          distance_from_masjid?: string | null
+          hotel?: string
+          id?: string
+          package_id?: string
+          rating?: number
+          room_types?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_accommodations_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_dates: {
+        Row: {
+          airline: string | null
+          id: string
+          islamic_date: string | null
+          islamic_return_date: string | null
+          outbound: string
+          outbound_route: string | null
+          package_id: string
+          return_date: string
+          return_route: string | null
+        }
+        Insert: {
+          airline?: string | null
+          id?: string
+          islamic_date?: string | null
+          islamic_return_date?: string | null
+          outbound: string
+          outbound_route?: string | null
+          package_id: string
+          return_date: string
+          return_route?: string | null
+        }
+        Update: {
+          airline?: string | null
+          id?: string
+          islamic_date?: string | null
+          islamic_return_date?: string | null
+          outbound?: string
+          outbound_route?: string | null
+          package_id?: string
+          return_date?: string
+          return_route?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_dates_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packages: {
+        Row: {
+          agent_discount: number
+          airlines: string[] | null
+          available: number
+          capacity: number
+          category: Database["public"]["Enums"]["package_category"]
+          created_at: string
+          currency: string
+          departure_cities: string[] | null
+          deposit_allowed: boolean
+          description: string | null
+          duration: string | null
+          featured: boolean
+          id: string
+          image_url: string | null
+          inclusions: string[] | null
+          minimum_deposit: number | null
+          name: string
+          price: number
+          season: string | null
+          status: Database["public"]["Enums"]["package_status"]
+          type: Database["public"]["Enums"]["package_type"]
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          agent_discount?: number
+          airlines?: string[] | null
+          available?: number
+          capacity?: number
+          category: Database["public"]["Enums"]["package_category"]
+          created_at?: string
+          currency?: string
+          departure_cities?: string[] | null
+          deposit_allowed?: boolean
+          description?: string | null
+          duration?: string | null
+          featured?: boolean
+          id?: string
+          image_url?: string | null
+          inclusions?: string[] | null
+          minimum_deposit?: number | null
+          name: string
+          price: number
+          season?: string | null
+          status?: Database["public"]["Enums"]["package_status"]
+          type: Database["public"]["Enums"]["package_type"]
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          agent_discount?: number
+          airlines?: string[] | null
+          available?: number
+          capacity?: number
+          category?: Database["public"]["Enums"]["package_category"]
+          created_at?: string
+          currency?: string
+          departure_cities?: string[] | null
+          deposit_allowed?: boolean
+          description?: string | null
+          duration?: string | null
+          featured?: boolean
+          id?: string
+          image_url?: string | null
+          inclusions?: string[] | null
+          minimum_deposit?: number | null
+          name?: string
+          price?: number
+          season?: string | null
+          status?: Database["public"]["Enums"]["package_status"]
+          type?: Database["public"]["Enums"]["package_type"]
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          booking_id: string
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          notes: string | null
+          paystack_reference: string | null
+          proof_of_payment_url: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          created_at?: string
+          id?: string
+          method: Database["public"]["Enums"]["payment_method"]
+          notes?: string | null
+          paystack_reference?: string | null
+          proof_of_payment_url?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          notes?: string | null
+          paystack_reference?: string | null
+          proof_of_payment_url?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          language_preference: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          language_preference?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          language_preference?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      agent_status: "active" | "suspended" | "pending"
+      app_role: "admin" | "moderator" | "agent" | "user"
+      booking_status: "pending" | "confirmed" | "cancelled" | "completed"
+      document_type:
+        | "passport"
+        | "vaccine_certificate"
+        | "visa"
+        | "flight_ticket"
+        | "hotel_voucher"
+        | "booking_confirmation"
+        | "payment_receipt"
+        | "pre_departure_guide"
+      package_category: "premium" | "standard" | "budget"
+      package_status: "active" | "draft" | "archived"
+      package_type: "hajj" | "umrah"
+      payment_method: "paystack" | "bank_transfer" | "ussd"
+      payment_status: "pending" | "verified" | "rejected" | "refunded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +593,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      agent_status: ["active", "suspended", "pending"],
+      app_role: ["admin", "moderator", "agent", "user"],
+      booking_status: ["pending", "confirmed", "cancelled", "completed"],
+      document_type: [
+        "passport",
+        "vaccine_certificate",
+        "visa",
+        "flight_ticket",
+        "hotel_voucher",
+        "booking_confirmation",
+        "payment_receipt",
+        "pre_departure_guide",
+      ],
+      package_category: ["premium", "standard", "budget"],
+      package_status: ["active", "draft", "archived"],
+      package_type: ["hajj", "umrah"],
+      payment_method: ["paystack", "bank_transfer", "ussd"],
+      payment_status: ["pending", "verified", "rejected", "refunded"],
+    },
   },
 } as const
