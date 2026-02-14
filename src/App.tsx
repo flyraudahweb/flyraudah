@@ -29,6 +29,12 @@ import AdminPayments from "./pages/admin/AdminPayments";
 import AdminPilgrims from "./pages/admin/AdminPilgrims";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminIdTags from "./pages/admin/AdminIdTags";
+import AgentLayout from "./components/agent/AgentLayout";
+import AgentOverview from "./pages/agent/AgentOverview";
+import AgentClients from "./pages/agent/AgentClients";
+import AgentPackages from "./pages/agent/AgentPackages";
+import AgentBookings from "./pages/agent/AgentBookings";
+import AgentCommissions from "./pages/agent/AgentCommissions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +86,20 @@ const App = () => (
               <Route path="pilgrims" element={<AdminPilgrims />} />
               <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="id-tags" element={<AdminIdTags />} />
+            </Route>
+            <Route
+              path="/agent"
+              element={
+                <ProtectedRoute requiredRole="agent">
+                  <AgentLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AgentOverview />} />
+              <Route path="clients" element={<AgentClients />} />
+              <Route path="packages" element={<AgentPackages />} />
+              <Route path="bookings" element={<AgentBookings />} />
+              <Route path="commissions" element={<AgentCommissions />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
