@@ -15,7 +15,7 @@ const CTABanner = () => {
       {/* Geometric overlay */}
       <div className="absolute inset-0 geometric-overlay opacity-20" />
 
-      <div className="relative z-10 container mx-auto px-4 text-center">
+      <div className="relative z-10 container mx-auto px-4 sm:px-8 lg:px-12 text-center">
         <h2 className="font-heading text-4xl md:text-5xl font-bold text-primary-foreground mb-3">
           {t("cta.title")}
         </h2>
