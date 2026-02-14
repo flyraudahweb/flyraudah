@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "home": "Gida",
+    "packages": "Fakitoci",
+    "about": "Game da mu",
+    "contact": "Tuntuɓe mu",
+    "login": "Shiga",
+    "signup": "Yi Rajista"
+  },
+  "hero": {
+    "title": "Fara Tafiyar Ruhaniya Mai Ɗaukaka",
+    "subtitle": "Samu ƙwarewar Hajji da Umra tare da Kamfanin Tafiye-tafiye mafi Aminci a Nijeriya",
+    "explore": "Duba Fakitoci",
+    "contact": "Tuntuɓe mu",
+    "search": "Nemo Fakitin Aikin Hajji da ya Dace",
+    "type": "Nau'in Fakiti",
+    "month": "Wata",
+    "budget": "Farashin Kasafin Kuɗi",
+    "searchBtn": "Bincika"
+  },
+  "packages": {
+    "title": "Fakitocin Hajji & Umra na 2026",
+    "subtitle": "Tafiye-tafiyen ruhaniya da aka zaɓa da kyau ga kowane ɗan aikin hajji",
+    "viewDetails": "Duba Cikakken Bayani",
+    "bookNow": "Yi Bukin Yanzu",
+    "from": "Daga",
+    "perPerson": "ga mutum",
+    "spotsLeft": "wurare sun rage",
+    "duration": "Tsawon Lokaci",
+    "airline": "Kamfanin Jirgi",
+    "departure": "Tashin",
+    "hajj": "Hajji",
+    "umrah": "Umra",
+    "premium": "Na Musamman",
+    "standard": "Na Yau da Kullun",
+    "budget": "Mai Rahusa",
+    "all": "Duk Fakitoci",
+    "deposit": "Ajiya daga"
+  },
+  "why": {
+    "title": "Me ya sa za ku zaɓi Raudah",
+    "subtitle": "Babban Abokin Tafiye-tafiyen Musulunci na Nijeriya",
+    "licensed": "Mai Lasisi & Amintacce",
+    "licensedDesc": "NAHCON & NSCIA sun amince da su tare da shekaru masu yawa na hidima",
+    "luxury": "Ƙwarewar Alatu",
+    "luxuryDesc": "Otal-otal na musamman kusa da Haram tare da sabis na VIP",
+    "guides": "Ƙwararrun Jagororin",
+    "guidesDesc": "Jagororin da ke da ƙwarewa masu magana da harsuna da yawa",
+    "payment": "Biyan Kuɗi Mai Sauƙi",
+    "paymentDesc": "Tsarin biyan kuɗi a hankali da hanyoyin biyan kuɗi daban-daban"
+  },
+  "testimonials": {
+    "title": "Abin da Mahajjatanmu Suke Cewa",
+    "subtitle": "Ku ji daga waɗanda suka yi tafiya tare da mu"
+  },
+  "cta": {
+    "title": "Kun Shirya Don Fara Tafiyar Ruhaniya?",
+    "subtitle": "Yi buki yanzu ku tabbatar da wurinku na Hajji & Umra na 2026",
+    "book": "Yi Buki Yanzu",
+    "whatsapp": "Yi Hira a WhatsApp"
+  },
+  "footer": {
+    "quickLinks": "Hanyoyin Sauri",
+    "about": "Game da mu",
+    "services": "Ayyuka",
+    "faq": "Tambayoyi",
+    "terms": "Sharuɗɗa",
+    "privacy": "Sirri",
+    "packages": "Fakitoci",
+    "contact": "Tuntuɓe mu",
+    "social": "Bi mu",
+    "rights": "Duk Haƙƙoƙi An Tanada",
+    "nahcon": "NAHCON ta ba da Lasisi | NSCIA ta Tabbatar"
+  }
+}
