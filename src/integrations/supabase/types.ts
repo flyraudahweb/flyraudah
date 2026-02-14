@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_applications: {
+        Row: {
+          business_name: string
+          contact_person: string
+          created_at: string
+          email: string
+          id: string
+          message: string | null
+          phone: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          business_name: string
+          contact_person: string
+          created_at?: string
+          email: string
+          id?: string
+          message?: string | null
+          phone: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          business_name?: string
+          contact_person?: string
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string | null
+          phone?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       agent_clients: {
         Row: {
           agent_id: string

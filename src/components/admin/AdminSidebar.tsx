@@ -7,6 +7,8 @@ import {
   Users,
   BarChart3,
   Barcode,
+  UserPlus,
+  Bot,
   LogOut,
 } from "lucide-react";
 import {
@@ -30,6 +32,8 @@ const menuItems = [
   { title: "Pilgrims", url: "/admin/pilgrims", icon: Users },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "ID Tags", url: "/admin/id-tags", icon: Barcode },
+  { title: "Agent Applications", url: "/admin/agent-applications", icon: UserPlus },
+  { title: "AI Assistant", url: "/admin/ai-assistant", icon: Bot },
 ];
 
 const AdminSidebar = () => {

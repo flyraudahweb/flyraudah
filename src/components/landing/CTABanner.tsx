@@ -1,14 +1,12 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, MessageCircle } from "lucide-react";
+import { Phone, Mail, Briefcase } from "lucide-react";
+import BecomeAgentDialog from "@/components/landing/BecomeAgentDialog";
 
 const CTABanner = () => {
   const { t } = useTranslation();
-
-  const handleWhatsApp = () => {
-    const msg = encodeURIComponent("Hello Raudah Travels, I'm interested in your Hajj/Umrah packages.");
-    window.open(`https://wa.me/2348035378973?text=${msg}`, "_blank");
-  };
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
 
   return (
     <section id="contact" className="relative py-24 emerald-gradient overflow-hidden">
@@ -57,14 +55,16 @@ const CTABanner = () => {
           <Button
             size="lg"
             variant="outline"
-            onClick={handleWhatsApp}
+            onClick={() => setAgentDialogOpen(true)}
             className="border-2 border-primary-foreground/40 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 text-lg px-12 py-7"
           >
-            <MessageCircle className="h-5 w-5 mr-2" />
-            {t("cta.whatsapp")}
+            <Briefcase className="h-5 w-5 mr-2" />
+            Become an Agent
           </Button>
         </div>
       </div>
+
+      <BecomeAgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
     </section>
   );
 };

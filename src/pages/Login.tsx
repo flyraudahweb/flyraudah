@@ -99,6 +99,33 @@ const Login = () => {
         Don't have an account?{" "}
         <Link to="/register" className="text-secondary font-medium hover:underline">Sign Up</Link>
       </p>
+
+      {/* Demo Accounts */}
+      <div className="border-t border-border pt-4 mt-4">
+        <p className="text-xs text-muted-foreground text-center mb-3 uppercase tracking-wider font-semibold">Demo Accounts</p>
+        <div className="grid grid-cols-1 gap-2">
+          {[
+            { label: "Admin", email: "demo-admin@raudah.com", color: "bg-primary/10 border-primary/30 text-primary" },
+            { label: "Agent", email: "demo-agent@raudah.com", color: "bg-secondary/10 border-secondary/30 text-secondary" },
+            { label: "User", email: "demo-user1@raudah.com", color: "bg-muted border-border text-muted-foreground" },
+          ].map((demo) => (
+            <button
+              key={demo.email}
+              type="button"
+              onClick={() => {
+                form.setValue("email", demo.email);
+                form.setValue("password", "Demo1234!");
+                form.handleSubmit(onSubmit)();
+              }}
+              className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors hover:opacity-80 ${demo.color}`}
+            >
+              <span className="font-medium">{demo.label} Demo</span>
+              <span className="text-xs opacity-70">{demo.email}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground text-center mt-2">Password: Demo1234!</p>
+      </div>
     </AuthLayout>
   );
 };
