@@ -96,7 +96,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.1 }}
-          className="mt-20 max-w-3xl mx-auto bg-background/95 backdrop-blur-xl rounded-2xl p-8 shadow-xl border border-secondary/20"
+          className="mt-12 max-w-3xl mx-auto bg-background/95 backdrop-blur-xl rounded-2xl p-8 shadow-xl border border-secondary/20"
           style={{ borderTop: "3px solid hsl(var(--gold))" }}
         >
           <p className="text-sm font-medium text-muted-foreground mb-5 flex items-center justify-center gap-2 tracking-widest uppercase">
