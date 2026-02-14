@@ -1,36 +1,51 @@
 
-# UI Polish: Hero Text Size and Sidebar Logo Fixes
+# Fix Hero Buttons, Search Widget & Footer Location
 
-## Changes
+## 1. "Explore Packages" Button -- Make It Work
+Currently the button has no `onClick` or link behavior. It will be wrapped to navigate to the `#packages` section on the landing page (smooth scroll).
 
-### 1. Reduce Hero Title Text Size
-The hero heading "Raudah Travels & Tours, Your Gateway to the Holy Lands" is too large, especially on bigger screens. The font sizes will be scaled down:
-- Current: `text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl`
-- New: `text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl`
+Similarly, the "Contact Us" button will scroll to the footer contact section.
 
 **File:** `src/components/landing/Hero.tsx`
+- Add `useNavigate` or use anchor scroll for "Explore Packages" to smooth-scroll to `#packages`
+- Add WhatsApp or scroll-to-footer for "Contact Us"
 
-### 2. Invert Dashboard Sidebar Logo to White
-The logo in the client dashboard sidebar appears dark/blue against the dark green background, making it hard to read. Adding `brightness-0 invert` CSS filter to make it white.
+## 2. Make Search Widget Functional
+The search widget (Package Type + Month + Search button) currently does nothing. It will be wired up to:
+- Track selected type (hajj/umrah) and month (feb/mar/jun/jul) in local state
+- On "Search" click, navigate to `/packages` with query parameters (e.g., `/packages?type=hajj&month=mar`)
+- The `/packages` page already supports filtering, so it will read query params and pre-filter results
 
-**File:** `src/components/dashboard/DashboardSidebar.tsx` (line 56 -- add `brightness-0 invert`)
+**File:** `src/components/landing/Hero.tsx`
+- Add `useState` for `selectedType` and `selectedMonth`
+- Add `useNavigate` from react-router-dom
+- Wire `onChange` handlers on both `<select>` elements
+- Wire `onClick` on Search button to navigate to `/packages?type=...&month=...`
 
-### 3. Invert Admin Sidebar Logo to White
-Same fix for the admin sidebar.
+**File:** `src/pages/Packages.tsx`
+- Read `type` and `month` query params using `useSearchParams`
+- Pre-populate filter state from URL params so results show filtered on arrival
 
-**File:** `src/components/admin/AdminSidebar.tsx` (line 46 -- add `brightness-0 invert`)
+## 3. Change Footer Location from "Abuja" to "Kano"
+Simple text change in the footer contact section.
 
-### 4. Invert Agent Sidebar Logo to White
-Same fix for the agent sidebar.
-
-**File:** `src/components/agent/AgentSidebar.tsx` (line 44 -- add `brightness-0 invert`)
-
-### 5. Invert Mobile Header Logos
-The mobile top-bar logos in all three dashboard layouts also need the same white inversion since they sit on light backgrounds -- actually these are on `bg-card` (white/light) so they should remain as-is. Only the sidebar logos (dark green background) need inversion.
+**File:** `src/components/landing/Footer.tsx`
+- Change line 72: `Abuja, Nigeria` to `Kano, Nigeria`
 
 ## Technical Details
 
-All changes are CSS-only class additions -- no logic changes required.
+### Hero.tsx Changes
+- Import `useState` from React and `useNavigate` from react-router-dom
+- Add state: `const [selectedType, setSelectedType] = useState("")` and `const [selectedMonth, setSelectedMonth] = useState("")`
+- "Explore Packages" button: `onClick` scrolls to `#packages` section using `document.getElementById("packages")?.scrollIntoView({ behavior: "smooth" })`
+- "Contact Us" button: opens WhatsApp link (`https://wa.me/2348035378973`)
+- Search button: calls `navigate(/packages?type=${selectedType}&month=${selectedMonth})`
+- Both `<select>` elements get `value` and `onChange` props
 
-- **Hero.tsx**: Reduce `h1` font size classes by one step each
-- **DashboardSidebar.tsx, AdminSidebar.tsx, AgentSidebar.tsx**: Add `brightness-0 invert` to the sidebar `<img>` logo elements
+### Packages.tsx Changes
+- Import `useSearchParams`
+- On mount, read `type` and `month` from URL and set initial filter state accordingly
+- Map month abbreviations (feb, mar, jun, jul) to actual month numbers for date-based filtering
+
+### Footer.tsx Changes
+- Line 72: Replace "Abuja, Nigeria" with "Kano, Nigeria"
