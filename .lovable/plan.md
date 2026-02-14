@@ -1,58 +1,83 @@
 
+# Fix Login Redirect + Create Printable Proposal Page
 
-# Fix Post-Login Redirect Not Going to Admin/Agent Dashboard
+## 1. Login Redirect Fix
 
-## Problem
+Testing confirmed that the admin and agent redirects are **working correctly** with the current code. The issue you're experiencing is likely caused by a **stale session cached in your browser**. When you click a demo button while already logged in as another user, the old session interferes.
 
-After the auth deadlock fix, login always redirects to `/dashboard` regardless of the user's role (admin/agent). This happens because:
+**Fix:** Add a check at the top of the `onSubmit` handler to sign out any existing session before signing in with the new credentials. This ensures a clean login every time.
 
-1. `signIn()` completes and sets `loginSuccess = true`
-2. The `useEffect` checks `loginSuccess && !loading` -- but `loading` is already `false` (it was set during initial page load)
-3. The redirect fires **immediately**, before `fetchUserData` (dispatched via `setTimeout`) has loaded the user's roles
-4. Since `roles` is still an empty array, `hasRole("admin")` returns `false`, so every user lands on `/dashboard`
+**File:** `src/pages/Login.tsx`
+- Before calling `signIn`, call `signOut()` to clear any cached session
+- Import `signOut` from `useAuth`
 
-## Solution
+## 2. Printable A4 Proposal Page
 
-Two changes are needed:
+Create a new page at `/proposal` with a professional, printable A4 layout for the Raudah Hajj & Umrah platform proposal from BINAH INNOVATION LTD.
 
-### File: `src/contexts/AuthContext.tsx`
+### Page Structure (A4 print-optimized):
 
-Add a mechanism to let the Login page know when roles have been freshly loaded after a sign-in. The simplest approach: make `signIn` return a promise that also waits for roles to load.
+**Cover Page**
+- BINAH INNOVATION LTD company header
+- "Software Development Proposal"
+- "Raudah Hajj & Umrah Digital Platform"
+- Prepared for: The Chairman, Raudah Hajj & Umrah
+- Date: February 2026
 
-- Modify `signIn` to call `fetchUserData` directly after successful authentication (not relying on the `onAuthStateChange` setTimeout)
-- Return the fetched roles alongside the error so the caller has them immediately
-- Keep the `onAuthStateChange` setTimeout for other auth events (token refresh, etc.)
+**Executive Summary**
+- Problem statement: Manual booking processes, lack of transparency, no digital presence
+- Solution: Full-stack digital platform for Hajj & Umrah management
 
-```
-signIn flow (fixed):
-  1. signInWithPassword() -> success
-  2. await fetchUserData() -> roles loaded
-  3. return { error: null } -> Login page redirects with correct roles
-```
+**Problems Addressed**
+- Manual pilgrim registration and tracking
+- No online booking or payment system
+- Lack of agent/B2B management tools
+- No real-time analytics or reporting
+- Paper-based document management
 
-### File: `src/pages/Login.tsx`
+**Features & Deliverables**
+- User Portal (booking wizard, payments, documents, profile, support)
+- Admin Dashboard (pilgrim management, analytics, payments, packages, AI assistant)
+- Agent/B2B Portal (client management, wholesale booking, commissions)
+- Landing Page (package showcase, search, agent application)
+- Payment Gateway Integration (Paystack)
+- PWA Support (offline, installable)
+- Multi-language Support (English, Arabic, French, Hausa)
 
-Update the redirect logic:
+**Pricing Breakdown**
 
-- Instead of using `loginSuccess` state + useEffect that races with role loading, perform the redirect directly in `onSubmit` after `signIn` completes (since `signIn` now awaits role fetching)
-- Remove the `loginSuccess` state and its `useEffect` entirely
-- Read `hasRole` after signIn resolves to get the correct destination
+| Item | Cost (NGN) |
+|------|-----------|
+| Backend Development | 250,000 |
+| Frontend Development | 310,000 |
+| Payment Gateway Integration (Paystack) | 500,000 |
+| Feature Modules (Agent, User, Admin Portals) | 260,000 - 290,000 |
+| Hosting, Backend Services & Email (1 Year) | 480,000 |
+| Domain Registration | 50,000 |
+| **Total** | **1,850,000 - 1,880,000** |
 
-```
-onSubmit (fixed):
-  1. await signIn(email, password)
-  2. if no error -> roles are now loaded
-  3. navigate(hasRole("admin") ? "/admin" : hasRole("agent") ? "/agent" : "/dashboard")
-```
+**Timeline**
+- 5-7 business days for development, testing, and deployment
 
-## Why This Works
+**Contact Information**
+- Fatima Dauda Kurfi - PROJECT DIRECTOR - 09160628769
+- Abubakar Lawal Abba - PROJECT LEAD - 07034681817
+- Aliyu Wada Umar - PROJECT TECHNICAL DIRECTOR - 09063412927
 
-By awaiting `fetchUserData` inside `signIn` before returning, the Login page's redirect logic executes only after roles are available. No race condition, no timing issues.
+**Print Button** at the top (hidden when printing) to trigger `window.print()`
 
-## Files Changed
+### Files to Create/Modify
 
-| File | Change |
+| File | Action |
 |------|--------|
-| `src/contexts/AuthContext.tsx` | `signIn` calls `await fetchUserData()` after successful auth before returning |
-| `src/pages/Login.tsx` | Remove `loginSuccess` state/effect, redirect directly in `onSubmit` after `signIn` resolves |
+| `src/pages/Proposal.tsx` | **Create** - Full printable A4 proposal page |
+| `src/App.tsx` | **Modify** - Add `/proposal` route |
+| `src/pages/Login.tsx` | **Modify** - Add `signOut` before `signIn` to clear stale sessions |
 
+### Technical Details
+
+- The proposal page uses `@media print` CSS for clean A4 printing
+- Page breaks between sections using `break-before: page`
+- No navigation/header - standalone printable document
+- Professional typography using existing Playfair Display + Inter fonts
+- Brand colors (emerald green + gold) used throughout
