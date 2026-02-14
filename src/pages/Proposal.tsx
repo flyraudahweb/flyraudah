@@ -7,13 +7,14 @@ const Proposal = () => {
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { margin: 0; padding: 0; }
-          .proposal-page { box-shadow: none !important; margin: 0 !important; }
+          body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .proposal-page { box-shadow: none !important; margin: 0 !important; max-width: none !important; min-height: auto !important; }
           .page-break { break-before: page; }
+          .proposal-wrapper { padding: 0 !important; background: white !important; min-height: auto !important; }
         }
       `}</style>
 
-      <div className="bg-muted min-h-screen py-8 print:py-0 print:bg-white">
+      <div className="proposal-wrapper bg-muted min-h-screen py-8 print:py-0 print:bg-white">
         {/* Print Button */}
         <div className="no-print max-w-[210mm] mx-auto mb-4 px-4 flex justify-end">
           <Button onClick={() => window.print()} className="gap-2">
@@ -22,7 +23,7 @@ const Proposal = () => {
         </div>
 
         {/* ===== COVER PAGE ===== */}
-        <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ minHeight: "297mm", padding: "40mm 25mm" }}>
+        <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "40mm 25mm" }}>
           <div className="flex flex-col items-center justify-center h-full text-center space-y-8">
             <div className="space-y-2">
               <div className="w-20 h-20 mx-auto rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-bold text-2xl" style={{ fontFamily: "Playfair Display, serif" }}>
@@ -53,7 +54,7 @@ const Proposal = () => {
         </div>
 
         {/* ===== EXECUTIVE SUMMARY ===== */}
-        <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ minHeight: "297mm", padding: "25mm" }}>
+        <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
           <SectionTitle number="01" title="Executive Summary" />
           <div className="space-y-4 text-sm leading-relaxed text-foreground/90 mt-6">
             <p>
@@ -86,7 +87,7 @@ const Proposal = () => {
         </div>
 
         {/* ===== FEATURES & DELIVERABLES ===== */}
-        <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ minHeight: "297mm", padding: "25mm" }}>
+        <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
           <SectionTitle number="03" title="Features & Deliverables" />
           <div className="mt-6 space-y-6">
             <FeatureBlock title="🕌 Public Landing Page" items={[
@@ -140,7 +141,7 @@ const Proposal = () => {
         </div>
 
         {/* ===== PRICING & TIMELINE ===== */}
-        <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ minHeight: "297mm", padding: "25mm" }}>
+        <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
           <SectionTitle number="04" title="Pricing Breakdown" />
           <div className="mt-6">
             <table className="w-full text-sm border-collapse">
