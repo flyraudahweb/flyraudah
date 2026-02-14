@@ -29,7 +29,7 @@ const Proposal = () => {
                 BI
               </div>
               <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">BINAH INNOVATION LTD</h2>
-              <p className="text-sm text-muted-foreground">RC Number: [To be provided]</p>
+              <p className="text-sm text-muted-foreground">RC Number: 1855939</p>
             </div>
 
             <div className="border-t border-b border-[hsl(var(--secondary))] py-8 px-4 space-y-4 my-8">
