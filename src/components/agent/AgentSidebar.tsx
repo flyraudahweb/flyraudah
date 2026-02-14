@@ -41,7 +41,7 @@ const AgentSidebar = () => {
     <Sidebar className="border-r border-sidebar-border">
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <img src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png" alt="Raudah" className="h-8 w-auto" />
+          <img src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png" alt="Raudah" className="h-8 w-auto brightness-0 invert" />
           <div>
             <span className="font-heading text-sm font-semibold text-sidebar-foreground">Raudah Agent</span>
             <span className="block text-xs text-sidebar-foreground/50">B2B Portal</span>
