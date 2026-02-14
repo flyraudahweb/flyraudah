@@ -40,8 +40,12 @@ const Packages = () => {
       setSelectedType(typeParam);
     }
     const monthParam = searchParams.get("month");
-    if (monthParam && MONTH_MAP[monthParam]) {
-      setSelectedMonth(MONTH_MAP[monthParam]);
+    if (monthParam) {
+      if (/^\d{4}-\d{2}$/.test(monthParam)) {
+        setSelectedMonth(monthParam);
+      } else if (MONTH_MAP[monthParam]) {
+        setSelectedMonth(MONTH_MAP[monthParam]);
+      }
     }
   }, [searchParams]);
 
