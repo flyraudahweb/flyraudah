@@ -7,6 +7,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Packages from "./pages/Packages";
+import PackageDetail from "./pages/PackageDetail";
+import PaymentCallback from "./pages/PaymentCallback";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -19,6 +21,7 @@ import DashboardPayments from "./pages/dashboard/DashboardPayments";
 import DashboardDocuments from "./pages/dashboard/DashboardDocuments";
 import DashboardProfile from "./pages/dashboard/DashboardProfile";
 import DashboardSupport from "./pages/dashboard/DashboardSupport";
+import BookingWizard from "./pages/dashboard/BookingWizard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +36,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/packages" element={<Packages />} />
+            <Route path="/packages/:id" element={<PackageDetail />} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -52,6 +57,7 @@ const App = () => (
               <Route path="documents" element={<DashboardDocuments />} />
               <Route path="profile" element={<DashboardProfile />} />
               <Route path="support" element={<DashboardSupport />} />
+              <Route path="book/:id" element={<BookingWizard />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

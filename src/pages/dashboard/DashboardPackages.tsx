@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -104,7 +105,9 @@ const DashboardPackages = () => {
                   </div>
 
                   <Button className="w-full gold-gradient text-secondary-foreground font-semibold">
-                    {t("packages.bookNow")}
+                    <Link to={`/dashboard/book/${pkg.id}`} className="block w-full">
+                      {t("packages.bookNow")}
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>
