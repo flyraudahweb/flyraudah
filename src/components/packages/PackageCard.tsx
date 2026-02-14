@@ -32,9 +32,19 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const tier = tierConfig[pkg.category];
-  const filledSpots = pkg.capacity - pkg.available;
-  const fillPercentage = (filledSpots / pkg.capacity) * 100;
-  const isLowAvailability = pkg.available <= 20;
+
+  // Normalize field names (support both camelCase local and snake_case Supabase)
+  const depositAllowed = pkg.depositAllowed ?? pkg.deposit_allowed;
+  const minimumDeposit = pkg.minimumDeposit ?? pkg.minimum_deposit;
+  const departureCities = pkg.departure_cities ?? pkg.departureCities ?? [];
+
+  // Accommodations: from joined array or legacy objects
+  const accommodations = pkg.package_accommodations || [];
+  const makkah = accommodations.find((a: any) => a.city?.toLowerCase() === "makkah") || pkg.makkah;
+  const madinah = accommodations.find((a: any) => a.city?.toLowerCase() === "madinah") || pkg.madinah;
+
+  // Dates: from joined array or legacy
+  const dates = pkg.package_dates || pkg.dates || [];
 
   return (
     <motion.div
@@ -59,7 +69,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
           {pkg.name}
         </h3>
 
-        {/* Price - prominent */}
+        {/* Price */}
         <div className="mb-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">From</p>
           <span
@@ -68,12 +78,12 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
           >
             {formatPrice(pkg.price)}
           </span>
-          {pkg.depositAllowed && pkg.minimumDeposit && (
+          {depositAllowed && minimumDeposit && (
             <span className="ml-3 inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold border border-primary/20">
-              Deposit: {formatPrice(pkg.minimumDeposit)}
+              Deposit: {formatPrice(minimumDeposit)}
             </span>
           )}
-          {!pkg.depositAllowed && (
+          {!depositAllowed && (
             <span className="ml-3 inline-block bg-muted text-muted-foreground px-3 py-1 rounded-full text-xs font-medium">
               Full Payment
             </span>
@@ -94,7 +104,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-secondary" />
-            <span>{pkg.departure_cities?.join(", ")}</span>
+            <span>{departureCities.join(", ")}</span>
           </div>
         </div>
 
@@ -108,19 +118,6 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
           ))}
         </div>
 
-        {/* Capacity bar */}
-        <div className="mb-4">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-            <span>{filledSpots}/{pkg.capacity} booked</span>
-            {isLowAvailability && (
-              <span className="text-destructive font-semibold">Only {pkg.available} left!</span>
-            )}
-          </div>
-          <div className="capacity-bar">
-            <div className="capacity-bar-fill" style={{ width: `${fillPercentage}%` }} />
-          </div>
-        </div>
-
         {/* Expandable details */}
         {expanded && (
           <motion.div
@@ -129,7 +126,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
             exit={{ opacity: 0, height: 0 }}
             className="mb-4 space-y-3 border-t border-border pt-4"
           >
-            {pkg.inclusions.length > 4 && (
+            {(pkg.inclusions || []).length > 4 && (
               <div>
                 <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">All Inclusions</p>
                 <div className="grid grid-cols-1 gap-1">
@@ -143,40 +140,42 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Makkah", data: pkg.makkah },
-                { label: "Madinah", data: pkg.madinah },
-              ].map((acc) => (
-                <div key={acc.label} className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
-                    <Hotel className="h-3 w-3 text-secondary" />
-                    {acc.label}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{acc.data.hotel}</p>
-                  <div className="flex gap-0.5 mt-1">
-                    {Array.from({ length: acc.data.rating }).map((_, i) => (
-                      <Star key={i} className="h-3 w-3 fill-secondary text-secondary" />
-                    ))}
+            {(makkah || madinah) && (
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Makkah", data: makkah },
+                  { label: "Madinah", data: madinah },
+                ].filter((acc) => acc.data).map((acc) => (
+                  <div key={acc.label} className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
+                      <Hotel className="h-3 w-3 text-secondary" />
+                      {acc.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{acc.data.hotel}</p>
+                    <div className="flex gap-0.5 mt-1">
+                      {Array.from({ length: acc.data.rating || 0 }).map((_, i) => (
+                        <Star key={i} className="h-3 w-3 fill-secondary text-secondary" />
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {acc.data.distance_from_haram || acc.data.distanceFromHaram || acc.data.distance_from_masjid || acc.data.distanceFromMasjid}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {acc.data.distanceFromHaram || acc.data.distanceFromMasjid}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            {pkg.dates.length > 0 && (
+            {dates.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">Travel Dates</p>
                 <div className="space-y-1">
-                  {pkg.dates.slice(0, 3).map((d) => (
+                  {dates.slice(0, 3).map((d: any) => (
                     <p key={d.id} className="text-xs text-muted-foreground">
-                      {d.outbound} → {d.return} {d.airline && `(${d.airline})`}
+                      {d.outbound} → {d.return_date || d.return} {d.airline && `(${d.airline})`}
                     </p>
                   ))}
-                  {pkg.dates.length > 3 && (
-                    <p className="text-xs text-secondary font-medium">+{pkg.dates.length - 3} more dates</p>
+                  {dates.length > 3 && (
+                    <p className="text-xs text-secondary font-medium">+{dates.length - 3} more dates</p>
                   )}
                 </div>
               </div>
