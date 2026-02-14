@@ -6,6 +6,7 @@ import {
   CreditCard,
   Users,
   BarChart3,
+  Barcode,
   LogOut,
 } from "lucide-react";
 import {
@@ -28,6 +29,7 @@ const menuItems = [
   { title: "Payments", url: "/admin/payments", icon: CreditCard },
   { title: "Pilgrims", url: "/admin/pilgrims", icon: Users },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+  { title: "ID Tags", url: "/admin/id-tags", icon: Barcode },
 ];
 
 const AdminSidebar = () => {

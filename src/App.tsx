@@ -28,6 +28,7 @@ import AdminPackages from "./pages/admin/AdminPackages";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminPilgrims from "./pages/admin/AdminPilgrims";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminIdTags from "./pages/admin/AdminIdTags";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="payments" element={<AdminPayments />} />
               <Route path="pilgrims" element={<AdminPilgrims />} />
               <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="id-tags" element={<AdminIdTags />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
