@@ -293,9 +293,19 @@
     position: relative;
     page-break-inside: avoid;
     break-inside: avoid;
-    margin: 10mm auto;
+    margin: 8mm auto;
     box-shadow: none !important;
-    border: 1px solid #ccc !important;
+    border: 1px dashed #bbb !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    max-width: 85.6mm;
+  }
+
+  .id-card .emerald-gradient,
+  .id-card .gold-gradient {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .print\\:hidden {
@@ -308,7 +318,7 @@
   }
 
   @page {
-    margin: 10mm;
+    margin: 8mm;
     size: A4;
   }
 }
