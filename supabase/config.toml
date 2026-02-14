@@ -1,1 +1,10 @@
 project_id = "rubfzqhmzslblovvppjo"
+
+[functions.approve-agent-application]
+verify_jwt = false
+
+[functions.seed-demo-data]
+verify_jwt = false
+
+[functions.admin-ai-chat]
+verify_jwt = false

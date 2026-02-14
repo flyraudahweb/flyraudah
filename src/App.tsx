@@ -35,6 +35,8 @@ const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
 const AdminPilgrims = lazy(() => import("./pages/admin/AdminPilgrims"));
 const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
 const AdminIdTags = lazy(() => import("./pages/admin/AdminIdTags"));
+const AdminAgentApplications = lazy(() => import("./pages/admin/AdminAgentApplications"));
+const AdminAiAssistant = lazy(() => import("./pages/admin/AdminAiAssistant"));
 const AgentLayout = lazy(() => import("./components/agent/AgentLayout"));
 const AgentOverview = lazy(() => import("./pages/agent/AgentOverview"));
 const AgentClients = lazy(() => import("./pages/agent/AgentClients"));
@@ -103,6 +105,8 @@ const App = () => (
                   <Route path="pilgrims" element={<AdminPilgrims />} />
                   <Route path="analytics" element={<AdminAnalytics />} />
                   <Route path="id-tags" element={<AdminIdTags />} />
+                  <Route path="agent-applications" element={<AdminAgentApplications />} />
+                  <Route path="ai-assistant" element={<AdminAiAssistant />} />
                 </Route>
                 <Route
                   path="/agent"

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import BecomeAgentDialog from "@/components/landing/BecomeAgentDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
@@ -14,6 +15,7 @@ const Hero = () => {
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
 
   const { data: monthOptions = [] } = useQuery({
     queryKey: ["hero-month-options"],
@@ -108,9 +110,9 @@ const Hero = () => {
             size="lg"
             variant="outline"
             className="border-2 border-secondary/60 text-secondary bg-transparent hover:bg-secondary/10 text-base px-10 py-7 text-lg"
-            onClick={() => window.open("https://wa.me/2348035378973?text=Hello%20Raudah%20Travels%2C%20I%20need%20assistance.", "_blank")}
+            onClick={() => setAgentDialogOpen(true)}
           >
-            {t("hero.contact")}
+            Become an Agent
           </Button>
         </motion.div>
 
@@ -161,6 +163,7 @@ const Hero = () => {
         </motion.div>
       </div>
 
+      <BecomeAgentDialog open={agentDialogOpen} onOpenChange={setAgentDialogOpen} />
     </section>
   );
 };
