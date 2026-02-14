@@ -145,6 +145,32 @@ const BookingWizard = () => {
 
       if (paymentError) throw paymentError;
 
+      // If card payment, redirect to Paystack checkout
+      if (paymentMethod === "card") {
+        const { data: paystackData, error: paystackError } = await supabase.functions.invoke(
+          "create-paystack-checkout",
+          {
+            body: {
+              amount: paymentAmount,
+              email: user.email,
+              bookingId: bookingData.id,
+              reference: bookingData.reference,
+            },
+          }
+        );
+
+        if (paystackError || !paystackData?.authorization_url) {
+          toast.error("Failed to initialize payment. Please try again.");
+          console.error("Paystack error:", paystackError, paystackData);
+          return;
+        }
+
+        // Redirect to Paystack hosted payment page
+        window.location.href = paystackData.authorization_url;
+        return;
+      }
+
+      // Bank transfer: show confirmation
       setBookingReference(bookingData.reference);
       setStep(5);
       toast.success("Booking created successfully!");
@@ -168,8 +194,8 @@ const BookingWizard = () => {
 
   if (!pkg) return <div className="text-center py-12">Package not found</div>;
 
-  const makkahAccom = pkg.package_accommodations?.find((a: any) => a.city === "Makkah");
-  const madinahAccom = pkg.package_accommodations?.find((a: any) => a.city === "Madinah");
+  const makkahAccom = pkg.package_accommodations?.find((a: any) => a.city?.toLowerCase() === "makkah");
+  const madinahAccom = pkg.package_accommodations?.find((a: any) => a.city?.toLowerCase() === "madinah");
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 py-12">
