@@ -72,5 +72,85 @@
     "social": "Suivez-nous",
     "rights": "Tous Droits Réservés",
     "nahcon": "Licence NAHCON | Certifié NSCIA"
+  },
+  "dashboard": {
+    "welcome": "Bienvenue",
+    "welcomeSubtitle": "Voici un aperçu de votre voyage de pèlerinage",
+    "quickActions": "Actions Rapides",
+    "recentBookings": "Réservations Récentes",
+    "noBookings": "Aucune réservation. Commencez votre voyage spirituel !",
+    "nav": {
+      "menu": "Menu",
+      "overview": "Tableau de Bord",
+      "bookings": "Mes Réservations",
+      "packages": "Parcourir les Forfaits",
+      "payments": "Historique des Paiements",
+      "documents": "Documents",
+      "profile": "Profil",
+      "support": "Support",
+      "signOut": "Déconnexion",
+      "pilgrim": "Pèlerin"
+    },
+    "mobile": {
+      "home": "Accueil",
+      "packages": "Forfaits",
+      "bookings": "Réservations",
+      "profile": "Profil"
+    },
+    "stats": {
+      "activeBookings": "Réservations Actives",
+      "totalPaid": "Total Payé",
+      "documents": "Documents",
+      "packages": "Forfaits Réservés"
+    },
+    "actions": {
+      "browsePackages": "Parcourir les Forfaits",
+      "viewBookings": "Voir les Réservations",
+      "paymentHistory": "Historique des Paiements"
+    },
+    "bookings": {
+      "title": "Mes Réservations",
+      "subtitle": "Suivez et gérez vos réservations de pèlerinage",
+      "newBooking": "Nouvelle Réservation",
+      "noBookings": "Aucune Réservation",
+      "noBookingsDesc": "Parcourez nos forfaits et réservez votre premier pèlerinage."
+    },
+    "payments": {
+      "title": "Historique des Paiements",
+      "subtitle": "Consultez tous vos paiements et transactions",
+      "noPayments": "Aucun Paiement",
+      "noPaymentsDesc": "Votre historique de paiements apparaîtra ici après votre première réservation."
+    },
+    "documents": {
+      "title": "Mes Documents",
+      "subtitle": "Accédez à vos documents de voyage et reçus",
+      "noDocuments": "Aucun Document",
+      "noDocumentsDesc": "Les documents seront disponibles ici après une réservation complète."
+    },
+    "profile": {
+      "title": "Mon Profil",
+      "subtitle": "Gérez vos informations personnelles",
+      "personalInfo": "Informations Personnelles",
+      "fullName": "Nom Complet",
+      "email": "Adresse Email",
+      "emailNote": "L'email ne peut pas être modifié",
+      "phone": "Numéro de Téléphone",
+      "save": "Enregistrer",
+      "saving": "Enregistrement...",
+      "saved": "Profil Mis à Jour",
+      "savedDesc": "Votre profil a été mis à jour avec succès.",
+      "error": "Échec de la mise à jour du profil"
+    },
+    "support": {
+      "title": "Support",
+      "subtitle": "Obtenez de l'aide pour vos réservations et voyages",
+      "whatsappDesc": "Discutez avec nous sur WhatsApp pour un support rapide",
+      "phone": "Téléphone",
+      "email": "Email"
+    },
+    "packages": {
+      "title": "Parcourir les Forfaits",
+      "subtitle": "Trouvez et réservez votre forfait de pèlerinage idéal"
+    }
   }
 }
