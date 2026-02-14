@@ -1,55 +1,75 @@
 
-## Landing Page Design Refinements
+# Dedicated Packages Page with Filters
 
-### Requested Changes Summary
-1. **Hero Title Spacing**: Push "Begin Your Spiritually Uplifting Journey" down from the top
-2. **Remove Scroll Indicator**: Hide the "Scroll" text and animated chevron at the bottom of the hero
-3. **Package Display Strategy**: Show only 3 packages on the landing page with a "View All Packages" button to navigate to a dedicated packages page
-4. **Section Padding**: Increase horizontal padding on three key sections:
-   - "2026 Hajj & Umrah Packages"
-   - "Why Choose Raudah"
-   - "What Our Pilgrims Say" (Testimonials)
+## Overview
+Create a new `/packages` page that displays all travel packages with filtering by price range, travel date, and departure city. The page reuses the existing `PackageCard` component and matches the ultra-luxury design language.
 
-### Technical Implementation Plan
+---
 
-#### 1. Hero Section (`src/components/landing/Hero.tsx`)
-- **Increase top padding**: Change `pt-24` to `pt-32` or `pt-40` on the main content container (line 30) to push the title down
-- **Remove scroll indicator**: Delete or hide the scroll indicator div (lines 119-128) by either:
-  - Removing the entire motion.div containing the scroll indicator
-  - OR adding `hidden` className to conditionally hide it
-- This will create more breathing room and remove the visual clutter at the bottom
+## New Files
 
-#### 2. Packages Section Overhaul (`src/components/landing/PackagesSection.tsx`)
-- **Display only 3 packages**: Modify the filter logic (line 234-238) to:
-  - `filter((p) => p.status === "active").slice(0, 3)` to show only the first 3 active packages
-- **Add "View All Packages" button**: After the packages grid, add a centered button with gold styling that:
-  - Links to a new `/packages` route (future dedicated packages page)
-  - Uses consistent styling: `gold-gradient` background, large size
-  - Positioned with `mt-12` and `mx-auto`
-- **Increase section padding**: Change the container `px-4` to `px-8` or `px-12` (line 220) for increased horizontal padding
+### 1. `src/pages/Packages.tsx`
+A dedicated page with:
+- **Hero banner**: Compact header with emerald gradient background, page title "All Packages", and breadcrumb (Home > Packages)
+- **Filter bar**: Sticky/visible filter section with three filters side by side (responsive - stacks on mobile):
+  - **Price Range**: A dual-handle slider (using existing Radix Slider) with min/max labels showing formatted NGN values. Range: 3,000,000 to 8,000,000
+  - **Travel Date**: A Select dropdown (using existing Radix Select) with month options extracted from the package dates (e.g., "February 2026", "March 2026", "June 2026", "All Dates")
+  - **Departure City**: A Select dropdown with options derived from package data ("All Cities", "Abuja", "Kano", "Lagos")
+- **Active filter chips**: Show active filters as removable badges below the filter bar
+- **Results count**: "Showing X of Y packages"
+- **Package grid**: 3-column grid (same as landing page) showing filtered results using the existing `PackageCard` component
+- **Empty state**: A styled message when no packages match filters
+- **Back to home link**: Button or breadcrumb to return to the landing page
 
-#### 3. Why Choose Section (`src/components/landing/WhyChoose.tsx`)
-- **Increase section padding**: Change the container `px-4` to `px-8` or `px-12` (line 17) for increased horizontal padding
-- No other changes needed to this component
+### 2. Extract `PackageCard` into `src/components/packages/PackageCard.tsx`
+Move the `PackageCard` component and `tierConfig` out of `PackagesSection.tsx` into its own file so both the landing page section and the new packages page can import it without duplication.
 
-#### 4. Testimonials Section (`src/components/landing/Testimonials.tsx`)
-- **Increase section padding**: Change the container `px-4` to `px-8` or `px-12` (line 34) for increased horizontal padding
-- No other changes needed to this component
+---
 
-#### 5. Routing Consideration (Future Phase 2)
-- The "View All Packages" button will link to `/packages`
-- A new route and page component (`/pages/Packages.tsx` or similar) will be needed to display all packages
-- This can be added in a future update, but the button structure should be prepared now
+## Modified Files
 
-### Visual Results
-- Hero section has more prominent spacing with the title sitting lower on the screen
-- Scroll indicator removed for a cleaner hero bottom edge
-- Packages section is not cluttered with all 6 packages; users see top 3 and click to see more
-- All three main sections (Packages, Why Choose, Testimonials) have increased horizontal breathing room for a more luxurious, spacious feel
-- Button to view all packages encourages exploration without overwhelming the initial view
+### 3. `src/components/landing/PackagesSection.tsx`
+- Remove the inline `PackageCard` component and `tierConfig`
+- Import `PackageCard` from `@/components/packages/PackageCard`
 
-### No Breaking Changes
-- All changes are additive or cosmetic (styling/layout)
-- No data structure changes needed
-- Existing components remain functional
-- The future `/packages` route can be added independently
+### 4. `src/App.tsx`
+- Add route: `<Route path="/packages" element={<Packages />} />`
+- Import the new Packages page
+
+### 5. `src/components/landing/Header.tsx`
+- Update the "Packages" nav link from `#packages` to `/packages` so it navigates to the dedicated page (or keep both -- anchor on landing, route link otherwise)
+
+### 6. `src/components/landing/PackagesSection.tsx`
+- Update the "View All Packages" button to use `react-router-dom` `Link` instead of `window.location.href`
+
+---
+
+## Filter Logic (in Packages.tsx)
+
+```text
+1. Start with all active packages
+2. Apply price filter: keep packages where price >= min AND price <= max
+3. Apply date filter: if a month is selected, keep packages that have at least one date in that month
+4. Apply city filter: if a city is selected, keep packages whose departureCities array includes it
+5. Display filtered results in the grid
+```
+
+---
+
+## Design Details
+
+- Page background matches landing page gradient style (cream-to-white)
+- Filter bar has a card-like container with subtle border, matching the luxury aesthetic
+- Slider track uses emerald/gold accent colors
+- Select dropdowns use the existing styled Select component
+- The compact hero at top uses the same emerald gradient as the main hero but shorter (py-16)
+- Header component is included at the top for navigation consistency
+- Footer is included at the bottom
+
+---
+
+## Technical Notes
+- No new dependencies needed -- uses existing Radix Select, Radix Slider, framer-motion, and react-router-dom
+- Price slider values stored as `[min, max]` state with debounce-free direct filtering
+- Date options are computed from the packages data to avoid hardcoding months
+- The PackageCard component is fully reusable with no changes needed to its internals
