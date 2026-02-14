@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
@@ -6,6 +8,9 @@ import heroBg from "@/assets/hero-bg.jpg";
 
 const Hero = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [selectedType, setSelectedType] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
 
   const titleWords = (t("hero.title") as string).split(" ");
 
@@ -72,6 +77,7 @@ const Hero = () => {
           <Button
             size="lg"
             className="gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg hover:-translate-y-1 transition-all text-base px-10 py-7 text-lg font-semibold"
+            onClick={() => document.getElementById("packages")?.scrollIntoView({ behavior: "smooth" })}
           >
             {t("hero.explore")}
           </Button>
@@ -79,6 +85,7 @@ const Hero = () => {
             size="lg"
             variant="outline"
             className="border-2 border-secondary/60 text-secondary bg-transparent hover:bg-secondary/10 text-base px-10 py-7 text-lg"
+            onClick={() => window.open("https://wa.me/2348035378973?text=Hello%20Raudah%20Travels%2C%20I%20need%20assistance.", "_blank")}
           >
             {t("hero.contact")}
           </Button>
@@ -97,19 +104,35 @@ const Hero = () => {
             {t("hero.search")}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <select className="h-12 rounded-xl border border-input bg-background px-4 text-sm text-foreground focus:ring-2 focus:ring-secondary/30 transition-all">
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="h-12 rounded-xl border border-input bg-background px-4 text-sm text-foreground focus:ring-2 focus:ring-secondary/30 transition-all"
+            >
               <option value="">{t("hero.type")}</option>
               <option value="hajj">{t("packages.hajj")}</option>
               <option value="umrah">{t("packages.umrah")}</option>
             </select>
-            <select className="h-12 rounded-xl border border-input bg-background px-4 text-sm text-foreground focus:ring-2 focus:ring-secondary/30 transition-all">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="h-12 rounded-xl border border-input bg-background px-4 text-sm text-foreground focus:ring-2 focus:ring-secondary/30 transition-all"
+            >
               <option value="">{t("hero.month")}</option>
               <option value="feb">February</option>
               <option value="mar">March</option>
               <option value="jun">June</option>
               <option value="jul">July</option>
             </select>
-            <Button className="h-12 gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold text-sm">
+            <Button
+              className="h-12 gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold text-sm"
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (selectedType) params.set("type", selectedType);
+                if (selectedMonth) params.set("month", selectedMonth);
+                navigate(`/packages${params.toString() ? `?${params.toString()}` : ""}`);
+              }}
+            >
               {t("hero.searchBtn")}
             </Button>
           </div>

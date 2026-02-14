@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -18,13 +18,32 @@ import { Button } from "@/components/ui/button";
 const MIN_PRICE = 3000000;
 const MAX_PRICE = 8000000;
 
+const MONTH_MAP: Record<string, string> = {
+  feb: "2026-02",
+  mar: "2026-03",
+  jun: "2026-06",
+  jul: "2026-07",
+};
+
 const Packages = () => {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [priceRange, setPriceRange] = useState<number[]>([MIN_PRICE, MAX_PRICE]);
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedCity, setSelectedCity] = useState("all");
   const [selectedType, setSelectedType] = useState<"all" | "hajj" | "umrah">("all");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "premium" | "standard" | "budget">("all");
+
+  useEffect(() => {
+    const typeParam = searchParams.get("type");
+    if (typeParam === "hajj" || typeParam === "umrah") {
+      setSelectedType(typeParam);
+    }
+    const monthParam = searchParams.get("month");
+    if (monthParam && MONTH_MAP[monthParam]) {
+      setSelectedMonth(MONTH_MAP[monthParam]);
+    }
+  }, [searchParams]);
 
   const { data: activePackages = [], isLoading } = useQuery({
     queryKey: ["active-packages"],
