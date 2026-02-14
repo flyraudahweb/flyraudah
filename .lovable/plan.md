@@ -1,217 +1,156 @@
-# Raudah Travels & Tours Ltd. — Complete Implementation Plan
 
-## Overview
-A luxury Islamic travel portal for Hajj and Umrah bookings, built incrementally across 4 phases. The platform features a stunning emerald-and-gold design system, four distinct interfaces (Public, User, Agent B2B, Admin), multi-language support (English, Hausa, Arabic with RTL, French), and real Paystack payment integration.
 
-**Backend:** Lovable Cloud (managed Supabase)
-**Payments:** Real Paystack integration
-**Languages:** English, Hausa, Arabic (RTL), French from the start
-**Packages:** 6 pre-seeded packages (Hajj 2026, Ramadan Premium Abuja, Ramadan Standard Abuja/Kano, Sha'ban Budget, Sha'ban Standard, Ramadan Premium Kano)
+## Phase 2: Parts 3, 4 & 5 -- Package Browsing, Booking Flow, Payments & Documents
+
+This plan covers three interconnected features that complete the User Portal experience. Together, they let a user browse database-driven packages, book one through a guided wizard, pay via card or bank transfer, and manage their documents.
 
 ---
 
-## Phase 1: Foundation & Public Landing Page ✅
+### Part 3: Database-Driven Package Browsing
 
-### Design System Setup ✅
-- Emerald green (#064E3B) + metallic gold (#D4AF37) color palette with dark mode
-- Playfair Display for headings, Inter for body, Amiri for Arabic text
-- Luxury component styles with gold-bordered cards, gradient CTAs, emerald price badges
+**Current state:** The public `/packages` page and `PackageCard` component read from a static `src/data/packages.ts` array. The dashboard packages page already fetches from the database.
 
-### Internationalization (i18n) ✅
-- react-i18next with English, Hausa, Arabic (RTL), French
-- Full RTL layout support, language switcher with flags
+**Changes:**
 
-### Public Landing Page ✅
-- Sticky header, full-screen hero, 6 package cards, Why Choose section, testimonials, CTA banner, footer, WhatsApp float
+1. **Refactor `/packages` page** to fetch from the database using React Query instead of the static array. Query `packages` table joined with `package_accommodations` and `package_dates`, filtered by `status = 'active'`.
 
-### Database Foundation (Lovable Cloud) ✅
-- 9 enums, 9 tables with RLS, has_role() security definer function
-- Auto-profile trigger on signup, booking reference generator (RTT-2026-XXXXXX)
-- 3 storage buckets (passport-photos, payment-receipts, documents)
-- 6 packages seeded with dates and accommodations
+2. **Add type/category filter** to the existing price, month, and city filters (Hajj vs Umrah toggle, Premium/Standard/Budget chips).
+
+3. **Create a Package Detail page** (`/packages/:id`) showing:
+   - Full package info, all inclusions, accommodation details with star ratings
+   - All available travel dates with Islamic calendar dates
+   - Capacity/availability bar
+   - "Book Now" button linking to the booking wizard
+   - Breadcrumb navigation
+
+4. **Update `PackageCard`** to accept database-shaped data (snake_case fields from Supabase) instead of the static `TravelPackage` type. The "View Details" button links to `/packages/:id`, and "Book Now" links to `/dashboard/book/:id`.
+
+5. **Update `DashboardPackages`** to also link to detail/booking views.
+
+6. **Keep `src/data/packages.ts`** as a reference/fallback but all runtime data comes from the database.
 
 ---
 
-## Phase 2: User Portal & Booking System
+### Part 4: 5-Step Booking Wizard
 
-### Part 1: Authentication ✅
-- Registration with full name, email, phone (+234 format), password (8+ chars, uppercase, number, special char)
-- Login with email + password, show/hide toggle, forgot password flow
-- Protected routes with role-based redirects
-- Auth pages styled with luxury emerald/gold design
+**New route:** `/dashboard/book/:packageId`
 
-### Part 2: User Dashboard ✅
-- Sidebar navigation: Dashboard, My Bookings, Browse Packages, Payment History, Documents, Profile, Support
-- Mobile: bottom tab navigation (Home, Packages, Bookings, Profile)
-- Quick stats cards showing active bookings and payment status
-- Current booking summary at a glance
-- Profile management with avatar, personal info, and settings
+A protected, multi-step form using React Hook Form + Zod validation.
 
-### Part 3: Package Browsing & Detail View
-- Advanced filtering: type (Hajj/Umrah), season, price range slider, departure city, date range, airline, hotel rating
-- Detailed package view page with all inclusions, accommodation details, travel dates (including Islamic dates), capacity/availability indicator
-- Data fetched from database (replace static data)
+**Step 1 -- Package Confirmation**
+- Display selected package summary (name, price, dates, accommodation)
+- User selects a travel date from `package_dates`
+- Shows price breakdown (full price vs deposit option if `deposit_allowed`)
 
-### Part 4: 5-Step Booking Flow
-1. **Package Selection** — choose package, view full details and availability
-2. **Pilgrim Information** — full name (as per passport), passport number/expiry, DOB, gender, passport photo upload, passport data page upload, emergency contact (name, phone, relationship)
-3. **Travel Preferences** — departure city selection, date selection (for multi-date packages), room preference (Single/Double/Triple/Quad), special requests/medical needs
-4. **Payment Selection** — Hajj: deposit (₦2M) or full (₦7.8M); Umrah: full payment only. Methods: Paystack card, bank transfer (WEMA Bank 0122809772 with receipt upload), USSD
-5. **Confirmation** — booking reference (RTT-2026-XXXXXX), payment status, next steps, downloadable receipt
+**Step 2 -- Pilgrim Information**
+- Full name (as on passport), passport number, passport expiry
+- Date of birth, gender
+- Upload passport photo (to `passport-photos` storage bucket)
+- Zod validation: passport format, expiry must be future date, all required
+
+**Step 3 -- Travel Preferences**
+- Departure city (from package's `departure_cities` array)
+- Room preference (from accommodation `room_types`)
+- Special requests / medical needs (textarea)
+- Emergency contact: name, phone (+234 format), relationship
+
+**Step 4 -- Payment Selection**
+- Shows total amount and deposit option (for Hajj)
+- Payment method choice: Bank Transfer or Card (Paystack)
+- If bank transfer: shows WEMA Bank details + receipt upload
+- If card: initiates Paystack checkout
+
+**Step 5 -- Confirmation**
+- Shows booking reference (auto-generated `RTT-YYYY-XXXXXX`)
+- Booking summary with status
+- "View My Bookings" and "Download Receipt" buttons
+
+**Database interaction:**
+- INSERT into `bookings` table with all pilgrim/travel data
+- INSERT into `documents` for passport photo upload
+- INSERT into `payments` for payment record
+- Decrement `packages.available` count
+
+**Component structure:**
+- `src/pages/dashboard/BookingWizard.tsx` -- main wizard container with step state
+- `src/components/booking/StepPackageConfirm.tsx`
+- `src/components/booking/StepPilgrimInfo.tsx`
+- `src/components/booking/StepTravelPrefs.tsx`
+- `src/components/booking/StepPayment.tsx`
+- `src/components/booking/StepConfirmation.tsx`
+- `src/components/booking/BookingStepIndicator.tsx` -- progress bar
+
+---
 
 ### Part 5: Payments & Documents
-- Hajj installment tracking with payment timeline visualization (deposit → installments → final)
-- Make additional payments on existing bookings
-- Payment history with downloadable receipts
-- Bank transfer: upload proof, admin verification queue
-- Documents section: view/download booking confirmation, receipts, pre-departure guide; upload passport copy, vaccine certificate
 
-### Part 6: WhatsApp Integration
-- Pre-filled messages with booking reference for quick support
-- Floating button on all portal pages
+**Paystack Integration:**
+- Create an edge function `create-paystack-checkout` that initializes a Paystack transaction using the Paystack secret key
+- The edge function returns an `authorization_url` that the frontend redirects to
+- Create a callback handler edge function `paystack-webhook` to verify payment and update `payments` status
+- Frontend payment callback page `/payment/callback` verifies via the edge function
 
----
+**Bank Transfer Flow:**
+- Display WEMA Bank account details (0122809772)
+- User uploads proof of payment to `payment-receipts` storage bucket
+- Creates a `payments` record with `method: 'bank_transfer'` and `status: 'pending'`
+- Admin will verify later (Phase 4)
 
-## Phase 3: Agent Portal (B2B)
+**Document Management (enhanced `DashboardDocuments`):**
+- Upload new documents (passport, vaccine certificate) to `documents` storage bucket
+- Document type selector using the `document_type` enum
+- Associate documents with a booking
+- Download existing documents via signed URLs
+- Delete own documents
 
-### Agent Authentication
-- Separate /agent-login page with Agent ID + password
-- Agent accounts created exclusively by admin
-
-### Agent Dashboard
-- Quick stats: bookings this month, total revenue, pending bookings, commission earned
-- Dynamic wholesale pricing display — crossed-out retail price with bold gold agent price
-- Price calculation: Agent Price = Public Price - Admin Discount
-
-### Agent Booking Management
-- Book on behalf of clients: client info form + package selection at wholesale price
-- Payment options: client pays direct or agent pre-payment
-- Client bookings table: searchable/filterable by name, package, status, payment
-
-### Commission Tracking
-- Commission rate set per agent by admin
-- Summary: total bookings value, commission rate, total earned, paid vs pending
-- Request payout functionality, commission history
+**Payment History (enhanced `DashboardPayments`):**
+- Show payment timeline per booking (deposit -> installments -> final)
+- Balance remaining indicator
+- "Make Payment" button for outstanding balances
+- Receipt download for verified payments
 
 ---
 
-## Phase 4: Admin Dashboard
+### Technical Details
 
-### Dashboard Overview
-- KPI cards with month-over-month trends: total bookings, confirmed payments, pending payments, total revenue
-- Revenue line chart (monthly using Recharts), package distribution pie chart, bookings by departure city bar chart
-- Recent activity feed
+**New files to create:**
+```text
+src/pages/dashboard/BookingWizard.tsx
+src/pages/PackageDetail.tsx
+src/pages/PaymentCallback.tsx
+src/components/booking/StepPackageConfirm.tsx
+src/components/booking/StepPilgrimInfo.tsx
+src/components/booking/StepTravelPrefs.tsx
+src/components/booking/StepPayment.tsx
+src/components/booking/StepConfirmation.tsx
+src/components/booking/BookingStepIndicator.tsx
+supabase/functions/create-paystack-checkout/index.ts
+supabase/functions/verify-paystack-payment/index.ts
+```
 
-### Package Management (Full CRUD)
-- Create/edit/duplicate/archive packages
-- Configure all details: pricing, deposit settings, capacity, airlines, departure cities, travel dates (with Islamic date support), accommodation, inclusions, rich text description, images, status
+**Files to modify:**
+```text
+src/App.tsx                          -- add new routes
+src/pages/Packages.tsx               -- switch to database queries
+src/components/packages/PackageCard.tsx -- accept DB data shape
+src/pages/dashboard/DashboardPackages.tsx -- add book/detail links
+src/pages/dashboard/DashboardDocuments.tsx -- add upload capability
+src/pages/dashboard/DashboardPayments.tsx -- add make-payment flow
+src/pages/dashboard/DashboardBookings.tsx -- add booking detail view
+src/i18n/locales/en.json             -- new translation keys
+```
 
-### Pilgrim Management
-- Searchable records table with filters (package, payment status, booking status, year)
-- Individual pilgrim profile: photo, passport info, booking details, payment breakdown, travel documents, accommodation assignments, emergency contact
-- Export to CSV, print capabilities
+**Database changes:**
+- No schema changes needed -- all tables already exist with the right columns
+- Storage bucket RLS policies for `passport-photos`, `payment-receipts`, and `documents` (upload/read for authenticated users on their own files)
 
-### Pilgrim ID Tag Generator
-- Printable ID card (85.60 × 53.98 mm): company logo, pilgrim photo, QR code (booking ID + emergency contact), name, booking reference, passport number, package, hotels, emergency contact, group leader info
-- PDF generation via jsPDF + html2canvas
-- Bulk print: select by package, filter by payment status, layout options (2 or 4 per page)
+**Secrets needed:**
+- `PAYSTACK_SECRET_KEY` -- required for the edge function to initialize and verify transactions
 
-### Payment Management
-- Verification queue: view uploaded receipt, approve/reject/request more info
-- Full payment history with filters and search
-- Installment tracking per pilgrim
+**Security considerations:**
+- Booking wizard is behind `ProtectedRoute`
+- All database writes use `user_id = auth.uid()` enforced by RLS
+- File uploads scoped to user's own directory in storage buckets
+- Paystack verification done server-side in edge function (never trust client)
+- Zod validation on all form inputs (passport number format, phone format, date ranges)
 
-### Agent Management
-- Create agent accounts (business name, contact person, email, phone, auto-generated ID, commission rate)
-- View agent performance table (bookings, revenue, commission)
-- Activate/suspend agents
-
-### Analytics
-- Revenue tracking (total, monthly, by package)
-- Booking metrics (total, conversion rate, by source)
-- Capacity utilization per package
-- Geographic distribution by departure city
-- Agent performance rankings
-
-### Global Settings
-- Company info: name, email, phone, bank details, NAHCON/NSCIA license numbers
-- Agent discount configuration: global discount amount OR per-package discounts
-- Notification preferences: booking confirmations, payment receipts, travel reminders
-
----
-
-## Package Data
-
-### Package 5: Sha'ban Umrah 2026 (Standard)
-- ID: PKG-UMRAH-SHAB-STD-001
-- Price: ₦3,700,000 | Agent Discount: ₦300,000
-- Full payment required | Capacity: 80 (51 available)
-- Inclusions: Visa, flight (Fly Adeal), transport, standard hotel, breakfast, basic ziyarat
-- Departure: Kano | Duration: 16 days
-- Dates: Feb 16 - Mar 3, 2026 (28 Sha'ban - 14 Ramadan 1447 AH)
-- Hotels: Standard (Makkah 800m, Madinah 700m, 3-star)
-
-### Package 6: Ramadan Umrah 2026 (Premium - Kano)
-- ID: PKG-UMRAH-RAM-PREM-KNO-001
-- Price: ₦5,500,000 | Agent Discount: ₦400,000
-- Full payment required | Capacity: 60 (42 available)
-- Inclusions: Visa, flight (Saudi Airlines), transport, premium hotel, breakfast, ziyarat, insurance
-- Departure: Kano | Duration: 15 days
-- Dates: Mar 6 - Mar 20, 2026
-- Hotels: Poinciana (Makkah 300m), Shaza Regency (Madinah 250m), 4-star
-
----
-
-## Cross-Cutting Concerns
-
-### Mobile-First Design
-- All interfaces fully responsive (mobile 0-639px, tablet 640-1023px, desktop 1024px+)
-- Touch-optimized: 44px minimum tap targets, swipe gestures for carousels
-- Mobile dashboard uses bottom tab navigation instead of sidebar
-- Lazy loading for images and route-based code splitting
-
-### Security
-- Supabase Auth with RLS policies on all tables
-- Role-based access control: user, agent, admin with granular permissions via user_roles table
-- has_role() SECURITY DEFINER function to prevent RLS recursion
-- Input validation with Zod on all forms (client-side) + RLS (server-side)
-- File uploads to storage buckets only (never in database)
-
-### Paystack Integration
-- Real Paystack integration via Edge Function for secure server-side initialization
-- Card payment flow: initialize transaction → redirect to Paystack → callback verification
-- Webhook handling for payment confirmation
-- Amount conversion to kobo (multiply by 100)
-- Bank transfer as alternative with manual admin verification
-
-### Notifications
-- Toast notifications for in-app events (booking confirmed, payment received)
-- Email notifications via Edge Functions (booking confirmation, payment receipt, travel reminders)
-
-### PDF Generation
-- jsPDF + html2canvas for: booking confirmations, payment receipts, pilgrim ID tags
-- Bulk PDF generation for admin (multiple ID tags per page)
-
-## 🎯 Features & Functionality
-
-### Multi-Language Support (i18n)
-- 🇬🇧 English (Default), 🇳🇬 Hausa, 🇸🇦 Arabic (RTL), 🇫🇷 French
-- Full RTL layout support when Arabic is selected
-- Language switcher with flag icons
-
-### Search & Filtering
-- Package Type (Hajj, Umrah), Season, Price Range, Departure City, Date Range, Airline, Hotel Rating, Room Type
-
-### Payment Integration
-- Card Payment (Paystack), Bank Transfer (WEMA Bank 0122809772), USSD
-- Installment plans for Hajj packages
-
-### Document Management
-- Passport copy, photo, visa, vaccine certificate, flight tickets, hotel vouchers, insurance, pilgrim ID tag
-
-### WhatsApp Integration
-- Pre-filled messages with booking reference for quick support
-- Floating button on all portal pages
-
-### Print Functionality
-- Booking confirmation, payment receipt, pilgrim ID tag, travel itinerary, package invoice
