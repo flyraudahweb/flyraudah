@@ -118,6 +118,16 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
           ))}
         </div>
 
+        {/* Capacity bar */}
+        <div className="mb-4">
+          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+            <span>45/200 booked</span>
+          </div>
+          <div className="capacity-bar">
+            <div className="capacity-bar-fill" style={{ width: "22.5%" }} />
+          </div>
+        </div>
+
         {/* Expandable details */}
         {expanded && (
           <motion.div
