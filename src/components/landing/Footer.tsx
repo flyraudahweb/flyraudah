@@ -23,8 +23,11 @@ const Footer = () => {
         <div className="text-center mb-12">
           <img
             src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
-            alt="Raudah Travels & Tours"
+            alt="Raudah Travels & Tours - Nigeria's premier Hajj and Umrah travel agency"
             className="h-14 md:h-16 w-auto object-contain mx-auto brightness-0 invert"
+            loading="lazy"
+            width="200"
+            height="64"
           />
           <p className="text-white text-sm mt-2 tracking-widest uppercase">
             Your Gateway to the Holy Lands
