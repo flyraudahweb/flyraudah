@@ -33,6 +33,7 @@ import AdminIdTags from "./pages/admin/AdminIdTags";
 import AgentLayout from "./components/agent/AgentLayout";
 import AgentOverview from "./pages/agent/AgentOverview";
 import AgentClients from "./pages/agent/AgentClients";
+import AgentBookForClient from "./pages/agent/AgentBookForClient";
 import AgentPackages from "./pages/agent/AgentPackages";
 import AgentBookings from "./pages/agent/AgentBookings";
 import AgentCommissions from "./pages/agent/AgentCommissions";
@@ -100,6 +101,7 @@ const App = () => (
               <Route index element={<AgentOverview />} />
               <Route path="clients" element={<AgentClients />} />
               <Route path="packages" element={<AgentPackages />} />
+              <Route path="book/:id" element={<AgentBookForClient />} />
               <Route path="bookings" element={<AgentBookings />} />
               <Route path="commissions" element={<AgentCommissions />} />
             </Route>
