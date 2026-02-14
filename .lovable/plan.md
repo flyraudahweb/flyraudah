@@ -1,33 +1,67 @@
 
-# Add Background Image Slideshow to Hero Section
+# Add Logo to ID Cards, Fix Auth Session Bug, and Ensure Agent Form Works
 
-## What Changes
+## Overview
 
-Replace the single static background image with a slow crossfade slideshow cycling through 3 images:
+Three improvements: (1) Add the Raudah logo to ID card headers in white, (2) Fix the login session getting stuck after logout/re-login, and (3) Ensure agent application form submissions appear in the admin panel.
 
-1. Current `hero-bg.jpg` (existing local asset)
-2. `https://i.ibb.co/d4SNVd8w/peopleattheairport.jpg` (new)
-3. `https://i.ibb.co/fVmC1j7k/medinamosque.jpg` (new)
+---
 
-The slideshow will use a slow 8-second crossfade transition with each image visible for ~10 seconds, giving a luxurious, cinematic feel.
+## 1. Add Logo to Pilgrim ID Card Header
 
-## Technical Approach
+**File: `src/components/admin/PilgrimIdCard.tsx`**
 
-### File: `src/components/landing/Hero.tsx`
+Replace the crescent/star SVG icon in the card header with the actual Raudah logo image, inverted to white since the header background is emerald green.
 
-- Add a `useState` for the current slide index and a `useEffect` with `setInterval` to cycle images every 10 seconds
-- Define an array of 3 image sources (local import + 2 external URLs)
-- Replace the single `motion.div` background with 3 stacked absolutely-positioned divs, each showing one image
-- Use Framer Motion's `AnimatePresence` to crossfade between slides with a long `duration: 2` seconds for a slow, smooth transition
-- Keep the existing parallax scale animation on the active slide
-- The geometric overlay and gradient overlay remain on top, unchanged
+- Use `<img src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png" className="h-5 w-auto brightness-0 invert" />` (same pattern used in sidebars and footer)
+- Keep the card title "PILGRIM ID CARD" and subtitle "Raudah Travels & Tours" next to the logo
+
+**File: `src/pages/admin/AdminIdTags.tsx`**
+
+Update the PDF generation to also embed the logo in the PDF card header. Since jsPDF can't load external images easily inline, we'll pre-load the logo image as a data URL on component mount and use `pdf.addImage()` in the header area.
+
+---
+
+## 2. Fix Auth Session Stuck on Re-Login
+
+**Root Cause:** The `onAuthStateChange` callback in `AuthContext.tsx` calls `await fetchUserData()` directly inside the callback. This causes a deadlock -- Supabase's auth listener blocks while waiting for Supabase database calls to complete, preventing the auth state from resolving. After logout and re-login, the loading state never resolves.
+
+**File: `src/contexts/AuthContext.tsx`**
+
+Apply the proven fix pattern:
+- Use `setTimeout(() => fetchUserData(...), 0)` inside `onAuthStateChange` to dispatch database calls after the callback completes, avoiding the deadlock
+- Separate initial load (controls `loading` state) from ongoing auth changes
+- Add an `isMounted` flag for cleanup safety
+- Ensure `loading` is only set to `false` after the initial `getSession()` + `fetchUserData()` completes (not after every auth change)
 
 ```text
-Image cycle: 10s per image
-Crossfade duration: 2s
-Total cycle: ~30s for all 3 images
+Before (broken):
+  onAuthStateChange -> await fetchUserData() -> DEADLOCK
+
+After (fixed):
+  onAuthStateChange -> setTimeout(fetchUserData, 0) -> works
+  getSession() -> await fetchUserData() -> setLoading(false)
 ```
 
-### No other files change
-- No new dependencies needed (Framer Motion already installed)
-- Overlays, content, search widget all stay exactly the same
+---
+
+## 3. Ensure Agent Applications Reach Admin
+
+**Current state:** The `BecomeAgentDialog` inserts into `agent_applications` with `as any` type casts. The RLS INSERT policy is `WITH CHECK (true)`, meaning anyone can insert. The admin page queries with the admin role's SELECT policy.
+
+The code itself is correct, but the `as any` casts suggest the table isn't in the generated TypeScript types. This won't block functionality but may cause confusion. The actual fix needed:
+
+- Verify the insert works for unauthenticated users (the form can be submitted without logging in, but the `supabase` client may need the anon key to pass RLS). The current INSERT policy allows this.
+- No code changes needed for this -- the flow already works. The admin panel at `AdminAgentApplications.tsx` already queries and displays all applications.
+
+If there's an edge case where submissions fail silently, we'll add better error toasting and ensure the `user_id` field is properly set to `null` for anonymous submissions.
+
+---
+
+## Technical Details
+
+| File | Changes |
+|------|---------|
+| `src/components/admin/PilgrimIdCard.tsx` | Replace crescent SVG with Raudah logo `<img>` tag, white-inverted |
+| `src/pages/admin/AdminIdTags.tsx` | Pre-load logo as data URL, embed in PDF header via `pdf.addImage()` |
+| `src/contexts/AuthContext.tsx` | Fix deadlock: use `setTimeout` in `onAuthStateChange`, separate initial load, add `isMounted` guard |
