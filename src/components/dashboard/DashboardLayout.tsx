@@ -3,8 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import DashboardSidebar from "./DashboardSidebar";
 import MobileBottomNav from "./MobileBottomNav";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const DashboardLayout = () => {
@@ -44,9 +43,7 @@ const DashboardLayout = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-4 w-4 text-muted-foreground" />
-              </Button>
+              <NotificationBell />
               <Avatar className="h-8 w-8 border border-border md:hidden">
                 <AvatarImage src={profile?.avatar_url || undefined} />
                 <AvatarFallback className="bg-muted text-muted-foreground text-xs">
