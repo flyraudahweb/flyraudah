@@ -55,7 +55,7 @@ const DashboardSidebar = () => {
           <img
             src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
             alt="Raudah Travels"
-            className="h-8 w-auto"
+            className="h-8 w-auto brightness-0 invert"
           />
           <span className="font-heading text-sm font-semibold text-sidebar-foreground">
             Raudah Travels
