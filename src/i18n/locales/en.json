@@ -72,5 +72,85 @@
     "social": "Follow Us",
     "rights": "All Rights Reserved",
     "nahcon": "NAHCON Licensed | NSCIA Certified"
+  },
+  "dashboard": {
+    "welcome": "Welcome back",
+    "welcomeSubtitle": "Here's an overview of your pilgrimage journey",
+    "quickActions": "Quick Actions",
+    "recentBookings": "Recent Bookings",
+    "noBookings": "No bookings yet. Start your spiritual journey today!",
+    "nav": {
+      "menu": "Menu",
+      "overview": "Dashboard",
+      "bookings": "My Bookings",
+      "packages": "Browse Packages",
+      "payments": "Payment History",
+      "documents": "Documents",
+      "profile": "Profile",
+      "support": "Support",
+      "signOut": "Sign Out",
+      "pilgrim": "Pilgrim"
+    },
+    "mobile": {
+      "home": "Home",
+      "packages": "Packages",
+      "bookings": "Bookings",
+      "profile": "Profile"
+    },
+    "stats": {
+      "activeBookings": "Active Bookings",
+      "totalPaid": "Total Paid",
+      "documents": "Documents",
+      "packages": "Packages Booked"
+    },
+    "actions": {
+      "browsePackages": "Browse Packages",
+      "viewBookings": "View Bookings",
+      "paymentHistory": "Payment History"
+    },
+    "bookings": {
+      "title": "My Bookings",
+      "subtitle": "Track and manage your pilgrimage bookings",
+      "newBooking": "New Booking",
+      "noBookings": "No Bookings Yet",
+      "noBookingsDesc": "Browse our packages and book your first pilgrimage journey."
+    },
+    "payments": {
+      "title": "Payment History",
+      "subtitle": "View all your payments and transactions",
+      "noPayments": "No Payments Yet",
+      "noPaymentsDesc": "Your payment history will appear here after your first booking."
+    },
+    "documents": {
+      "title": "My Documents",
+      "subtitle": "Access your travel documents and receipts",
+      "noDocuments": "No Documents Yet",
+      "noDocumentsDesc": "Documents will be available here once you complete a booking."
+    },
+    "profile": {
+      "title": "My Profile",
+      "subtitle": "Manage your personal information",
+      "personalInfo": "Personal Information",
+      "fullName": "Full Name",
+      "email": "Email Address",
+      "emailNote": "Email cannot be changed",
+      "phone": "Phone Number",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "saved": "Profile Updated",
+      "savedDesc": "Your profile has been updated successfully.",
+      "error": "Failed to update profile"
+    },
+    "support": {
+      "title": "Support",
+      "subtitle": "Get help with your bookings and travel",
+      "whatsappDesc": "Chat with us on WhatsApp for quick support",
+      "phone": "Phone",
+      "email": "Email"
+    },
+    "packages": {
+      "title": "Browse Packages",
+      "subtitle": "Find and book your perfect pilgrimage package"
+    }
   }
 }
