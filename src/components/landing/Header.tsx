@@ -54,18 +54,15 @@ const Header = () => {
     >
       <div className="container mx-auto px-4 flex items-center justify-between h-16 md:h-20">
         {/* Logo */}
-        <a href="#home" className="flex items-center gap-2">
-          <span className="font-heading text-xl md:text-2xl font-bold text-secondary">
-            Raudah
-          </span>
-          <span
+        <a href="#home" className="flex items-center">
+          <img
+            src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+            alt="Raudah Travels & Tours"
             className={cn(
-              "font-heading text-xl md:text-2xl font-bold",
-              scrolled ? "text-foreground" : "text-background"
+              "h-10 md:h-12 w-auto object-contain transition-all",
+              !scrolled && "brightness-0 invert"
             )}
-          >
-            Travels
-          </span>
+          />
         </a>
 
         {/* Desktop Nav */}
