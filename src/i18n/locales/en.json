@@ -35,7 +35,8 @@
     "standard": "Standard",
     "budget": "Budget",
     "all": "All Packages",
-    "deposit": "Deposit from"
+    "deposit": "Deposit from",
+    "viewAll": "View All Packages"
   },
   "why": {
     "title": "Why Choose Raudah",
