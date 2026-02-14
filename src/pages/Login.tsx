@@ -19,7 +19,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const Login = () => {
-  const { signIn, loading, hasRole } = useAuth();
+  const { signIn, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -35,13 +35,13 @@ const Login = () => {
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
-    const { error } = await signIn(values.email, values.password);
+    const { error, roles } = await signIn(values.email, values.password);
     setSubmitting(false);
 
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
-      const target = from || (hasRole("admin") ? "/admin" : hasRole("agent") ? "/agent" : "/dashboard");
+      const target = from || (roles.includes("admin") ? "/admin" : roles.includes("agent") ? "/agent" : "/dashboard");
       navigate(target, { replace: true });
     }
   };
