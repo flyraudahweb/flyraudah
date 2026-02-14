@@ -33,16 +33,6 @@ const Login = () => {
     defaultValues: { email: "", password: "" },
   });
 
-  const [loginSuccess, setLoginSuccess] = useState(false);
-
-  // After login, wait for loading to finish then redirect based on roles
-  useEffect(() => {
-    if (loginSuccess && !loading) {
-      const target = from || (hasRole("admin") ? "/admin" : hasRole("agent") ? "/agent" : "/dashboard");
-      navigate(target, { replace: true });
-    }
-  }, [loginSuccess, loading]);
-
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     const { error } = await signIn(values.email, values.password);
@@ -51,7 +41,8 @@ const Login = () => {
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
-      setLoginSuccess(true);
+      const target = from || (hasRole("admin") ? "/admin" : hasRole("agent") ? "/agent" : "/dashboard");
+      navigate(target, { replace: true });
     }
   };
 
