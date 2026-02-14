@@ -19,7 +19,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const Login = () => {
-  const { signIn, loading } = useAuth();
+  const { signIn, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -35,6 +35,7 @@ const Login = () => {
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
+    await signOut();
     const { error, roles } = await signIn(values.email, values.password);
     setSubmitting(false);
 
