@@ -1,11 +1,18 @@
 
-## Fix Packages Section Padding
+## Fix Inconsistent Section Padding
 
 ### Problem
-The "2026 Hajj & Umrah Packages" section has extra horizontal padding (`px-4 sm:px-8 lg:px-12`) that doesn't match the header's container padding (`px-4`).
+The WhyChoose and Testimonials sections use `px-4 sm:px-8 lg:px-12` on their container divs, while the header and packages section use `container mx-auto px-4`. This causes misaligned left/right padding across the page.
 
 ### Solution
-Update `src/components/landing/PackagesSection.tsx` line 12 to change the container padding from `px-4 sm:px-8 lg:px-12` to just `px-4`, matching the header's `container mx-auto px-4` pattern.
+Update the container padding in two files to match the `px-4` pattern used by the header and packages section.
 
-### File to Modify
-- `src/components/landing/PackagesSection.tsx` — change `px-4 sm:px-8 lg:px-12` to `px-4` on the container div (line 12)
+### Files to Modify
+
+1. **`src/components/landing/WhyChoose.tsx`** (line 17)
+   - Change `px-4 sm:px-8 lg:px-12` to `px-4`
+
+2. **`src/components/landing/Testimonials.tsx`** (line 34)
+   - Change `px-4 sm:px-8 lg:px-12` to `px-4`
+
+Both already use `container mx-auto`, so just removing the extra responsive padding will align them with the header and other sections.
