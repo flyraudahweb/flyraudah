@@ -72,5 +72,85 @@
     "social": "Bi mu",
     "rights": "Duk Haƙƙoƙi An Tanada",
     "nahcon": "NAHCON ta ba da Lasisi | NSCIA ta Tabbatar"
+  },
+  "dashboard": {
+    "welcome": "Barka da dawowa",
+    "welcomeSubtitle": "Ga bayanin tafiyar hajjinka",
+    "quickActions": "Ayyuka Masu Sauri",
+    "recentBookings": "Sabbin Bukice-bukice",
+    "noBookings": "Babu buki tukuna. Fara tafiyar ruhaniya yau!",
+    "nav": {
+      "menu": "Menu",
+      "overview": "Dashboard",
+      "bookings": "Bukice-bukicena",
+      "packages": "Duba Fakitoci",
+      "payments": "Tarihin Biyan Kuɗi",
+      "documents": "Takaddun",
+      "profile": "Bayanan Kai",
+      "support": "Taimako",
+      "signOut": "Fita",
+      "pilgrim": "Ɗan Hajji"
+    },
+    "mobile": {
+      "home": "Gida",
+      "packages": "Fakitoci",
+      "bookings": "Bukice-bukice",
+      "profile": "Bayanan Kai"
+    },
+    "stats": {
+      "activeBookings": "Bukice-bukice Masu Aiki",
+      "totalPaid": "Jimlar Kuɗin da aka Biya",
+      "documents": "Takaddun",
+      "packages": "Fakitocin da aka Buki"
+    },
+    "actions": {
+      "browsePackages": "Duba Fakitoci",
+      "viewBookings": "Duba Bukice-bukice",
+      "paymentHistory": "Tarihin Biyan Kuɗi"
+    },
+    "bookings": {
+      "title": "Bukice-bukicena",
+      "subtitle": "Bin diddigin bukice-bukicen hajji",
+      "newBooking": "Sabon Buki",
+      "noBookings": "Babu Buki Tukuna",
+      "noBookingsDesc": "Duba fakitocin mu ku yi bukin tafiyar hajji ta farko."
+    },
+    "payments": {
+      "title": "Tarihin Biyan Kuɗi",
+      "subtitle": "Duba duk biyan kuɗi da ma'amaloli",
+      "noPayments": "Babu Biyan Kuɗi Tukuna",
+      "noPaymentsDesc": "Tarihin biyan kuɗinku zai bayyana nan bayan buki na farko."
+    },
+    "documents": {
+      "title": "Takadduna",
+      "subtitle": "Samun damar takaddun tafiya da rasiti",
+      "noDocuments": "Babu Takaddun Tukuna",
+      "noDocumentsDesc": "Takaddun za su kasance a nan bayan kammala buki."
+    },
+    "profile": {
+      "title": "Bayanan Kaina",
+      "subtitle": "Sarrafa bayananka na sirri",
+      "personalInfo": "Bayanan Sirri",
+      "fullName": "Cikakken Suna",
+      "email": "Adireshin Email",
+      "emailNote": "Ba za a iya canza email ba",
+      "phone": "Lambar Waya",
+      "save": "Ajiye Canje-canje",
+      "saving": "Ana Ajiyewa...",
+      "saved": "An Sabunta Bayanan",
+      "savedDesc": "An sabunta bayananku cikin nasara.",
+      "error": "Ba a iya sabunta bayanan"
+    },
+    "support": {
+      "title": "Taimako",
+      "subtitle": "Samu taimako game da bukice-bukice da tafiya",
+      "whatsappDesc": "Yi hira da mu a WhatsApp don taimako mai sauri",
+      "phone": "Waya",
+      "email": "Email"
+    },
+    "packages": {
+      "title": "Duba Fakitoci",
+      "subtitle": "Nemo kuma ku yi bukin fakitin hajji da ya dace"
+    }
   }
 }
