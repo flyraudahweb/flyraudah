@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,141 +8,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { QRCodeSVG } from "qrcode.react";
-import { AlertCircle, Download, Printer, Search } from "lucide-react";
-
-interface Booking {
-  id: string;
-  full_name: string;
-  passport_number: string | null;
-  reference: string | null;
-  gender: string | null;
-  status: string;
-  departure_city: string | null;
-  package: { name: string; type: string };
-}
-
-// Pilgrim ID Card component
-const PilgrimIdCard = ({ booking }: { booking: Booking }) => {
-  const initials = booking.full_name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  const year = new Date().getFullYear();
-
-  return (
-    <div className="id-card relative w-full max-w-[420px] rounded-xl overflow-hidden border-2 border-border shadow-lg bg-card print:shadow-none print:border print:border-border">
-      {/* Islamic geometric watermark */}
-      <div className="absolute inset-0 geometric-overlay opacity-30 pointer-events-none" />
-
-      {/* Header with emerald gradient */}
-      <div className="emerald-gradient px-5 py-3 flex items-center justify-between relative">
-        <div>
-          <h3 className="font-heading text-sm font-bold text-primary-foreground tracking-wide">
-            PILGRIM ID CARD
-          </h3>
-          <p className="text-[10px] text-primary-foreground/80 font-body">
-            Raudah Travels & Tours
-          </p>
-        </div>
-        <div className="text-right">
-          <span className="text-[10px] text-primary-foreground/70 font-body">{year}</span>
-        </div>
-      </div>
-
-      {/* Gold accent stripe */}
-      <div className="h-1 gold-gradient" />
-
-      {/* Body */}
-      <div className="p-4 flex gap-4 relative">
-        {/* Left: Avatar + Name */}
-        <div className="flex flex-col items-center gap-2 min-w-[80px]">
-          <div className="h-16 w-16 rounded-full bg-primary/10 border-2 border-secondary flex items-center justify-center">
-            <span className="font-heading text-lg font-bold text-primary">{initials}</span>
-          </div>
-          <Badge
-            variant={booking.status === "confirmed" ? "default" : "secondary"}
-            className="text-[9px] capitalize"
-          >
-            {booking.status}
-          </Badge>
-        </div>
-
-        {/* Center: Info grid */}
-        <div className="flex-1 min-w-0">
-          <h4 className="font-heading text-base font-bold text-foreground truncate mb-2">
-            {booking.full_name}
-          </h4>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
-            <div>
-              <span className="text-muted-foreground">Reference</span>
-              <p className="font-medium text-foreground truncate">{booking.reference || "—"}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Package</span>
-              <p className="font-medium text-foreground truncate">{booking.package.name}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Passport No.</span>
-              <p className="font-medium text-foreground">{booking.passport_number || "—"}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Gender</span>
-              <p className="font-medium text-foreground capitalize">{booking.gender || "—"}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Departure</span>
-              <p className="font-medium text-foreground">{booking.departure_city || "—"}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Type</span>
-              <p className="font-medium text-foreground capitalize">{booking.package.type}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: QR Code */}
-        <div className="flex flex-col items-center justify-center shrink-0">
-          <QRCodeSVG
-            value={booking.reference || booking.id}
-            size={72}
-            level="M"
-            fgColor="hsl(162, 90%, 17%)"
-            bgColor="transparent"
-          />
-          <span className="text-[8px] text-muted-foreground mt-1 font-mono">
-            {booking.reference || booking.id.slice(0, 8)}
-          </span>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="emerald-gradient px-5 py-1.5 flex items-center justify-between">
-        <p className="text-[9px] text-primary-foreground/80 font-body">
-          Your Gateway to the Holy Lands
-        </p>
-        <p className="text-[9px] text-primary-foreground/60 font-body">
-          Kano, Nigeria
-        </p>
-      </div>
-    </div>
-  );
-};
+import { AlertCircle, Download, Printer, Search, Zap, FileCheck } from "lucide-react";
+import PilgrimIdCard, { type Booking } from "@/components/admin/PilgrimIdCard";
 
 export default function AdminIdTags() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const qrContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["admin-id-bookings"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, full_name, passport_number, reference, gender, status, departure_city, package_id")
+        .select("id, full_name, passport_number, reference, gender, status, departure_city, package_id, emergency_contact_name, emergency_contact_phone")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -165,12 +52,14 @@ export default function AdminIdTags() {
     },
   });
 
-  const filteredBookings = bookings.filter(
-    (b) =>
+  const filteredBookings = bookings.filter((b) => {
+    const matchesSearch =
       b.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       b.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.passport_number?.includes(searchTerm)
-  );
+      b.passport_number?.includes(searchTerm);
+    const matchesStatus = statusFilter === "all" || b.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const selectedList = filteredBookings.filter((b) => selectedBookings.has(b.id));
 
@@ -188,60 +77,110 @@ export default function AdminIdTags() {
     );
   };
 
-  const generatePDF = useCallback(() => {
-    if (selectedList.length === 0) return;
+  const autoSelectConfirmed = () => {
+    const confirmed = bookings.filter((b) => b.status === "confirmed").map((b) => b.id);
+    setSelectedBookings(new Set(confirmed));
+    setStatusFilter("all");
+  };
+
+  // Capture real QR code as image from hidden container
+  const captureQR = async (value: string): Promise<string | null> => {
+    const container = qrContainerRef.current;
+    if (!container) return null;
+
+    // Create a temporary QR element
+    const tempDiv = document.createElement("div");
+    tempDiv.style.cssText = "position:absolute;left:-9999px;top:0;background:white;padding:4px;";
+    document.body.appendChild(tempDiv);
+
+    const { createRoot } = await import("react-dom/client");
+    const root = createRoot(tempDiv);
+
+    await new Promise<void>((resolve) => {
+      root.render(
+        <QRCodeSVG value={value} size={200} level="M" fgColor="#084733" bgColor="#ffffff" />
+      );
+      setTimeout(resolve, 100);
+    });
+
+    try {
+      const canvas = await html2canvas(tempDiv, { scale: 2, backgroundColor: "#ffffff" });
+      const imgData = canvas.toDataURL("image/png");
+      return imgData;
+    } finally {
+      root.unmount();
+      document.body.removeChild(tempDiv);
+    }
+  };
+
+  const generatePDF = useCallback(async (bookingsList?: Booking[]) => {
+    const list = bookingsList || selectedList;
+    if (list.length === 0) return;
+
+    setGenerating(true);
+    setProgress(0);
 
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const cardW = 170;
-    const cardH = 75;
+    const cardH = 80;
     const marginX = 20;
     let y = 15;
 
-    selectedList.forEach((booking, i) => {
+    for (let i = 0; i < list.length; i++) {
+      const booking = list[i];
+      setProgress(Math.round(((i + 1) / list.length) * 100));
+
       if (i > 0 && y + cardH > 270) {
         pdf.addPage();
         y = 15;
       }
 
-      // Card border
+      // Card border with rounded corners
       pdf.setDrawColor(180, 180, 180);
       pdf.setLineWidth(0.5);
       pdf.roundedRect(marginX, y, cardW, cardH, 3, 3);
 
       // Header bg
-      pdf.setFillColor(8, 71, 51); // emerald
-      pdf.roundedRect(marginX, y, cardW, 14, 3, 3, "F");
-      pdf.rect(marginX, y + 11, cardW, 3, "F"); // square off bottom corners
+      pdf.setFillColor(8, 71, 51);
+      pdf.roundedRect(marginX, y, cardW, 15, 3, 3, "F");
+      pdf.rect(marginX, y + 12, cardW, 3, "F");
 
       // Header text
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(11);
       pdf.setFont("helvetica", "bold");
-      pdf.text("PILGRIM ID CARD", marginX + 5, y + 8);
+      pdf.text("☪  PILGRIM ID CARD", marginX + 5, y + 8);
       pdf.setFontSize(7);
       pdf.setFont("helvetica", "normal");
-      pdf.text("Raudah Travels & Tours", marginX + 5, y + 12);
-      pdf.text(String(new Date().getFullYear()), marginX + cardW - 15, y + 8);
+      pdf.text("Raudah Travels & Tours", marginX + 5, y + 13);
+
+      // Card number
+      const cardNum = `RTT-${new Date().getFullYear()}-${booking.id.slice(-4).toUpperCase()}`;
+      pdf.setFontSize(7);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(cardNum, marginX + cardW - 5, y + 8, { align: "right" });
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6);
+      pdf.text(String(new Date().getFullYear()), marginX + cardW - 5, y + 13, { align: "right" });
 
       // Gold stripe
-      pdf.setFillColor(194, 154, 68); // gold
-      pdf.rect(marginX, y + 14, cardW, 1.5, "F");
+      pdf.setFillColor(194, 154, 68);
+      pdf.rect(marginX, y + 15, cardW, 2, "F");
 
       // Body
-      const bodyY = y + 19;
-      pdf.setTextColor(60, 60, 60);
+      const bodyY = y + 20;
 
       // Avatar circle
       pdf.setFillColor(230, 240, 235);
-      pdf.circle(marginX + 14, bodyY + 12, 10, "F");
+      pdf.circle(marginX + 14, bodyY + 12, 11, "F");
       pdf.setDrawColor(194, 154, 68);
-      pdf.setLineWidth(0.7);
-      pdf.circle(marginX + 14, bodyY + 12, 10, "S");
+      pdf.setLineWidth(0.8);
+      pdf.circle(marginX + 14, bodyY + 12, 11, "S");
       const initials = booking.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-      pdf.setFontSize(12);
+      pdf.setFontSize(13);
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(8, 71, 51);
-      pdf.text(initials, marginX + 14, bodyY + 14, { align: "center" });
+      pdf.text(initials, marginX + 14, bodyY + 15, { align: "center" });
 
       // Status badge
       pdf.setFontSize(6);
@@ -251,13 +190,13 @@ export default function AdminIdTags() {
 
       // Name
       pdf.setTextColor(30, 30, 30);
-      pdf.setFontSize(11);
+      pdf.setFontSize(12);
       pdf.setFont("helvetica", "bold");
-      pdf.text(booking.full_name, marginX + 30, bodyY + 4);
+      pdf.text(booking.full_name, marginX + 32, bodyY + 4);
 
       // Info grid
-      const col1X = marginX + 30;
-      const col2X = marginX + 85;
+      const col1X = marginX + 32;
+      const col2X = marginX + 88;
       const infoStartY = bodyY + 10;
       pdf.setFontSize(6.5);
 
@@ -277,44 +216,70 @@ export default function AdminIdTags() {
       drawField("Departure", booking.departure_city || "—", col1X, infoStartY + 22);
       drawField("Type", booking.package.type.charAt(0).toUpperCase() + booking.package.type.slice(1), col2X, infoStartY + 22);
 
-      // QR placeholder (text-based since we can't easily embed SVG)
-      const qrX = marginX + cardW - 25;
-      pdf.setDrawColor(8, 71, 51);
-      pdf.setLineWidth(0.3);
-      pdf.rect(qrX - 2, bodyY + 2, 22, 22);
+      // Emergency contact
+      pdf.setFontSize(5.5);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(130, 130, 130);
+      pdf.text("Emergency:", col1X, infoStartY + 33);
+      pdf.setTextColor(60, 60, 60);
+      const emergencyText = booking.emergency_contact_name && booking.emergency_contact_phone
+        ? `${booking.emergency_contact_name} (${booking.emergency_contact_phone})`
+        : "Not provided";
+      pdf.text(emergencyText, col1X + 18, infoStartY + 33);
+
+      // Real QR code
+      const qrX = marginX + cardW - 28;
+      try {
+        const qrImage = await captureQR(booking.reference || booking.id);
+        if (qrImage) {
+          pdf.addImage(qrImage, "PNG", qrX, bodyY + 2, 22, 22);
+        }
+      } catch {
+        // Fallback: draw placeholder
+        pdf.setDrawColor(8, 71, 51);
+        pdf.setLineWidth(0.3);
+        pdf.rect(qrX, bodyY + 2, 22, 22);
+        pdf.setFontSize(5);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text("QR", qrX + 11, bodyY + 14, { align: "center" });
+      }
       pdf.setFontSize(5);
       pdf.setTextColor(100, 100, 100);
-      pdf.text(booking.reference || booking.id.slice(0, 8), qrX + 9, bodyY + 28, { align: "center" });
-      // QR pattern
-      pdf.setFillColor(8, 71, 51);
-      for (let qy = 0; qy < 4; qy++) {
-        for (let qx = 0; qx < 4; qx++) {
-          if ((qx + qy) % 2 === 0) {
-            pdf.rect(qrX + qx * 4.5, bodyY + 4 + qy * 4.5, 4, 4, "F");
-          }
-        }
-      }
+      pdf.text(booking.reference || booking.id.slice(0, 8), qrX + 11, bodyY + 28, { align: "center" });
 
       // Footer
-      const footerY = y + cardH - 6;
+      const footerY = y + cardH - 7;
       pdf.setFillColor(8, 71, 51);
-      pdf.rect(marginX, footerY, cardW, 6, "F");
-      pdf.roundedRect(marginX, footerY - 1, cardW, 7, 0, 0); // override bottom
+      pdf.roundedRect(marginX, footerY, cardW, 7, 0, 0, "F");
+      // Overlay bottom corners
+      pdf.roundedRect(marginX, footerY + 4, cardW, 3, 3, 3, "F");
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(6);
       pdf.setFont("helvetica", "italic");
-      pdf.text("Your Gateway to the Holy Lands", marginX + 5, footerY + 4);
-      pdf.text("Kano, Nigeria", marginX + cardW - 25, footerY + 4);
+      pdf.text("Your Gateway to the Holy Lands", marginX + 5, footerY + 4.5);
+      pdf.text("Kano, Nigeria", marginX + cardW - 25, footerY + 4.5);
 
       y += cardH + 10;
-    });
+    }
 
-    pdf.save(`pilgrim-id-cards-${new Date().toISOString().split("T")[0]}.pdf`);
+    const count = list.length;
+    const date = new Date().toISOString().split("T")[0];
+    pdf.save(`pilgrim-ids-${date}-${count}cards.pdf`);
+    setGenerating(false);
+    setProgress(0);
   }, [selectedList]);
+
+  const autoGenerateConfirmed = useCallback(async () => {
+    const confirmed = bookings.filter((b) => b.status === "confirmed");
+    if (confirmed.length === 0) return;
+    await generatePDF(confirmed);
+  }, [bookings, generatePDF]);
 
   const printCards = useCallback(() => {
     window.print();
   }, []);
+
+  const confirmedCount = bookings.filter((b) => b.status === "confirmed").length;
 
   return (
     <div className="space-y-6">
@@ -325,11 +290,25 @@ export default function AdminIdTags() {
         </p>
       </div>
 
-      {/* Search */}
+      {/* Status Filter Tabs */}
+      <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+        <TabsList>
+          <TabsTrigger value="all">
+            All <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{bookings.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="confirmed">
+            Confirmed <Badge variant="default" className="ml-1.5 text-[10px] px-1.5">{confirmedCount}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Search & Quick Actions */}
       <Card className="border-border">
         <CardContent className="p-4">
-          <div className="flex gap-3 items-center">
-            <div className="relative flex-1">
+          <div className="flex gap-3 items-center flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name, reference, or passport..."
@@ -340,6 +319,9 @@ export default function AdminIdTags() {
             </div>
             <Button variant="outline" size="sm" onClick={selectAll} disabled={filteredBookings.length === 0}>
               {selectedBookings.size === filteredBookings.length && filteredBookings.length > 0 ? "Deselect All" : "Select All"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={autoSelectConfirmed} disabled={confirmedCount === 0} className="gap-1.5">
+              <FileCheck className="h-3.5 w-3.5" /> Select Confirmed
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
@@ -387,10 +369,28 @@ export default function AdminIdTags() {
         </CardContent>
       </Card>
 
+      {/* Progress bar */}
+      {generating && (
+        <Card className="border-border print:hidden">
+          <CardContent className="p-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Generating PDF with QR codes...</span>
+                <span className="font-medium text-foreground">{progress}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Actions */}
-      <div className="flex gap-3 print:hidden">
-        <Button onClick={generatePDF} disabled={selectedBookings.size === 0} size="lg" className="gap-2">
-          <Download className="h-4 w-4" /> Download PDF
+      <div className="flex gap-3 flex-wrap print:hidden">
+        <Button onClick={() => generatePDF()} disabled={selectedBookings.size === 0 || generating} size="lg" className="gap-2">
+          <Download className="h-4 w-4" /> Download PDF ({selectedBookings.size})
+        </Button>
+        <Button onClick={autoGenerateConfirmed} disabled={confirmedCount === 0 || generating} size="lg" variant="secondary" className="gap-2">
+          <Zap className="h-4 w-4" /> Auto Generate Confirmed ({confirmedCount})
         </Button>
         <Button onClick={printCards} disabled={selectedBookings.size === 0} variant="outline" size="lg" className="gap-2">
           <Printer className="h-4 w-4" /> Print Cards
@@ -400,7 +400,9 @@ export default function AdminIdTags() {
       {/* Live Preview */}
       {selectedList.length > 0 && (
         <div>
-          <h2 className="font-heading text-lg font-bold text-foreground mb-3 print:hidden">Preview</h2>
+          <h2 className="font-heading text-lg font-bold text-foreground mb-3 print:hidden">
+            Preview ({selectedList.length} cards)
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-1 print:gap-0">
             {selectedList.map((b) => (
               <div key={b.id} className="print:mb-4 print:break-inside-avoid">
@@ -410,6 +412,9 @@ export default function AdminIdTags() {
           </div>
         </div>
       )}
+
+      {/* Hidden QR render container */}
+      <div ref={qrContainerRef} className="hidden" aria-hidden="true" />
     </div>
   );
 }
