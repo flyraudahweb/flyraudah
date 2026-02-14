@@ -59,10 +59,14 @@ const BecomeAgentDialog = ({
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
-    const { error } = await supabase.from("agent_applications" as any).insert({
-      ...values,
+    const { error } = await supabase.from("agent_applications").insert([{
+      business_name: values.business_name,
+      contact_person: values.contact_person,
+      email: values.email,
+      phone: values.phone,
+      message: values.message || null,
       user_id: user?.id || null,
-    } as any);
+    }]);
     setSubmitting(false);
 
     if (error) {
