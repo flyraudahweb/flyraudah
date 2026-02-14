@@ -16,6 +16,8 @@ import { QRCodeSVG } from "qrcode.react";
 import { AlertCircle, Download, Printer, Search, Zap, FileCheck } from "lucide-react";
 import PilgrimIdCard, { type Booking } from "@/components/admin/PilgrimIdCard";
 
+const LOGO_URL = "https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png";
+
 export default function AdminIdTags() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
@@ -23,6 +25,24 @@ export default function AdminIdTags() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const qrContainerRef = useRef<HTMLDivElement>(null);
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+
+  // Pre-load logo as data URL for PDF embedding
+  useState(() => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        setLogoDataUrl(canvas.toDataURL("image/png"));
+      }
+    };
+    img.src = LOGO_URL;
+  });
 
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["admin-id-bookings"],
@@ -145,14 +165,21 @@ export default function AdminIdTags() {
       pdf.roundedRect(marginX, y, cardW, 15, 3, 3, "F");
       pdf.rect(marginX, y + 12, cardW, 3, "F");
 
+      // Logo in header
+      if (logoDataUrl) {
+        try {
+          pdf.addImage(logoDataUrl, "PNG", marginX + 4, y + 3, 10, 10);
+        } catch {}
+      }
+
       // Header text
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(11);
       pdf.setFont("helvetica", "bold");
-      pdf.text("☪  PILGRIM ID CARD", marginX + 5, y + 8);
+      pdf.text("PILGRIM ID CARD", marginX + (logoDataUrl ? 16 : 5), y + 8);
       pdf.setFontSize(7);
       pdf.setFont("helvetica", "normal");
-      pdf.text("Raudah Travels & Tours", marginX + 5, y + 13);
+      pdf.text("Raudah Travels & Tours", marginX + (logoDataUrl ? 16 : 5), y + 13);
 
       // Card number
       const cardNum = `RTT-${new Date().getFullYear()}-${booking.id.slice(-4).toUpperCase()}`;

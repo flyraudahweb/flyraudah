@@ -34,10 +34,7 @@ const PilgrimIdCard = ({ booking }: { booking: Booking }) => {
       <div className="emerald-gradient px-5 py-3 flex items-center justify-between relative">
         <div className="flex items-center gap-2">
           {/* Crescent & star */}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-primary-foreground/90">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.82 0 3.53-.5 5-1.35-2.99-1.73-5-4.95-5-8.65s2.01-6.92 5-8.65C15.53 2.5 13.82 2 12 2z" fill="currentColor" />
-            <path d="M19 7l.94 2.06L22 10l-2.06.94L19 13l-.94-2.06L16 10l2.06-.94L19 7z" fill="hsl(var(--gold))" />
-          </svg>
+          <img src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png" alt="Raudah Logo" className="h-5 w-auto brightness-0 invert" />
           <div>
             <h3 className="font-heading text-sm font-bold text-primary-foreground tracking-wide">
               PILGRIM ID CARD
