@@ -217,7 +217,7 @@ const PackagesSection = () => {
 
   return (
     <section id="packages" className="py-24 bg-gradient-to-b from-background to-muted/30">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 sm:px-8 lg:px-12">
         <div className="text-center mb-16">
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-foreground">
             {t("packages.title")}
@@ -233,9 +233,20 @@ const PackagesSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {packages
             .filter((p) => p.status === "active")
+            .slice(0, 3)
             .map((pkg, i) => (
               <PackageCard key={pkg.id} pkg={pkg} index={i} />
             ))}
+        </div>
+
+        <div className="text-center mt-12">
+          <Button
+            size="lg"
+            className="gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg hover:-translate-y-1 transition-all text-lg font-semibold px-12 py-7"
+            onClick={() => window.location.href = '/packages'}
+          >
+            {t("packages.viewAll") || "View All Packages"}
+          </Button>
         </div>
       </div>
     </section>
