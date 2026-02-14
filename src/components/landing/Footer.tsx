@@ -18,7 +18,7 @@ const Footer = () => {
       {/* Subtle geometric pattern */}
       <div className="absolute inset-0 geometric-overlay opacity-10" />
 
-      <div className="relative z-10 container mx-auto px-4 sm:px-8 lg:px-12">
+      <div className="relative z-10 container mx-auto px-6 sm:px-10 lg:px-16">
         {/* Logo wordmark */}
         <div className="text-center mb-12">
           <img
