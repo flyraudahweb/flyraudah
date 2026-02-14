@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
@@ -11,6 +14,26 @@ const Hero = () => {
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
+
+  const { data: monthOptions = [] } = useQuery({
+    queryKey: ["hero-month-options"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("packages")
+        .select("package_dates(outbound)")
+        .eq("status", "active");
+      const months = new Set<string>();
+      data?.forEach((pkg: any) =>
+        pkg.package_dates?.forEach((d: any) => {
+          months.add(format(parseISO(d.outbound), "yyyy-MM"));
+        })
+      );
+      return Array.from(months).sort().map((m) => ({
+        value: m,
+        label: format(parseISO(`${m}-01`), "MMMM yyyy"),
+      }));
+    },
+  });
 
   const titleWords = (t("hero.title") as string).split(" ");
 
@@ -119,10 +142,9 @@ const Hero = () => {
               className="h-12 rounded-xl border border-input bg-background px-4 text-sm text-foreground focus:ring-2 focus:ring-secondary/30 transition-all"
             >
               <option value="">{t("hero.month")}</option>
-              <option value="feb">February</option>
-              <option value="mar">March</option>
-              <option value="jun">June</option>
-              <option value="jul">July</option>
+              {monthOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
             <Button
               className="h-12 gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold text-sm"
