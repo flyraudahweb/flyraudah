@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Phone, Mail, MapPin, MessageCircle } from "lucide-react";
+import { Phone, Mail, MapPin, MessageCircle, Facebook, Instagram, Twitter, ArrowUp } from "lucide-react";
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -9,16 +9,34 @@ const Footer = () => {
     window.open(`https://wa.me/2348035378973?text=${msg}`, "_blank");
   };
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
-    <footer className="bg-primary text-primary-foreground pt-16 pb-8">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+    <footer className="relative bg-primary text-primary-foreground pt-20 pb-8 overflow-hidden">
+      {/* Subtle geometric pattern */}
+      <div className="absolute inset-0 geometric-overlay opacity-10" />
+
+      <div className="relative z-10 container mx-auto px-4">
+        {/* Logo wordmark */}
+        <div className="text-center mb-12">
+          <h3 className="font-heading text-3xl md:text-4xl font-bold">
+            <span className="text-secondary">Raudah</span>{" "}
+            <span className="text-primary-foreground">Travels & Tours</span>
+          </h3>
+          <p className="text-primary-foreground/60 text-sm mt-2 tracking-widest uppercase">
+            Your Gateway to the Holy Lands
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-14">
           {/* Quick Links */}
           <div>
-            <h4 className="font-heading text-lg font-bold text-secondary mb-4">
+            <h4 className="font-heading text-lg font-bold text-secondary mb-5">
               {t("footer.quickLinks")}
             </h4>
-            <ul className="space-y-2 text-sm text-primary-foreground/80">
+            <ul className="space-y-3 text-sm text-primary-foreground/80">
               <li><a href="#about" className="hover:text-secondary transition-colors">{t("footer.about")}</a></li>
               <li><a href="#" className="hover:text-secondary transition-colors">{t("footer.services")}</a></li>
               <li><a href="#" className="hover:text-secondary transition-colors">{t("footer.faq")}</a></li>
@@ -29,10 +47,10 @@ const Footer = () => {
 
           {/* Packages */}
           <div>
-            <h4 className="font-heading text-lg font-bold text-secondary mb-4">
+            <h4 className="font-heading text-lg font-bold text-secondary mb-5">
               {t("footer.packages")}
             </h4>
-            <ul className="space-y-2 text-sm text-primary-foreground/80">
+            <ul className="space-y-3 text-sm text-primary-foreground/80">
               <li><a href="#packages" className="hover:text-secondary transition-colors">Hajj 2026</a></li>
               <li><a href="#packages" className="hover:text-secondary transition-colors">Ramadan Umrah</a></li>
               <li><a href="#packages" className="hover:text-secondary transition-colors">Sha'ban Umrah</a></li>
@@ -41,7 +59,7 @@ const Footer = () => {
 
           {/* Contact */}
           <div>
-            <h4 className="font-heading text-lg font-bold text-secondary mb-4">
+            <h4 className="font-heading text-lg font-bold text-secondary mb-5">
               {t("footer.contact")}
             </h4>
             <ul className="space-y-3 text-sm text-primary-foreground/80">
@@ -62,22 +80,55 @@ const Footer = () => {
 
           {/* Social */}
           <div>
-            <h4 className="font-heading text-lg font-bold text-secondary mb-4">
+            <h4 className="font-heading text-lg font-bold text-secondary mb-5">
               {t("footer.social")}
             </h4>
-            <ul className="space-y-2 text-sm text-primary-foreground/80">
-              <li>
-                <button onClick={handleWhatsApp} className="flex items-center gap-2 hover:text-secondary transition-colors">
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
-                </button>
-              </li>
-            </ul>
+            <div className="flex gap-3">
+              <button
+                onClick={handleWhatsApp}
+                className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors"
+                aria-label="WhatsApp"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </button>
+              <a
+                href="#"
+                className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors"
+                aria-label="Facebook"
+              >
+                <Facebook className="h-5 w-5" />
+              </a>
+              <a
+                href="#"
+                className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors"
+                aria-label="Instagram"
+              >
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a
+                href="#"
+                className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors"
+                aria-label="Twitter"
+              >
+                <Twitter className="h-5 w-5" />
+              </a>
+            </div>
           </div>
         </div>
 
+        {/* Back to top */}
+        <div className="flex justify-center mb-8">
+          <button
+            onClick={scrollToTop}
+            className="flex items-center gap-2 text-primary-foreground/60 hover:text-secondary text-sm transition-colors"
+          >
+            <ArrowUp className="h-4 w-4" />
+            Back to Top
+          </button>
+        </div>
+
         {/* Bottom */}
-        <div className="border-t border-primary-foreground/10 pt-6 text-center text-xs text-primary-foreground/60">
+        <div className="border-t border-primary-foreground/10 pt-6 text-center text-xs text-primary-foreground/50">
           <p>© 2026 Raudah Travels & Tours Ltd. {t("footer.rights")}</p>
           <p className="mt-1">{t("footer.nahcon")}</p>
         </div>
