@@ -27,7 +27,7 @@ const Hero = () => {
       <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/70 to-primary/30" />
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 pt-40 pb-36 text-center">
+      <div className="relative z-10 container mx-auto px-4 sm:px-8 lg:px-12 pt-40 pb-36 text-center">
         {/* Staggered title */}
         <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-tight max-w-5xl mx-auto">
           {titleWords.map((word, i) => (
