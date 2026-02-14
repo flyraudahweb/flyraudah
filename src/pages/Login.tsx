@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,19 +19,29 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const Login = () => {
-  const { signIn } = useAuth();
+  const { signIn, roles, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
+
+  const [loginSuccess, setLoginSuccess] = useState(false);
+
+  // After login, wait for roles to load then redirect
+  useEffect(() => {
+    if (loginSuccess && roles.length > 0) {
+      const target = from || (hasRole("admin") ? "/admin" : hasRole("agent") ? "/agent" : "/dashboard");
+      navigate(target, { replace: true });
+    }
+  }, [loginSuccess, roles]);
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
@@ -41,7 +51,11 @@ const Login = () => {
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
-      navigate(from, { replace: true });
+      setLoginSuccess(true);
+      // Fallback: if roles don't load within 2s, go to dashboard
+      setTimeout(() => {
+        navigate(from || "/dashboard", { replace: true });
+      }, 2000);
     }
   };
 

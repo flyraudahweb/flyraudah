@@ -43,15 +43,10 @@ const DashboardDocuments = () => {
 
       if (uploadError) throw uploadError;
 
-      // Get signed URL
-      const { data: signedUrl } = await supabase.storage
-        .from("documents")
-        .createSignedUrl(uploadData.path, 604800); // 7 days
-
-      // Create document record
+      // Store the storage path, not a signed URL (signed URLs expire)
       const { error: dbError } = await supabase.from("documents").insert([{
         user_id: user.id,
-        file_url: signedUrl?.signedUrl || uploadData.path,
+        file_url: uploadData.path,
         file_name: file.name,
         type: documentType as any,
       }]);
@@ -139,28 +134,37 @@ const DashboardDocuments = () => {
         </Card>
       ) : (
         <div className="space-y-3">
-          {documents.map((doc) => (
-            <Card key={doc.id} className="border-border">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileText className="h-5 w-5 text-secondary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {doc.file_name || doc.type}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(doc.uploaded_at).toLocaleDateString()}
-                    </p>
+          {documents.map((doc) => {
+            // Generate a fresh signed URL for download
+            const getDownloadUrl = async () => {
+              const { data } = await supabase.storage
+                .from("documents")
+                .createSignedUrl(doc.file_url, 3600);
+              if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+              else toast.error("Failed to get download link");
+            };
+
+            return (
+              <Card key={doc.id} className="border-border">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="h-5 w-5 text-secondary shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {doc.file_name || doc.type}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {doc.type.replace(/_/g, " ")} • {new Date(doc.uploaded_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <Button variant="ghost" size="icon" asChild>
-                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="ghost" size="icon" onClick={getDownloadUrl}>
                     <Download className="h-4 w-4" />
-                  </a>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

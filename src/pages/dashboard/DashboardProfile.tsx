@@ -38,6 +38,8 @@ const DashboardProfile = () => {
         .eq("id", user.id);
       if (error) throw error;
       toast({ title: t("dashboard.profile.saved"), description: t("dashboard.profile.savedDesc") });
+      // Force page reload to refresh AuthContext profile data
+      window.location.reload();
     } catch {
       toast({ title: t("dashboard.profile.error"), variant: "destructive" });
     } finally {

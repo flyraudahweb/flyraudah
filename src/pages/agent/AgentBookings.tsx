@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -16,15 +17,15 @@ const statusColors: Record<string, string> = {
 
 const AgentBookings = () => {
   const [search, setSearch] = useState("");
+  const { user } = useAuth();
 
   const { data: bookings = [], isLoading } = useQuery({
-    queryKey: ["agent-bookings"],
+    queryKey: ["agent-bookings", user?.id],
     queryFn: async () => {
-      // Fetch agent record first
       const { data: agentData } = await supabase
         .from("agents")
         .select("id")
-        .eq("user_id", (await supabase.auth.getUser()).data.user!.id)
+        .eq("user_id", user!.id)
         .maybeSingle();
 
       if (!agentData) return [];
@@ -37,19 +38,19 @@ const AgentBookings = () => {
 
       if (error) throw error;
 
-      // Fetch package names
       const withPackages = await Promise.all(
         (data || []).map(async (b) => {
           const { data: pkg } = await supabase
             .from("packages")
             .select("name, price")
             .eq("id", b.package_id)
-            .single();
+            .maybeSingle();
           return { ...b, package_name: pkg?.name || "—", price: pkg?.price || 0 };
         })
       );
       return withPackages;
     },
+    enabled: !!user,
   });
 
   const filtered = bookings.filter((b) =>
