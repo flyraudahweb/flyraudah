@@ -513,7 +513,7 @@ const ContactTeamPage = () => (
       <div className="mt-6 p-4 rounded-lg bg-muted/50 space-y-2 text-sm">
         <div className="flex items-center gap-2">
           <Mail className="h-4 w-4 text-muted-foreground" />
-          <span>fadakmediacompany@gmail.com</span>
+          <span>fadakmediahub@gmail.com</span>
         </div>
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-muted-foreground" />
