@@ -424,7 +424,7 @@ const SectionTitle = ({ number, title, className = "" }: { number: string; title
 const MOUPage = () => (
   <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
     <div data-pdf-section>
-      <SectionTitle number="08" title="Memorandum of Understanding" />
+      <SectionTitle number="08" title="Memorandum of Understanding (MOU)" />
       <p className="text-xs text-muted-foreground mt-2 mb-6 italic">This Memorandum of Understanding sets forth the terms agreed upon by both parties.</p>
 
       <div className="space-y-1 text-sm leading-relaxed text-foreground/90">
