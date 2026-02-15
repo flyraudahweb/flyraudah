@@ -1,33 +1,69 @@
 
-# Fix: Stale Module Cache Error on Dashboard
 
-## Problem
-After a new deployment, the PWA service worker or browser cache serves old JavaScript chunk filenames (e.g., `DashboardOverview-nvugvt5h.js`) that no longer exist on the server. This causes a `TypeError: error loading dynamically imported module` when navigating to the dashboard.
+# Proposal Page Updates
 
-## Solution
-Wrap all `lazy()` imports with a retry mechanism that automatically reloads the page when a chunk fails to load. This is a standard pattern for Vite + PWA apps.
+## Changes Overview
 
-## Changes
+### 1. Fix PDF/Print Download
+The current `window.print()` approach has issues. We'll add a proper PDF download button using `jsPDF` + `html2canvas` (both already installed) that renders the proposal to a high-quality PDF. The print button will remain as a secondary option, and a new "Download PDF" button will be added.
 
-### 1. Create a `lazyWithRetry` helper (`src/lib/lazyWithRetry.ts`)
-A utility function that wraps `React.lazy()` and catches chunk load errors. On failure, it forces a full page reload (once) to fetch the latest assets from the server.
+### 2. Change Company from BINAH INNOVATION LTD to FADAK MEDIA HUB
+All references to "BINAH INNOVATION LTD" will be replaced with "FADAK MEDIA HUB". The logo initials will change from "BI" to "FMH". The RC number will be removed (Fadak Media Hub details will replace it). Fatima Dauda Kurfi's role will be updated to "Chief Executive Director, Fadak Media Hub".
 
-```text
-lazyWithRetry(importFn)
-  --> try import()
-      --> success: return module
-      --> fail (chunk error): 
-          --> check sessionStorage flag to prevent infinite reload loop
-          --> set flag, window.location.reload()
-```
+### 3. Add Media & Branding Package (Basic) Section
+A new section will be added after the platform features, presenting the Basic Media & Branding package as an add-on service. This includes:
+- Social media management
+- Content creation (graphics, reels, videos)
+- Promotional video production
+- Professional photoshoots
+- Campaign strategy development
 
-### 2. Update `src/App.tsx`
-Replace all `lazy(() => import(...))` calls with `lazyWithRetry(() => import(...))`.
+The price field for media will be left blank (shown as "TBD" or a dash) as requested.
 
-### 3. Update `src/components/ui/error-boundary.tsx`
-Add detection for chunk loading errors specifically -- if the error message contains "dynamically imported module" or "Failed to fetch", offer a "Reload Page" button that does a hard refresh instead of just retrying the render.
+### 4. Update Pricing to Total ₦2,000,000
+The pricing table will be restructured into two parts:
+- **Part A: Digital Platform** (the main deliverable) -- platform line items adjusted to sum appropriately
+- **Part B: Media & Branding (Basic Package)** -- price shown as blank/TBD
+- **Grand Total: ₦2,000,000**
 
-## Why This Works
-- First visit after deployment: old chunk fails to load, page auto-reloads, fresh chunks are fetched
-- The `sessionStorage` flag prevents an infinite reload loop if the server itself is down
-- The error boundary provides a manual fallback if auto-reload doesn't resolve it
+The platform remains the priority and main focus of the proposal.
+
+### 5. Update Executive Summary
+Reflect that this is now a joint Technology + Media proposal from Fadak Media Hub, with the digital platform as the primary deliverable and media services as a complementary add-on.
+
+---
+
+## Technical Details
+
+### File: `src/pages/Proposal.tsx`
+
+**PDF Download Fix:**
+- Add a `useRef` on the proposal content wrapper
+- Add a "Download PDF" button that uses `html2canvas` to capture the content and `jsPDF` to generate a multi-page A4 PDF
+- Keep the existing "Print" button as secondary
+
+**Company Rebrand:**
+- Logo: "BI" to "FMH"
+- All "BINAH INNOVATION LTD" text to "FADAK MEDIA HUB"
+- Subtitle: "Chief Executive Director, Fadak Media Hub"
+- Remove RC Number line, replace with company tagline
+
+**New Section (Section 04: Media & Branding Services):**
+- Added as a new page with `page-break` class
+- Lists the Basic package services
+- Monthly retainer price left as "______" (blank for user to fill)
+
+**Pricing Table Update:**
+- Platform items repriced to leave room for media, total = ₦2,000,000
+- Media line item added with blank price
+- Grand total row shows ₦2,000,000
+
+**Section Renumbering:**
+- 01: Executive Summary
+- 02: Problems Addressed
+- 03: Platform Features & Deliverables
+- 04: Media & Branding Services (Basic Package) -- NEW
+- 05: Pricing Breakdown (updated)
+- 06: Project Timeline
+- 07: Contact Information
+
