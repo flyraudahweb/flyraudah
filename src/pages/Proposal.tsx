@@ -20,8 +20,11 @@ const Proposal = () => {
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = 210;
       const pdfHeight = 297;
+      const marginX = 15;
+      const marginTop = 15;
+      const contentWidth = pdfWidth - marginX * 2;
       const gap = 3;
-      let currentY = 0;
+      let currentY = marginTop;
       let isFirstSection = true;
 
       for (const section of sections) {
@@ -32,20 +35,17 @@ const Proposal = () => {
           backgroundColor: "#ffffff",
         });
         const imgData = canvas.toDataURL("image/png");
-        const imgHeightMm = (canvas.height * pdfWidth) / canvas.width;
+        const imgHeightMm = (canvas.height * contentWidth) / canvas.width;
 
-        if (!isFirstSection && currentY + imgHeightMm > pdfHeight) {
+        if (!isFirstSection && currentY + imgHeightMm > pdfHeight - marginTop) {
           pdf.addPage();
-          currentY = 0;
-        }
-        if (isFirstSection && !isFirstSection) {
-          // noop
+          currentY = marginTop;
         }
         if (isFirstSection) {
           isFirstSection = false;
         }
 
-        pdf.addImage(imgData, "PNG", 0, currentY, pdfWidth, imgHeightMm);
+        pdf.addImage(imgData, "PNG", marginX, currentY, contentWidth, imgHeightMm);
         currentY += imgHeightMm + gap;
       }
       pdf.save("Fadak_Media_Hub_Proposal_Raudah.pdf");
