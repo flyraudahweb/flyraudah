@@ -16,37 +16,37 @@ const Proposal = () => {
     if (!proposalRef.current || generating) return;
     setGenerating(true);
     try {
-      const pages = proposalRef.current.querySelectorAll<HTMLElement>(".proposal-page");
+      const sections = proposalRef.current.querySelectorAll<HTMLElement>("[data-pdf-section]");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = 210;
       const pdfHeight = 297;
+      const gap = 3;
+      let currentY = 0;
+      let isFirstSection = true;
 
-      for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], {
+      for (const section of sections) {
+        const canvas = await html2canvas(section, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
         });
         const imgData = canvas.toDataURL("image/png");
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+        const imgHeightMm = (canvas.height * pdfWidth) / canvas.width;
 
-        if (i > 0) pdf.addPage();
-
-        if (imgHeight <= pdfHeight) {
-          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeight);
-        } else {
-          let heightLeft = imgHeight;
-          let position = 0;
-          pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-          heightLeft -= pdfHeight;
-          while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-            heightLeft -= pdfHeight;
-          }
+        if (!isFirstSection && currentY + imgHeightMm > pdfHeight) {
+          pdf.addPage();
+          currentY = 0;
         }
+        if (isFirstSection && !isFirstSection) {
+          // noop
+        }
+        if (isFirstSection) {
+          isFirstSection = false;
+        }
+
+        pdf.addImage(imgData, "PNG", 0, currentY, pdfWidth, imgHeightMm);
+        currentY += imgHeightMm + gap;
       }
       pdf.save("Fadak_Media_Hub_Proposal_Raudah.pdf");
     } catch (e) {
@@ -69,7 +69,6 @@ const Proposal = () => {
       `}</style>
 
       <div className="proposal-wrapper bg-muted min-h-screen py-8 print:py-0 print:bg-white">
-        {/* Action Buttons */}
         <div className="no-print max-w-[210mm] mx-auto mb-4 px-4 flex justify-end gap-2">
           <Button variant="outline" onClick={() => window.print()} className="gap-2">
             <Printer className="h-4 w-4" /> Print
@@ -81,20 +80,12 @@ const Proposal = () => {
         </div>
 
         <div ref={proposalRef}>
-          {/* ===== COVER PAGE ===== */}
           <CoverPage />
-
-          {/* ===== EXECUTIVE SUMMARY ===== */}
           <ExecutiveSummaryPage />
-
-          {/* ===== PLATFORM FEATURES ===== */}
           <PlatformFeaturesPage />
-
-          {/* ===== MEDIA & BRANDING ===== */}
           <MediaBrandingPage />
-
-          {/* ===== PRICING & TIMELINE & CONTACT ===== */}
-          <PricingContactPage />
+          <PricingTimelinePage />
+          <ContactPage />
         </div>
       </div>
     </>
@@ -103,7 +94,7 @@ const Proposal = () => {
 
 const CoverPage = () => (
   <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "40mm 25mm" }}>
-    <div className="flex flex-col items-center justify-center h-full text-center space-y-8">
+    <div data-pdf-section className="flex flex-col items-center justify-center h-full text-center space-y-8">
       <div className="space-y-2">
         <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
         <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB NIGERIA LIMITED</h2>
@@ -137,129 +128,156 @@ const CoverPage = () => (
 
 const ExecutiveSummaryPage = () => (
   <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
-    <SectionTitle number="01" title="Executive Summary" />
-    <div className="space-y-4 text-sm leading-relaxed text-foreground/90 mt-6">
-      <p>
-        FADAK MEDIA HUB is pleased to present this proposal for <strong>Raudah Hajj & Umrah</strong>, combining cutting-edge technology solutions with strategic media and branding services to transform your operations and market presence.
-      </p>
-      <p>
-        The <strong>primary deliverable</strong> is a comprehensive digital platform that will revolutionize how Raudah manages pilgrim registrations, package bookings, payments, and agent partnerships. Complementing this, our <strong>Media & Branding services</strong> will amplify Raudah's brand visibility and customer acquisition through professional content creation and digital marketing.
-      </p>
-      <p>
-        This dual approach ensures Raudah not only has the operational infrastructure to scale efficiently, but also the strategic visibility to dominate the competitive Hajj & Umrah market in Nigeria.
-      </p>
+    <div data-pdf-section>
+      <SectionTitle number="01" title="Executive Summary" />
+      <div className="space-y-4 text-sm leading-relaxed text-foreground/90 mt-6">
+        <p>
+          FADAK MEDIA HUB is pleased to present this proposal for <strong>Raudah Hajj & Umrah</strong>, combining cutting-edge technology solutions with strategic media and branding services to transform your operations and market presence.
+        </p>
+        <p>
+          The <strong>primary deliverable</strong> is a comprehensive digital platform that will revolutionize how Raudah manages pilgrim registrations, package bookings, payments, and agent partnerships. Complementing this, our <strong>Media & Branding services</strong> will amplify Raudah's brand visibility and customer acquisition through professional content creation and digital marketing.
+        </p>
+        <p>
+          This dual approach ensures Raudah not only has the operational infrastructure to scale efficiently, but also the strategic visibility to dominate the competitive Hajj & Umrah market in Nigeria.
+        </p>
+      </div>
     </div>
 
-    <SectionTitle number="02" title="Problems Addressed" className="mt-12" />
-    <div className="mt-6 space-y-3">
-      {[
-        { title: "Manual Registration & Tracking", desc: "Paper-based pilgrim registration is error-prone, slow, and difficult to manage at scale." },
-        { title: "No Online Booking System", desc: "Pilgrims cannot browse packages or book online, limiting reach and convenience." },
-        { title: "No Digital Payment Infrastructure", desc: "Lack of integrated payment processing leads to tracking difficulties and delayed confirmations." },
-        { title: "No Agent/B2B Management", desc: "Managing agent relationships, commissions, and wholesale bookings is done manually." },
-        { title: "No Analytics or Reporting", desc: "Decision-making is hampered by the absence of real-time business intelligence." },
-        { title: "Weak Digital Presence & Branding", desc: "Limited social media presence and no cohesive brand strategy reduces market competitiveness." },
-      ].map((item, i) => (
-        <div key={i} className="flex gap-3 items-start">
-          <div className="w-6 h-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</div>
-          <div>
-            <p className="font-semibold text-sm">{item.title}</p>
-            <p className="text-xs text-muted-foreground">{item.desc}</p>
+    <div data-pdf-section>
+      <SectionTitle number="02" title="Problems Addressed" className="mt-12" />
+      <div className="mt-6 space-y-3">
+        {[
+          { title: "Manual Registration & Tracking", desc: "Paper-based pilgrim registration is error-prone, slow, and difficult to manage at scale." },
+          { title: "No Online Booking System", desc: "Pilgrims cannot browse packages or book online, limiting reach and convenience." },
+          { title: "No Digital Payment Infrastructure", desc: "Lack of integrated payment processing leads to tracking difficulties and delayed confirmations." },
+          { title: "No Agent/B2B Management", desc: "Managing agent relationships, commissions, and wholesale bookings is done manually." },
+          { title: "No Analytics or Reporting", desc: "Decision-making is hampered by the absence of real-time business intelligence." },
+          { title: "Weak Digital Presence & Branding", desc: "Limited social media presence and no cohesive brand strategy reduces market competitiveness." },
+        ].map((item, i) => (
+          <div key={i} className="flex gap-3 items-start">
+            <div className="w-6 h-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</div>
+            <div>
+              <p className="font-semibold text-sm">{item.title}</p>
+              <p className="text-xs text-muted-foreground">{item.desc}</p>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   </div>
 );
 
 const PlatformFeaturesPage = () => (
   <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
-    <SectionTitle number="03" title="Platform Features & Deliverables" />
-    <p className="text-xs text-muted-foreground mt-2 mb-4 italic">Primary Deliverable — Comprehensive Digital Platform</p>
+    <div data-pdf-section>
+      <SectionTitle number="03" title="Platform Features & Deliverables" />
+      <p className="text-xs text-muted-foreground mt-2 mb-4 italic">Primary Deliverable — Comprehensive Digital Platform</p>
+    </div>
     <div className="mt-4 space-y-6">
-      <FeatureBlock title="🕌 Public Landing Page" items={[
-        "Hero section with cinematic visuals & parallax effects",
-        "Package showcase with search, filtering & detailed views",
-        "Agent/B2B application portal",
-        "WhatsApp integration for instant support",
-        "Multi-language support (English, Arabic, French, Hausa)",
-        "PWA: installable & works offline",
-      ]} />
-      <FeatureBlock title="👤 Pilgrim / User Portal" items={[
-        "Step-by-step booking wizard with real-time validation",
-        "Online payments via Paystack (card, bank transfer, USSD)",
-        "Document upload & management (passport, visa, vaccines)",
-        "Booking history & payment tracking",
-        "Profile management & support ticket system",
-      ]} />
-      <FeatureBlock title="🛡️ Admin Dashboard" items={[
-        "Comprehensive pilgrim management with search & filters",
-        "Package creation & lifecycle management",
-        "Payment verification & reconciliation",
-        "Real-time analytics & revenue dashboards",
-        "Printable pilgrim ID tags with QR codes",
-        "Agent application review & approval workflow",
-        "AI-powered assistant for operational queries",
-      ]} />
-      <FeatureBlock title="🤝 Agent / B2B Portal" items={[
-        "Client management & bulk registration",
-        "Wholesale package booking at discounted rates",
-        "Commission tracking & payout management",
-        "Dedicated agent dashboard with performance metrics",
-      ]} />
-      <FeatureBlock title="💳 Payment Gateway Integration" items={[
-        "Paystack payment gateway (Nigeria's leading processor)",
-        "Multiple payment channels: Card, Bank Transfer, USSD",
-        "Automated payment verification & callback handling",
-        "Deposit/installment payment support for Hajj packages",
-        "Payment receipts & transaction history",
-      ]} />
-      <FeatureBlock title="⚙️ Technical Infrastructure" items={[
-        "Secure authentication with role-based access control",
-        "PostgreSQL database with row-level security",
-        "Real-time notifications system",
-        "Responsive design for all devices",
-        "SEO optimization for search engine visibility",
-      ]} />
+      <div data-pdf-section>
+        <FeatureBlock title="🕌 Public Landing Page" items={[
+          "Hero section with cinematic visuals & parallax effects",
+          "Package showcase with search, filtering & detailed views",
+          "Agent/B2B application portal",
+          "WhatsApp integration for instant support",
+          "Multi-language support (English, Arabic, French, Hausa)",
+          "PWA: installable & works offline",
+        ]} />
+      </div>
+      <div data-pdf-section>
+        <FeatureBlock title="👤 Pilgrim / User Portal" items={[
+          "Step-by-step booking wizard with real-time validation",
+          "Online payments via Paystack (card, bank transfer, USSD)",
+          "Document upload & management (passport, visa, vaccines)",
+          "Booking history & payment tracking",
+          "Profile management & support ticket system",
+        ]} />
+      </div>
+      <div data-pdf-section>
+        <FeatureBlock title="🛡️ Admin Dashboard" items={[
+          "Comprehensive pilgrim management with search & filters",
+          "Package creation & lifecycle management",
+          "Payment verification & reconciliation",
+          "Real-time analytics & revenue dashboards",
+          "Printable pilgrim ID tags with QR codes",
+          "Agent application review & approval workflow",
+          "AI-powered assistant for operational queries",
+        ]} />
+      </div>
+      <div data-pdf-section>
+        <FeatureBlock title="🤝 Agent / B2B Portal" items={[
+          "Client management & bulk registration",
+          "Wholesale package booking at discounted rates",
+          "Commission tracking & payout management",
+          "Dedicated agent dashboard with performance metrics",
+        ]} />
+      </div>
+      <div data-pdf-section>
+        <FeatureBlock title="💳 Payment Gateway Integration" items={[
+          "Paystack payment gateway (Nigeria's leading processor)",
+          "Multiple payment channels: Card, Bank Transfer, USSD",
+          "Automated payment verification & callback handling",
+          "Deposit/installment payment support for Hajj packages",
+          "Payment receipts & transaction history",
+        ]} />
+      </div>
+      <div data-pdf-section>
+        <FeatureBlock title="⚙️ Technical Infrastructure" items={[
+          "Secure authentication with role-based access control",
+          "PostgreSQL database with row-level security",
+          "Real-time notifications system",
+          "Responsive design for all devices",
+          "SEO optimization for search engine visibility",
+        ]} />
+      </div>
     </div>
   </div>
 );
 
 const MediaBrandingPage = () => (
   <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
-    <SectionTitle number="04" title="Media & Branding Services" />
-    <p className="text-xs text-muted-foreground mt-2 mb-4 italic">Standard Package — Comprehensive Brand Building</p>
-
-    <div className="text-sm leading-relaxed text-foreground/90 mb-6">
-      <p>
-        The <strong>Standard Package</strong> provides the right balance of consistent brand building, dedicated campaign execution, and measurable results that Raudah needs to compete effectively in the Hajj & Umrah market. With a structured content pipeline, professional media production, and strategic marketing, this tier ensures Raudah maintains a strong, recognizable presence across all digital channels year-round.
-      </p>
+    <div data-pdf-section>
+      <SectionTitle number="04" title="Media & Branding Services" />
+      <p className="text-xs text-muted-foreground mt-2 mb-4 italic">Standard Package — Comprehensive Brand Building</p>
+      <div className="text-sm leading-relaxed text-foreground/90 mb-6">
+        <p>
+          The <strong>Standard Package</strong> provides the right balance of consistent brand building, dedicated campaign execution, and measurable results that Raudah needs to compete effectively in the Hajj & Umrah market. With a structured content pipeline, professional media production, and strategic marketing, this tier ensures Raudah maintains a strong, recognizable presence across all digital channels year-round.
+        </p>
+      </div>
     </div>
 
     <div className="space-y-6">
-      <FeatureBlock title="📱 Social Media Management" items={[
-        "Content calendar planning & scheduling",
-        "Community engagement & audience growth",
-        "Performance analytics & monthly reporting",
-      ]} />
-      <FeatureBlock title="🎨 Content Creation" items={[
-        "Professional graphics & branded templates",
-        "Short-form video content (reels & stories)",
-        "Copywriting for social media & campaigns",
-      ]} />
-      <FeatureBlock title="🎬 Video Production" items={[
-        "Promotional video production",
-        "Professional photoshoots for branding & marketing",
-        "Event coverage & documentation",
-      ]} />
-      <FeatureBlock title="📈 Campaign Strategy & Execution" items={[
-        "Digital marketing campaign development & execution",
-        "Brand positioning & messaging strategy",
-        "Target audience analysis & engagement planning",
-      ]} />
+      <div data-pdf-section>
+        <FeatureBlock title="📱 Social Media Management" items={[
+          "Content calendar planning & scheduling",
+          "Community engagement & audience growth",
+          "Performance analytics & monthly reporting",
+        ]} />
+      </div>
+      <div data-pdf-section>
+        <FeatureBlock title="🎨 Content Creation" items={[
+          "Professional graphics & branded templates",
+          "Short-form video content (reels & stories)",
+          "Copywriting for social media & campaigns",
+        ]} />
+      </div>
+      <div data-pdf-section>
+        <FeatureBlock title="🎬 Video Production" items={[
+          "Promotional video production",
+          "Professional photoshoots for branding & marketing",
+          "Event coverage & documentation",
+        ]} />
+      </div>
+      <div data-pdf-section>
+        <FeatureBlock title="📈 Campaign Strategy & Execution" items={[
+          "Digital marketing campaign development & execution",
+          "Brand positioning & messaging strategy",
+          "Target audience analysis & engagement planning",
+        ]} />
+      </div>
     </div>
 
-    <div className="mt-8 p-4 rounded-lg border border-dashed border-[hsl(var(--secondary))] bg-[hsl(var(--secondary))]/5">
+    <div data-pdf-section className="mt-8 p-4 rounded-lg border border-dashed border-[hsl(var(--secondary))] bg-[hsl(var(--secondary))]/5">
       <p className="text-sm font-semibold text-[hsl(var(--primary))]">Monthly Retainer (Standard Package)</p>
       <p className="text-2xl font-bold mt-1 text-foreground">₦600,000</p>
       <p className="text-xs text-muted-foreground mt-1">Billed monthly · Includes all services listed above</p>
@@ -267,94 +285,106 @@ const MediaBrandingPage = () => (
   </div>
 );
 
-const PricingContactPage = () => (
+const PricingTimelinePage = () => (
   <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
-    <SectionTitle number="05" title="Pricing Breakdown" />
-    <div className="mt-6">
-      <p className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">Part A — Digital Platform (Primary Deliverable)</p>
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr className="bg-[hsl(var(--primary))] text-white">
-            <th className="text-left py-3 px-4 font-semibold">Item</th>
-            <th className="text-right py-3 px-4 font-semibold">Cost (NGN)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[
-            ["Backend Development (Database, Auth, APIs, Edge Functions)", "250,000"],
-            ["Frontend Development (UI/UX, Components, Responsive Design)", "300,000"],
-            ["Payment Gateway Integration (Paystack)", "250,000"],
-            ["Feature Modules (Agent, User & Admin Portals)", "250,000"],
-            ["Hosting, Backend Services & Email (1 Year)", "300,000"],
-            ["Domain Registration", "50,000"],
-          ].map(([item, cost], i) => (
-            <tr key={i} className={i % 2 === 0 ? "bg-muted/50" : ""}>
-              <td className="py-3 px-4 border-b border-border">{item}</td>
-              <td className="py-3 px-4 border-b border-border text-right font-medium">₦{cost}</td>
+    <div data-pdf-section>
+      <SectionTitle number="05" title="Pricing Breakdown" />
+      <div className="mt-6">
+        <p className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">Part A — Digital Platform (Primary Deliverable)</p>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-[hsl(var(--primary))] text-white">
+              <th className="text-left py-3 px-4 font-semibold">Item</th>
+              <th className="text-right py-3 px-4 font-semibold">Cost (NGN)</th>
             </tr>
-          ))}
-          <tr className="font-bold">
-            <td className="py-3 px-4 border-b border-border">Platform Subtotal</td>
-            <td className="py-3 px-4 border-b border-border text-right">₦1,400,000</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {[
+              ["Backend Development (Database, Auth, APIs, Edge Functions)", "250,000"],
+              ["Frontend Development (UI/UX, Components, Responsive Design)", "300,000"],
+              ["Payment Gateway Integration (Paystack)", "250,000"],
+              ["Feature Modules (Agent, User & Admin Portals)", "250,000"],
+              ["Hosting, Backend Services & Email (1 Year)", "300,000"],
+              ["Domain Registration", "50,000"],
+            ].map(([item, cost], i) => (
+              <tr key={i} className={i % 2 === 0 ? "bg-muted/50" : ""}>
+                <td className="py-3 px-4 border-b border-border">{item}</td>
+                <td className="py-3 px-4 border-b border-border text-right font-medium">₦{cost}</td>
+              </tr>
+            ))}
+            <tr className="font-bold">
+              <td className="py-3 px-4 border-b border-border">Platform Subtotal</td>
+              <td className="py-3 px-4 border-b border-border text-right">₦1,400,000</td>
+            </tr>
+          </tbody>
+        </table>
 
-      <p className="text-xs font-bold text-muted-foreground mb-2 mt-8 uppercase tracking-wider">Part B — Media & Branding (Standard Package)</p>
-      <table className="w-full text-sm border-collapse">
-        <tbody>
-          <tr className="bg-muted/50">
-            <td className="py-3 px-4 border-b border-border">Media & Branding Standard Package</td>
-            <td className="py-3 px-4 border-b border-border text-right font-medium">₦600,000</td>
-          </tr>
-        </tbody>
-      </table>
+        <p className="text-xs font-bold text-muted-foreground mb-2 mt-8 uppercase tracking-wider">Part B — Media & Branding (Standard Package)</p>
+        <table className="w-full text-sm border-collapse">
+          <tbody>
+            <tr className="bg-muted/50">
+              <td className="py-3 px-4 border-b border-border">Media & Branding Standard Package</td>
+              <td className="py-3 px-4 border-b border-border text-right font-medium">₦600,000</td>
+            </tr>
+          </tbody>
+        </table>
 
-      <div className="mt-6 p-4 rounded-lg bg-[hsl(var(--primary))]/10 border border-[hsl(var(--primary))]/20">
-        <div className="flex justify-between items-center">
-          <span className="font-bold text-lg text-[hsl(var(--primary))]">Grand Total</span>
-          <span className="font-bold text-xl text-[hsl(var(--primary))]">₦2,000,000</span>
+        <div className="mt-6 p-4 rounded-lg bg-[hsl(var(--primary))]/10 border border-[hsl(var(--primary))]/20">
+          <div className="flex justify-between items-center">
+            <span className="font-bold text-lg text-[hsl(var(--primary))]">Grand Total</span>
+            <span className="font-bold text-xl text-[hsl(var(--primary))]">₦2,000,000</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Platform (₦1,400,000) + Media Standard (₦600,000)</p>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">Platform (₦1,400,000) + Media Standard (₦600,000)</p>
       </div>
     </div>
 
-    <SectionTitle number="06" title="Project Timeline" className="mt-14" />
-    <div className="mt-6 space-y-3">
-      {[
-        { phase: "Day 1–2", task: "Database design, authentication setup, backend API development" },
-        { phase: "Day 2–4", task: "Frontend development: Landing page, User portal, Admin dashboard" },
-        { phase: "Day 4–5", task: "Agent portal, Payment gateway integration, Document management" },
-        { phase: "Day 5–6", task: "Testing, bug fixes, performance optimization" },
-        { phase: "Day 6–7", task: "Deployment, domain setup, client training & handover" },
-      ].map((item, i) => (
-        <div key={i} className="flex gap-4 items-start">
-          <div className="bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] rounded-md px-3 py-1 text-xs font-bold flex-shrink-0 min-w-[70px] text-center">
-            {item.phase}
+    <div data-pdf-section>
+      <SectionTitle number="06" title="Project Timeline" className="mt-14" />
+      <div className="mt-6 space-y-3">
+        {[
+          { phase: "Day 1–2", task: "Database design, authentication setup, backend API development" },
+          { phase: "Day 2–4", task: "Frontend development: Landing page, User portal, Admin dashboard" },
+          { phase: "Day 4–5", task: "Agent portal, Payment gateway integration, Document management" },
+          { phase: "Day 5–6", task: "Testing, bug fixes, performance optimization" },
+          { phase: "Day 6–7", task: "Deployment, domain setup, client training & handover" },
+        ].map((item, i) => (
+          <div key={i} className="flex gap-4 items-start">
+            <div className="bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] rounded-md px-3 py-1 text-xs font-bold flex-shrink-0 min-w-[70px] text-center">
+              {item.phase}
+            </div>
+            <p className="text-sm pt-0.5">{item.task}</p>
           </div>
-          <p className="text-sm pt-0.5">{item.task}</p>
-        </div>
-      ))}
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const ContactPage = () => (
+  <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
+    <div data-pdf-section>
+      <SectionTitle number="07" title="Contact & Team" />
+      <div className="mt-6 space-y-4">
+        {[
+          { name: "Fatima Dauda Kurfi", role: "CHIEF EXECUTIVE DIRECTOR, FADAK MEDIA HUB", phone: "09160628769", photo: teamFatima },
+          { name: "Abubakar Lawal Abba", role: "PROJECT LEAD", phone: "07034681817", photo: teamAbubakar },
+          { name: "Aliyu Wada Umar", role: "PROJECT TECHNICAL DIRECTOR", phone: "09063412927", photo: teamAliyu },
+        ].map((person, i) => (
+          <div key={i} className="flex items-center gap-4 p-4 rounded-lg border border-border">
+            <img src={person.photo} alt={person.name} className="w-20 h-20 rounded-full object-cover flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-sm">{person.name}</p>
+              <p className="text-xs text-muted-foreground">{person.role}</p>
+            </div>
+            <p className="ml-auto text-sm font-mono">{person.phone}</p>
+          </div>
+        ))}
+      </div>
     </div>
 
-    <SectionTitle number="07" title="Contact & Team" className="mt-14" />
-    <div className="mt-6 space-y-4">
-      {[
-        { name: "Fatima Dauda Kurfi", role: "CHIEF EXECUTIVE DIRECTOR, FADAK MEDIA HUB", phone: "09160628769", photo: teamFatima },
-        { name: "Abubakar Lawal Abba", role: "PROJECT LEAD", phone: "07034681817", photo: teamAbubakar },
-        { name: "Aliyu Wada Umar", role: "PROJECT TECHNICAL DIRECTOR", phone: "09063412927", photo: teamAliyu },
-      ].map((person, i) => (
-        <div key={i} className="flex items-center gap-4 p-3 rounded-lg border border-border">
-          <img src={person.photo} alt={person.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-          <div>
-            <p className="font-semibold text-sm">{person.name}</p>
-            <p className="text-xs text-muted-foreground">{person.role}</p>
-          </div>
-          <p className="ml-auto text-sm font-mono">{person.phone}</p>
-        </div>
-      ))}
-
-      <div className="mt-4 p-4 rounded-lg bg-muted/50 space-y-2 text-sm">
+    <div data-pdf-section>
+      <div className="mt-6 p-4 rounded-lg bg-muted/50 space-y-2 text-sm">
         <div className="flex items-center gap-2">
           <Mail className="h-4 w-4 text-muted-foreground" />
           <span>fadakmediacompany@gmail.com</span>
@@ -370,13 +400,15 @@ const PricingContactPage = () => (
       </div>
     </div>
 
-    <div className="mt-16 pt-6 border-t border-border text-center text-xs text-muted-foreground space-y-1">
-      <p className="font-semibold">FADAK MEDIA HUB NIGERIA LIMITED · RC: 8426199</p>
-      <p>This proposal is confidential and intended solely for the addressee.</p>
-      <a href="https://raudahtravels.lovable.app" className="text-[hsl(var(--primary))] underline">
-        raudahtravels.lovable.app
-      </a>
-      <p>© 2026 FADAK MEDIA HUB NIGERIA LIMITED. All rights reserved.</p>
+    <div data-pdf-section>
+      <div className="mt-16 pt-6 border-t border-border text-center text-xs text-muted-foreground space-y-1">
+        <p className="font-semibold">FADAK MEDIA HUB NIGERIA LIMITED · RC: 8426199</p>
+        <p>This proposal is confidential and intended solely for the addressee.</p>
+        <a href="https://raudahtravels.lovable.app" className="text-[hsl(var(--primary))] underline">
+          raudahtravels.lovable.app
+        </a>
+        <p>© 2026 FADAK MEDIA HUB NIGERIA LIMITED. All rights reserved.</p>
+      </div>
     </div>
   </div>
 );
