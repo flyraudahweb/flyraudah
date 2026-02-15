@@ -85,8 +85,8 @@ const Proposal = () => {
           <PlatformFeaturesPage />
           <MediaBrandingPage />
           <PricingTimelinePage />
-          <ContactPage />
           <MOUPage />
+          <ContactPage />
         </div>
       </div>
     </>
