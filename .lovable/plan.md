@@ -1,43 +1,57 @@
 
 
-# Fix PDF Text Clipping Issues
+# Fix PDF Text Clipping and Demo Link Label
 
-## Problem
+## Root Cause
 
-Despite previous splits, several texts are still being cut off in the downloaded PDF:
-- Cover page demo link ("raudahtravels.lovable.app") partially hidden
-- "Primary Deliverable" subtitle, "Payment receipts & transaction history", "Target audience analysis & engagement planning"
-- Confidentiality clause text
+The text clipping (e.g., "yideo" instead of "video", "IIMITED" instead of "LIMITED", "muless" instead of "unless") is caused by `html2canvas` cutting off the top/bottom pixels of text in each captured `data-pdf-section`. When sections have no vertical padding, the bitmap capture clips character ascenders/descenders at section boundaries.
 
-The root cause is twofold: (1) the PDF generator's bottom margin buffer is too tight, causing sections near page boundaries to clip, and (2) the MOUPage contains too many `data-pdf-section` blocks in a single tall wrapper, causing later sections to overflow.
+## Changes (File: `src/pages/Proposal.tsx`)
 
-## Technical Changes (File: `src/pages/Proposal.tsx`)
+### 1. Add vertical padding to all PDF sections via inline style
 
-### 1. Increase PDF bottom margin buffer
+Before capturing each section in `handleDownloadPDF`, temporarily add padding to each `data-pdf-section` element to give html2canvas breathing room around text. Then remove it after capture. This prevents letter clipping without affecting the on-screen layout.
 
-Change the page-fit check from `pdfHeight - marginTop` (282mm) to `pdfHeight - marginTop - 5` (277mm), giving a safer 20mm bottom margin to prevent clipping at page edges.
+```
+for (const section of sections) {
+  // Temporarily add padding for clean capture
+  const prevPadding = section.style.padding;
+  section.style.padding = "6px 2px";
 
-### 2. Force new page after cover page sections
+  const canvas = await html2canvas(section, { ... });
 
-Add a sentinel/spacer approach: after the cover page's last `data-pdf-section`, the generator should start a new page for the next content. Achieve this by reducing the cover page top padding from `40mm` to `30mm` so sections don't start so deep into the page.
+  // Restore original padding
+  section.style.padding = prevPadding;
+  ...
+}
+```
 
-### 3. Split MOUPage into two separate page wrappers
+### 2. Increase html2canvas scale from 2 to 3
 
-The current MOUPage is one div containing 7+ `data-pdf-section` blocks (MOU header, clauses 1-4, confidentiality, signatures, team, contact info, footer). This is too much content for reliable pagination. Split into:
+Higher resolution capture produces sharper text in the final PDF, reducing the blurry/cut appearance when scaled to A4 dimensions.
 
-- **MOUPage**: Contains sections 07 (MOU title, clauses, confidentiality, signatures)
-- **ContactTeamPage**: A new separate page wrapper containing section 08 (Contact & Team, contact info card, footer)
+### 3. Set a fixed width on the container before PDF generation
 
-This ensures the team/contact content starts on a fresh PDF page and doesn't get squeezed into whatever space remains after the MOU.
+Before iterating sections, temporarily set the proposal container to a fixed pixel width (e.g., 800px) so html2canvas renders consistently regardless of the user's viewport size. Restore after generation.
 
-### 4. Ensure each FeatureBlock page uses separate section captures
+### 4. Label the demo link on the Cover Page
 
-The PlatformFeaturesPage and MediaBrandingPage already have individual `data-pdf-section` per feature block -- these are fine. The fix is primarily the bottom margin buffer (#1) which prevents their last items from clipping.
+Change the bare link on line 135-137 from:
+```
+<a href="...">raudahtravels.lovable.app</a>
+```
+to:
+```
+<p>Demo: <a href="...">raudahtravels.lovable.app</a></p>
+```
 
-## Summary of edits
+### 5. Label the footer demo link
 
-- Lines 24-25: Add `marginBottom = 20` and use `pdfHeight - marginBottom` for the page-fit check
-- Line 108: Reduce cover page padding from `40mm 25mm` to `30mm 25mm`
-- Lines 468-515: Extract team, contact info, and footer into a new `ContactTeamPage` component with its own page wrapper
-- Line 100: Add `<ContactTeamPage />` after `<MOUPage />`
+Same change for the footer link on line 515-517 -- prefix with "Demo:" for clarity.
+
+## Summary
+
+- Lines 30-61 (`handleDownloadPDF`): Add temp padding to sections before capture, increase scale to 3, set fixed container width
+- Lines 132-138 (Cover Page): Add "Demo:" label to link
+- Lines 515-517 (Footer): Add "Demo:" label to link
 
