@@ -27,13 +27,28 @@ const Proposal = () => {
       const gap = 3;
       let currentY = marginTop;
 
+      // Set fixed width for consistent rendering
+      const container = proposalRef.current;
+      const prevWidth = container.style.width;
+      const prevMaxWidth = container.style.maxWidth;
+      container.style.width = "800px";
+      container.style.maxWidth = "800px";
+
       for (const section of sections) {
+        // Temporarily add padding for clean capture (prevents letter clipping)
+        const prevPadding = section.style.padding;
+        section.style.padding = "8px 4px";
+
         const canvas = await html2canvas(section, {
-          scale: 2,
+          scale: 3,
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
         });
+
+        // Restore original padding
+        section.style.padding = prevPadding;
+
         const imgData = canvas.toDataURL("image/png");
         const imgHeightMm = (canvas.height * contentWidth) / canvas.width;
 
@@ -60,6 +75,11 @@ const Proposal = () => {
           currentY += imgHeightMm + gap;
         }
       }
+
+      // Restore container width
+      container.style.width = prevWidth;
+      container.style.maxWidth = prevMaxWidth;
+
       pdf.save("Fadak_Media_Hub_Proposal_Raudah.pdf");
     } catch (e) {
       console.error("PDF generation failed:", e);
@@ -132,9 +152,7 @@ const CoverPage = () => (
     <div data-pdf-section className="flex flex-col items-center text-center mt-8 space-y-2 text-sm text-muted-foreground">
       <p>February 2026</p>
       <p>Confidential</p>
-      <a href="https://raudahtravels.lovable.app" className="text-[hsl(var(--primary))] underline text-xs">
-        raudahtravels.lovable.app
-      </a>
+      <p className="text-xs">Demo: <a href="https://raudahtravels.lovable.app" className="text-[hsl(var(--primary))] underline">raudahtravels.lovable.app</a></p>
     </div>
   </div>
 );
@@ -512,9 +530,7 @@ const ContactTeamPage = () => (
       <div className="mt-16 pt-6 border-t border-border text-center text-xs text-muted-foreground space-y-1">
         <p className="font-semibold">FADAK MEDIA HUB NIGERIA LIMITED · RC: 8426199</p>
         <p>This proposal is confidential and intended solely for the addressee.</p>
-        <a href="https://raudahtravels.lovable.app" className="text-[hsl(var(--primary))] underline">
-          raudahtravels.lovable.app
-        </a>
+        <p>Demo: <a href="https://raudahtravels.lovable.app" className="text-[hsl(var(--primary))] underline">raudahtravels.lovable.app</a></p>
         <p>© 2026 FADAK MEDIA HUB NIGERIA LIMITED. All rights reserved.</p>
       </div>
     </div>
