@@ -25,7 +25,6 @@ const Proposal = () => {
       const contentWidth = pdfWidth - marginX * 2;
       const gap = 3;
       let currentY = marginTop;
-      let isFirstSection = true;
 
       for (const section of sections) {
         const canvas = await html2canvas(section, {
@@ -37,16 +36,29 @@ const Proposal = () => {
         const imgData = canvas.toDataURL("image/png");
         const imgHeightMm = (canvas.height * contentWidth) / canvas.width;
 
-        if (!isFirstSection && currentY + imgHeightMm > pdfHeight - marginTop) {
-          pdf.addPage();
+        // Always check if section fits, even for the first section on a page
+        if (currentY + imgHeightMm > pdfHeight - marginTop) {
+          if (currentY > marginTop) {
+            // Not at top of page, add new page
+            pdf.addPage();
+          }
           currentY = marginTop;
         }
-        if (isFirstSection) {
-          isFirstSection = false;
-        }
 
-        pdf.addImage(imgData, "PNG", marginX, currentY, contentWidth, imgHeightMm);
-        currentY += imgHeightMm + gap;
+        // Handle sections taller than a full page
+        if (imgHeightMm > pdfHeight - marginTop * 2) {
+          // Scale down to fit one page
+          const maxH = pdfHeight - marginTop * 2;
+          const scale = maxH / imgHeightMm;
+          const scaledW = contentWidth * scale;
+          const scaledH = imgHeightMm * scale;
+          const offsetX = marginX + (contentWidth - scaledW) / 2;
+          pdf.addImage(imgData, "PNG", offsetX, currentY, scaledW, scaledH);
+          currentY += scaledH + gap;
+        } else {
+          pdf.addImage(imgData, "PNG", marginX, currentY, contentWidth, imgHeightMm);
+          currentY += imgHeightMm + gap;
+        }
       }
       pdf.save("Fadak_Media_Hub_Proposal_Raudah.pdf");
     } catch (e) {
@@ -86,7 +98,6 @@ const Proposal = () => {
           <MediaBrandingPage />
           <PricingTimelinePage />
           <MOUPage />
-          <ContactPage />
         </div>
       </div>
     </>
@@ -95,34 +106,34 @@ const Proposal = () => {
 
 const CoverPage = () => (
   <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "40mm 25mm" }}>
-    <div data-pdf-section className="flex flex-col items-center justify-center h-full text-center space-y-8">
-      <div className="space-y-2">
-        <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
-        <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB NIGERIA LIMITED</h2>
-        <p className="text-xs text-muted-foreground font-medium">RC: 8426199</p>
-        <p className="text-sm text-muted-foreground italic">Media · Technology · Strategy</p>
-      </div>
+    <div data-pdf-section className="flex flex-col items-center text-center space-y-2">
+      <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
+      <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB NIGERIA LIMITED</h2>
+      <p className="text-xs text-muted-foreground font-medium">RC: 8426199</p>
+      <p className="text-sm text-muted-foreground italic">Media · Technology · Strategy</p>
+    </div>
 
-      <div className="border-t border-b border-[hsl(var(--secondary))] py-8 px-4 space-y-4 my-8">
+    <div data-pdf-section className="flex flex-col items-center text-center mt-8">
+      <div className="border-t border-b border-[hsl(var(--secondary))] py-8 px-4 space-y-4 w-full">
         <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Proposal</p>
         <h1 className="text-3xl md:text-4xl font-bold text-[hsl(var(--primary))]" style={{ fontFamily: "Playfair Display, serif" }}>
           Rauda Travel and Agency<br />Digital Platform &<br />Media Services
         </h1>
       </div>
 
-      <div className="space-y-2 text-sm text-muted-foreground">
+      <div className="space-y-2 text-sm text-muted-foreground mt-8">
         <p className="font-semibold">Prepared For:</p>
         <p className="text-foreground font-bold text-lg">The Chairman, Rauda Travel and Agency</p>
         <p>Kano, Nigeria</p>
       </div>
+    </div>
 
-      <div className="space-y-2 text-sm text-muted-foreground mt-auto">
-        <p>February 2026</p>
-        <p>Confidential</p>
-        <a href="https://raudahtravels.lovable.app" className="text-[hsl(var(--primary))] underline text-xs">
-          raudahtravels.lovable.app
-        </a>
-      </div>
+    <div data-pdf-section className="flex flex-col items-center text-center mt-8 space-y-2 text-sm text-muted-foreground">
+      <p>February 2026</p>
+      <p>Confidential</p>
+      <a href="https://raudahtravels.lovable.app" className="text-[hsl(var(--primary))] underline text-xs">
+        raudahtravels.lovable.app
+      </a>
     </div>
   </div>
 );
@@ -362,10 +373,101 @@ const PricingTimelinePage = () => (
   </div>
 );
 
-const ContactPage = () => (
+const SectionTitle = ({ number, title, className = "" }: { number: string; title: string; className?: string }) => (
+  <div className={`flex items-center gap-3 ${className}`}>
+    <span className="text-xs font-bold text-[hsl(var(--secondary))] bg-[hsl(var(--secondary))]/10 rounded-full w-8 h-8 flex items-center justify-center">{number}</span>
+    <h2 className="text-xl font-bold text-[hsl(var(--primary))]" style={{ fontFamily: "Playfair Display, serif" }}>{title}</h2>
+  </div>
+);
+
+const MOUPage = () => (
   <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
     <div data-pdf-section>
-      <SectionTitle number="07" title="Contact & Team" />
+      <SectionTitle number="07" title="Memorandum of Understanding (MOU)" />
+      <p className="text-xs text-muted-foreground mt-2 mb-6 italic">This Memorandum of Understanding sets forth the terms agreed upon by both parties.</p>
+
+      <div className="space-y-1 text-sm leading-relaxed text-foreground/90">
+        <p className="font-semibold">Parties:</p>
+        <p><strong>Party A:</strong> FADAK MEDIA HUB NIGERIA LIMITED (RC: 8426199), hereinafter referred to as "the Provider"</p>
+        <p><strong>Party B:</strong> Rauda Travel and Agency, hereinafter referred to as "the Client"</p>
+      </div>
+    </div>
+
+    <div data-pdf-section className="mt-8 space-y-6">
+      {[
+        {
+          num: 1,
+          title: "Scope of Work",
+          content: "The Provider shall deliver: (a) A comprehensive Digital Platform including public landing page, pilgrim portal, admin dashboard, agent portal, and payment gateway integration; (b) Media & Branding services under the Standard Package including social media management, content creation, video production, and campaign strategy."
+        },
+        {
+          num: 2,
+          title: "Payment Terms",
+          content: "The total project cost is ₦2,000,000 (Two Million Naira), comprising ₦1,400,000 for the Digital Platform and ₦600,000 for the Media & Branding Standard Package. Payment shall be made in two installments: 60% (₦1,200,000) upon signing of this MOU, and 40% (₦800,000) upon project completion and handover."
+        },
+        {
+          num: 3,
+          title: "Timeline",
+          content: "The Provider commits to delivering the Digital Platform within 7 (seven) working days from the date of first payment. Media & Branding services commence immediately and are billed monthly thereafter."
+        },
+        {
+          num: 4,
+          title: "Ownership & Intellectual Property",
+          content: "Full ownership of the Digital Platform, including source code and all associated assets, shall transfer to the Client upon receipt of full payment. The Provider retains the right to showcase the project in its portfolio unless otherwise agreed."
+        },
+      ].map((clause) => (
+        <div key={clause.num} className="flex gap-3 items-start">
+          <div className="w-6 h-6 rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{clause.num}</div>
+          <div>
+            <p className="font-semibold text-sm">{clause.title}</p>
+            <p className="text-xs text-muted-foreground mt-1">{clause.content}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div data-pdf-section className="mt-6">
+      <div className="flex gap-3 items-start">
+        <div className="w-6 h-6 rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">5</div>
+        <div>
+          <p className="font-semibold text-sm">Confidentiality</p>
+          <p className="text-xs text-muted-foreground mt-1">Both parties agree to maintain strict confidentiality regarding all proprietary information, business strategies, and technical details shared during the course of this engagement.</p>
+        </div>
+      </div>
+    </div>
+
+    <div data-pdf-section className="mt-12">
+      <p className="text-sm font-semibold mb-8">IN WITNESS WHEREOF, the parties have executed this Memorandum of Understanding as of the date set forth below.</p>
+      <div className="grid grid-cols-2 gap-12">
+        {[
+          { party: "For: FADAK MEDIA HUB NIGERIA LIMITED", role: "(The Provider)" },
+          { party: "For: Rauda Travel and Agency", role: "(The Client)" },
+        ].map((side, i) => (
+          <div key={i} className="space-y-6">
+            <p className="font-semibold text-sm">{side.party}</p>
+            <p className="text-xs text-muted-foreground">{side.role}</p>
+            <div className="space-y-4 mt-4">
+              <div className="border-b border-foreground/30 pb-1">
+                <p className="text-[10px] text-muted-foreground">Signature</p>
+              </div>
+              <div className="border-b border-foreground/30 pb-1">
+                <p className="text-[10px] text-muted-foreground">Name</p>
+              </div>
+              <div className="border-b border-foreground/30 pb-1">
+                <p className="text-[10px] text-muted-foreground">Title</p>
+              </div>
+              <div className="border-b border-foreground/30 pb-1">
+                <p className="text-[10px] text-muted-foreground">Date</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Team & Contact - merged from ContactPage */}
+    <div data-pdf-section className="mt-16">
+      <SectionTitle number="08" title="Contact & Team" />
       <div className="mt-6 space-y-4">
         {[
           { name: "Fatima Dauda Kurfi", role: "CHIEF EXECUTIVE DIRECTOR, FADAK MEDIA HUB", phone: "09160628769", photo: teamFatima },
@@ -409,95 +511,6 @@ const ContactPage = () => (
           raudahtravels.lovable.app
         </a>
         <p>© 2026 FADAK MEDIA HUB NIGERIA LIMITED. All rights reserved.</p>
-      </div>
-    </div>
-  </div>
-);
-
-const SectionTitle = ({ number, title, className = "" }: { number: string; title: string; className?: string }) => (
-  <div className={`flex items-center gap-3 ${className}`}>
-    <span className="text-xs font-bold text-[hsl(var(--secondary))] bg-[hsl(var(--secondary))]/10 rounded-full w-8 h-8 flex items-center justify-center">{number}</span>
-    <h2 className="text-xl font-bold text-[hsl(var(--primary))]" style={{ fontFamily: "Playfair Display, serif" }}>{title}</h2>
-  </div>
-);
-
-const MOUPage = () => (
-  <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
-    <div data-pdf-section>
-      <SectionTitle number="08" title="Memorandum of Understanding (MOU)" />
-      <p className="text-xs text-muted-foreground mt-2 mb-6 italic">This Memorandum of Understanding sets forth the terms agreed upon by both parties.</p>
-
-      <div className="space-y-1 text-sm leading-relaxed text-foreground/90">
-        <p className="font-semibold">Parties:</p>
-        <p><strong>Party A:</strong> FADAK MEDIA HUB NIGERIA LIMITED (RC: 8426199), hereinafter referred to as "the Provider"</p>
-        <p><strong>Party B:</strong> Rauda Travel and Agency, hereinafter referred to as "the Client"</p>
-      </div>
-    </div>
-
-    <div data-pdf-section className="mt-8 space-y-6">
-      {[
-        {
-          num: 1,
-          title: "Scope of Work",
-          content: "The Provider shall deliver: (a) A comprehensive Digital Platform including public landing page, pilgrim portal, admin dashboard, agent portal, and payment gateway integration; (b) Media & Branding services under the Standard Package including social media management, content creation, video production, and campaign strategy."
-        },
-        {
-          num: 2,
-          title: "Payment Terms",
-          content: "The total project cost is ₦2,000,000 (Two Million Naira), comprising ₦1,400,000 for the Digital Platform and ₦600,000 for the Media & Branding Standard Package. Payment shall be made in two installments: 60% (₦1,200,000) upon signing of this MOU, and 40% (₦800,000) upon project completion and handover."
-        },
-        {
-          num: 3,
-          title: "Timeline",
-          content: "The Provider commits to delivering the Digital Platform within 7 (seven) working days from the date of first payment. Media & Branding services commence immediately and are billed monthly thereafter."
-        },
-        {
-          num: 4,
-          title: "Ownership & Intellectual Property",
-          content: "Full ownership of the Digital Platform, including source code and all associated assets, shall transfer to the Client upon receipt of full payment. The Provider retains the right to showcase the project in its portfolio unless otherwise agreed."
-        },
-        {
-          num: 5,
-          title: "Confidentiality",
-          content: "Both parties agree to maintain strict confidentiality regarding all proprietary information, business strategies, and technical details shared during the course of this engagement."
-        },
-      ].map((clause) => (
-        <div key={clause.num} className="flex gap-3 items-start">
-          <div className="w-6 h-6 rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{clause.num}</div>
-          <div>
-            <p className="font-semibold text-sm">{clause.title}</p>
-            <p className="text-xs text-muted-foreground mt-1">{clause.content}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-
-    <div data-pdf-section className="mt-12">
-      <p className="text-sm font-semibold mb-8">IN WITNESS WHEREOF, the parties have executed this Memorandum of Understanding as of the date set forth below.</p>
-      <div className="grid grid-cols-2 gap-12">
-        {[
-          { party: "For: FADAK MEDIA HUB NIGERIA LIMITED", role: "(The Provider)" },
-          { party: "For: Rauda Travel and Agency", role: "(The Client)" },
-        ].map((side, i) => (
-          <div key={i} className="space-y-6">
-            <p className="font-semibold text-sm">{side.party}</p>
-            <p className="text-xs text-muted-foreground">{side.role}</p>
-            <div className="space-y-4 mt-4">
-              <div className="border-b border-foreground/30 pb-1">
-                <p className="text-[10px] text-muted-foreground">Signature</p>
-              </div>
-              <div className="border-b border-foreground/30 pb-1">
-                <p className="text-[10px] text-muted-foreground">Name</p>
-              </div>
-              <div className="border-b border-foreground/30 pb-1">
-                <p className="text-[10px] text-muted-foreground">Title</p>
-              </div>
-              <div className="border-b border-foreground/30 pb-1">
-                <p className="text-[10px] text-muted-foreground">Date</p>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   </div>
