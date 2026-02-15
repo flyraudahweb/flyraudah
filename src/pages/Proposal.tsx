@@ -37,19 +37,19 @@ const Proposal = () => {
         const imgData = canvas.toDataURL("image/png");
         const imgHeightMm = (canvas.height * contentWidth) / canvas.width;
 
+        const usableHeight = pdfHeight - marginTop - marginBottom;
+
         if (currentY + imgHeightMm > pdfHeight - marginBottom) {
           if (currentY > marginTop) {
-            // Not at top of page, add new page
             pdf.addPage();
           }
           currentY = marginTop;
         }
 
         // Handle sections taller than a full page
-        if (imgHeightMm > pdfHeight - marginTop * 2) {
+        if (imgHeightMm > usableHeight) {
           // Scale down to fit one page
-          const maxH = pdfHeight - marginTop * 2;
-          const scale = maxH / imgHeightMm;
+          const scale = usableHeight / imgHeightMm;
           const scaledW = contentWidth * scale;
           const scaledH = imgHeightMm * scale;
           const offsetX = marginX + (contentWidth - scaledW) / 2;
@@ -394,38 +394,38 @@ const MOUPage = () => (
       </div>
     </div>
 
-    <div data-pdf-section className="mt-8 space-y-6">
-      {[
-        {
-          num: 1,
-          title: "Scope of Work",
-          content: "The Provider shall deliver: (a) A comprehensive Digital Platform including public landing page, pilgrim portal, admin dashboard, agent portal, and payment gateway integration; (b) Media & Branding services under the Standard Package including social media management, content creation, video production, and campaign strategy."
-        },
-        {
-          num: 2,
-          title: "Payment Terms",
-          content: "The total project cost is ₦2,000,000 (Two Million Naira), comprising ₦1,400,000 for the Digital Platform and ₦600,000 for the Media & Branding Standard Package. Payment shall be made in two installments: 60% (₦1,200,000) upon signing of this MOU, and 40% (₦800,000) upon project completion and handover."
-        },
-        {
-          num: 3,
-          title: "Timeline",
-          content: "The Provider commits to delivering the Digital Platform within 7 (seven) working days from the date of first payment. Media & Branding services commence immediately and are billed monthly thereafter."
-        },
-        {
-          num: 4,
-          title: "Ownership & Intellectual Property",
-          content: "Full ownership of the Digital Platform, including source code and all associated assets, shall transfer to the Client upon receipt of full payment. The Provider retains the right to showcase the project in its portfolio unless otherwise agreed."
-        },
-      ].map((clause) => (
-        <div key={clause.num} className="flex gap-3 items-start">
+    {[
+      {
+        num: 1,
+        title: "Scope of Work",
+        content: "The Provider shall deliver: (a) A comprehensive Digital Platform including public landing page, pilgrim portal, admin dashboard, agent portal, and payment gateway integration; (b) Media & Branding services under the Standard Package including social media management, content creation, video production, and campaign strategy."
+      },
+      {
+        num: 2,
+        title: "Payment Terms",
+        content: "The total project cost is ₦2,000,000 (Two Million Naira), comprising ₦1,400,000 for the Digital Platform and ₦600,000 for the Media & Branding Standard Package. Payment shall be made in two installments: 60% (₦1,200,000) upon signing of this MOU, and 40% (₦800,000) upon project completion and handover."
+      },
+      {
+        num: 3,
+        title: "Timeline",
+        content: "The Provider commits to delivering the Digital Platform within 7 (seven) working days from the date of first payment. Media & Branding services commence immediately and are billed monthly thereafter."
+      },
+      {
+        num: 4,
+        title: "Ownership & Intellectual Property",
+        content: "Full ownership of the Digital Platform, including source code and all associated assets, shall transfer to the Client upon receipt of full payment. The Provider retains the right to showcase the project in its portfolio unless otherwise agreed."
+      },
+    ].map((clause) => (
+      <div data-pdf-section key={clause.num} className="mt-4">
+        <div className="flex gap-3 items-start">
           <div className="w-6 h-6 rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{clause.num}</div>
           <div>
             <p className="font-semibold text-sm">{clause.title}</p>
             <p className="text-xs text-muted-foreground mt-1">{clause.content}</p>
           </div>
         </div>
-      ))}
-    </div>
+      </div>
+    ))}
 
     <div data-pdf-section className="mt-6">
       <div className="flex gap-3 items-start">
