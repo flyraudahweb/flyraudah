@@ -105,13 +105,13 @@ const CoverPage = () => (
       <div className="border-t border-b border-[hsl(var(--secondary))] py-8 px-4 space-y-4 my-8">
         <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Proposal</p>
         <h1 className="text-3xl md:text-4xl font-bold text-[hsl(var(--primary))]" style={{ fontFamily: "Playfair Display, serif" }}>
-          Raudah Hajj & Umrah<br />Digital Platform &<br />Media Services
+          Rauda Travel and Agency<br />Digital Platform &<br />Media Services
         </h1>
       </div>
 
       <div className="space-y-2 text-sm text-muted-foreground">
         <p className="font-semibold">Prepared For:</p>
-        <p className="text-foreground font-bold text-lg">The Chairman, Raudah Hajj & Umrah</p>
+        <p className="text-foreground font-bold text-lg">The Chairman, Rauda Travel and Agency</p>
         <p>Kano, Nigeria</p>
       </div>
 
@@ -132,7 +132,7 @@ const ExecutiveSummaryPage = () => (
       <SectionTitle number="01" title="Executive Summary" />
       <div className="space-y-4 text-sm leading-relaxed text-foreground/90 mt-6">
         <p>
-          FADAK MEDIA HUB is pleased to present this proposal for <strong>Raudah Hajj & Umrah</strong>, combining cutting-edge technology solutions with strategic media and branding services to transform your operations and market presence.
+          FADAK MEDIA HUB is pleased to present this proposal for <strong>Rauda Travel and Agency</strong>, combining cutting-edge technology solutions with strategic media and branding services to transform your operations and market presence.
         </p>
         <p>
           The <strong>primary deliverable</strong> is a comprehensive digital platform that will revolutionize how Raudah manages pilgrim registrations, package bookings, payments, and agent partnerships. Complementing this, our <strong>Media & Branding services</strong> will amplify Raudah's brand visibility and customer acquisition through professional content creation and digital marketing.
