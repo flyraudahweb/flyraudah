@@ -117,13 +117,13 @@ const CoverPage = () => (
       <div className="border-t border-b border-[hsl(var(--secondary))] py-8 px-4 space-y-4 w-full">
         <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Proposal</p>
         <h1 className="text-3xl md:text-4xl font-bold text-[hsl(var(--primary))]" style={{ fontFamily: "Playfair Display, serif" }}>
-          Rauda Travel and Agency<br />Digital Platform &<br />Media Services
+          Raudah Travels & Tour LTD<br />Digital Platform &<br />Media Services
         </h1>
       </div>
 
       <div className="space-y-2 text-sm text-muted-foreground mt-8">
         <p className="font-semibold">Prepared For:</p>
-        <p className="text-foreground font-bold text-lg">The Chairman, Rauda Travel and Agency</p>
+        <p className="text-foreground font-bold text-lg">The Chairman, Raudah Travels & Tour LTD</p>
         <p>Kano, Nigeria</p>
       </div>
     </div>
@@ -144,7 +144,7 @@ const ExecutiveSummaryPage = () => (
       <SectionTitle number="01" title="Executive Summary" />
       <div className="space-y-4 text-sm leading-relaxed text-foreground/90 mt-6">
         <p>
-          FADAK MEDIA HUB is pleased to present this proposal for <strong>Rauda Travel and Agency</strong>, combining cutting-edge technology solutions with strategic media and branding services to transform your operations and market presence.
+          FADAK MEDIA HUB is pleased to present this proposal for <strong>Raudah Travels & Tour LTD</strong>, combining cutting-edge technology solutions with strategic media and branding services to transform your operations and market presence.
         </p>
         <p>
           The <strong>primary deliverable</strong> is a comprehensive digital platform that will revolutionize how Raudah manages pilgrim registrations, package bookings, payments, and agent partnerships. Complementing this, our <strong>Media & Branding services</strong> will amplify Raudah's brand visibility and customer acquisition through professional content creation and digital marketing.
@@ -389,7 +389,7 @@ const MOUPage = () => (
       <div className="space-y-1 text-sm leading-relaxed text-foreground/90">
         <p className="font-semibold">Parties:</p>
         <p><strong>Party A:</strong> FADAK MEDIA HUB NIGERIA LIMITED (RC: 8426199), hereinafter referred to as "the Provider"</p>
-        <p><strong>Party B:</strong> Rauda Travel and Agency, hereinafter referred to as "the Client"</p>
+        <p><strong>Party B:</strong> Raudah Travels & Tour LTD, hereinafter referred to as "the Client"</p>
       </div>
     </div>
 
@@ -441,7 +441,7 @@ const MOUPage = () => (
       <div className="grid grid-cols-2 gap-12">
         {[
           { party: "For: FADAK MEDIA HUB NIGERIA LIMITED", role: "(The Provider)" },
-          { party: "For: Rauda Travel and Agency", role: "(The Client)" },
+          { party: "For: Raudah Travels & Tour LTD", role: "(The Client)" },
         ].map((side, i) => (
           <div key={i} className="space-y-6">
             <p className="font-semibold text-sm">{side.party}</p>
