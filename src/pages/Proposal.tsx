@@ -1,4 +1,5 @@
 import { Printer, Download, Loader2 } from "lucide-react";
+import fadakLogo from "@/assets/fadak-logo.jpg";
 import { Button } from "@/components/ui/button";
 import { useRef, useState } from "react";
 import { jsPDF } from "jspdf";
@@ -81,10 +82,9 @@ const Proposal = () => {
           <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "40mm 25mm" }}>
             <div className="flex flex-col items-center justify-center h-full text-center space-y-8">
               <div className="space-y-2">
-                <div className="w-20 h-20 mx-auto rounded-full bg-[hsl(var(--primary))] flex items-center justify-center text-white font-bold text-xl" style={{ fontFamily: "Playfair Display, serif" }}>
-                  FMH
-                </div>
-                <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB</h2>
+                <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
+                <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB NIGERIA LIMITED</h2>
+                <p className="text-xs text-muted-foreground font-medium">RC: 8426199</p>
                 <p className="text-sm text-muted-foreground italic">Media · Technology · Strategy</p>
               </div>
 
@@ -322,9 +322,9 @@ const Proposal = () => {
             </div>
 
             <div className="mt-16 pt-6 border-t border-border text-center text-xs text-muted-foreground space-y-1">
-              <p className="font-semibold">FADAK MEDIA HUB</p>
+              <p className="font-semibold">FADAK MEDIA HUB NIGERIA LIMITED · RC: 8426199</p>
               <p>This proposal is confidential and intended solely for the addressee.</p>
-              <p>© 2026 FADAK MEDIA HUB. All rights reserved.</p>
+              <p>© 2026 FADAK MEDIA HUB NIGERIA LIMITED. All rights reserved.</p>
             </div>
           </div>
         </div>
