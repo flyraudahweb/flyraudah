@@ -1,76 +1,43 @@
 
-# Proposal Updates: Standard Media, Team Photos, Contact Details, and More
+# Fix PDF Section Cutting and Enlarge Team Photos
 
-## Summary of All Changes
+## Changes
 
-### 1. Upgrade Media Section to Standard Package (N600,000)
-Replace "Basic Package" with "Standard Package" in Section 04. Add expanded services and a paragraph on why Standard is important for Raudah. Show price as N600,000/month.
+### 1. Section-Based PDF Generation
+The current approach renders each `.proposal-page` as one canvas and then slices it if it overflows a single A4 page -- this causes content to be cut mid-text. The fix is to use `data-pdf-section` attributes on logical content blocks within each page. The PDF generator will iterate over these sections individually, capturing each one with `html2canvas` and placing it on the current page only if it fits; otherwise it starts a new page.
 
-**Standard Package includes:**
-- Content calendar planning, scheduling, and community engagement
-- Performance analytics and monthly reporting
-- Professional graphics, branded templates, reels, stories, copywriting
-- Promotional video production
-- Professional photoshoots for branding and marketing
-- Event coverage and documentation
-- Digital marketing campaign execution
-- Brand positioning and messaging strategy
-- Target audience analysis and engagement planning
+This ensures no section is ever split across two pages.
 
-**Why Standard matters:** A short paragraph explaining that the Standard tier provides the right balance of consistent brand building, dedicated campaign execution, and measurable results needed to compete in the Hajj & Umrah market.
+### 2. Enlarge Team Photos
+Team member photos are currently `w-10 h-10` (40px). These will be increased to `w-20 h-20` (80px) for a more prominent, professional look in both the on-screen view and the PDF.
 
-### 2. Adjust Platform Pricing (Total = N2,000,000)
-Platform subtotal reduced to N1,400,000. Media Standard = N600,000. Grand Total = N2,000,000.
-
-| Item | New Cost |
-|------|----------|
-| Backend Development (Database, Auth, APIs, Edge Functions) | N250,000 |
-| Frontend Development (UI/UX, Components, Responsive Design) | N300,000 |
-| Payment Gateway Integration (Paystack) | N250,000 |
-| Feature Modules (Agent, User & Admin Portals) | N250,000 |
-| Hosting, Backend Services & Email (1 Year) | N300,000 |
-| Domain Registration | N50,000 |
-| **Platform Subtotal** | **N1,400,000** |
-| Media & Branding Standard | N600,000 |
-| **Grand Total** | **N2,000,000** |
-
-### 3. Change "Partnership Proposal" to "Proposal"
-On the cover page, replace the text "Partnership Proposal" with just "Proposal".
-
-### 4. Add Platform Demo Link
-Add the demo link `https://raudahtravels.lovable.app` to both the cover page and the footer.
-
-### 5. Team Photos in Contact Section
-Copy the 3 uploaded team images into the project and replace the colored-circle initials with actual photos:
-- Fatima Dauda Kurfi -- fatima-2.jpg
-- Abubakar Lawal Abba -- abubakar-2.jpg
-- Aliyu Wada Umar -- aliyu-2.jpg
-
-### 6. Company Contact Details
-Add below the team cards:
-- **Email:** fadakmediacompany@gmail.com
-- **Website:** www.fadakmediahub.com
-- **Address:** No 15 NNPC Plaza, WTC Roundabout, Katsina, Katsina State
+### 3. Split PricingContactPage into Separate Pages
+The current `PricingContactPage` combines pricing, timeline, and contact into one long page -- which is the main cause of overflow/cutting. This will be split into:
+- **PricingTimelinePage** (Sections 05 + 06)
+- **ContactPage** (Section 07 with team photos + company details + footer)
 
 ---
 
 ## Technical Details
 
-### Assets to Copy
-- `user-uploads://fatima-2.jpg` to `src/assets/team-fatima.jpg`
-- `user-uploads://abubakar-2.jpg` to `src/assets/team-abubakar.jpg`
-- `user-uploads://aliyu-2.jpg` to `src/assets/team-aliyu.jpg`
-
 ### File: `src/pages/Proposal.tsx`
 
-**Imports:** Add 3 team image imports.
+**PDF Generation (lines 15-57):**
+Replace the current page-based approach with a section-based approach:
+- Query all `[data-pdf-section]` elements instead of `.proposal-page`
+- For each section, capture with `html2canvas`, calculate its height in mm
+- If it won't fit on the current page, add a new page first
+- Add a small gap (3mm) between sections
+- This prevents any content from being split across pages
 
-**Cover page (line 92):** Change "Partnership Proposal" to "Proposal". Add demo link below the date.
+**Team Photos (line 348):**
+Change `className="w-10 h-10"` to `className="w-20 h-20"` for larger circular photos. Also increase the card padding slightly.
 
-**Media section (lines 200-232):** Change "Basic" to "Standard", expand services, add importance paragraph, update price box to N600,000.
+**Split PricingContactPage:**
+- Create `PricingTimelinePage` containing Sections 05 and 06
+- Create `ContactPage` containing Section 07 with team, company info, and footer
+- Update the main render to use these two new components
+- Add `data-pdf-section` attributes to each logical section in all pages
 
-**Pricing table (lines 247-283):** Adjust platform line items to sum to N1,400,000. Update Part B to "Standard" at N600,000. Grand Total = N2,000,000.
-
-**Contact section (lines 304-322):** Replace initials circle with `<img>` tags using team photos. Add company address/email/website block below.
-
-**Footer (lines 324-328):** Add demo link.
+**Add `data-pdf-section` to all logical blocks:**
+Every major section (cover, executive summary, problems, platform features, media services, pricing table, timeline, contact/team) gets a `data-pdf-section` wrapper so the PDF generator treats each as an atomic unit that won't be split.
