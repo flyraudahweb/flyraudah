@@ -86,6 +86,7 @@ const Proposal = () => {
           <MediaBrandingPage />
           <PricingTimelinePage />
           <ContactPage />
+          <MOUPage />
         </div>
       </div>
     </>
@@ -417,6 +418,88 @@ const SectionTitle = ({ number, title, className = "" }: { number: string; title
   <div className={`flex items-center gap-3 ${className}`}>
     <span className="text-xs font-bold text-[hsl(var(--secondary))] bg-[hsl(var(--secondary))]/10 rounded-full w-8 h-8 flex items-center justify-center">{number}</span>
     <h2 className="text-xl font-bold text-[hsl(var(--primary))]" style={{ fontFamily: "Playfair Display, serif" }}>{title}</h2>
+  </div>
+);
+
+const MOUPage = () => (
+  <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
+    <div data-pdf-section>
+      <SectionTitle number="08" title="Memorandum of Understanding" />
+      <p className="text-xs text-muted-foreground mt-2 mb-6 italic">This Memorandum of Understanding sets forth the terms agreed upon by both parties.</p>
+
+      <div className="space-y-1 text-sm leading-relaxed text-foreground/90">
+        <p className="font-semibold">Parties:</p>
+        <p><strong>Party A:</strong> FADAK MEDIA HUB NIGERIA LIMITED (RC: 8426199), hereinafter referred to as "the Provider"</p>
+        <p><strong>Party B:</strong> Rauda Travel and Agency, hereinafter referred to as "the Client"</p>
+      </div>
+    </div>
+
+    <div data-pdf-section className="mt-8 space-y-6">
+      {[
+        {
+          num: 1,
+          title: "Scope of Work",
+          content: "The Provider shall deliver: (a) A comprehensive Digital Platform including public landing page, pilgrim portal, admin dashboard, agent portal, and payment gateway integration; (b) Media & Branding services under the Standard Package including social media management, content creation, video production, and campaign strategy."
+        },
+        {
+          num: 2,
+          title: "Payment Terms",
+          content: "The total project cost is ₦2,000,000 (Two Million Naira), comprising ₦1,400,000 for the Digital Platform and ₦600,000 for the Media & Branding Standard Package. Payment shall be made in two installments: 60% (₦1,200,000) upon signing of this MOU, and 40% (₦800,000) upon project completion and handover."
+        },
+        {
+          num: 3,
+          title: "Timeline",
+          content: "The Provider commits to delivering the Digital Platform within 7 (seven) working days from the date of first payment. Media & Branding services commence immediately and are billed monthly thereafter."
+        },
+        {
+          num: 4,
+          title: "Ownership & Intellectual Property",
+          content: "Full ownership of the Digital Platform, including source code and all associated assets, shall transfer to the Client upon receipt of full payment. The Provider retains the right to showcase the project in its portfolio unless otherwise agreed."
+        },
+        {
+          num: 5,
+          title: "Confidentiality",
+          content: "Both parties agree to maintain strict confidentiality regarding all proprietary information, business strategies, and technical details shared during the course of this engagement."
+        },
+      ].map((clause) => (
+        <div key={clause.num} className="flex gap-3 items-start">
+          <div className="w-6 h-6 rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{clause.num}</div>
+          <div>
+            <p className="font-semibold text-sm">{clause.title}</p>
+            <p className="text-xs text-muted-foreground mt-1">{clause.content}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div data-pdf-section className="mt-12">
+      <p className="text-sm font-semibold mb-8">IN WITNESS WHEREOF, the parties have executed this Memorandum of Understanding as of the date set forth below.</p>
+      <div className="grid grid-cols-2 gap-12">
+        {[
+          { party: "For: FADAK MEDIA HUB NIGERIA LIMITED", role: "(The Provider)" },
+          { party: "For: Rauda Travel and Agency", role: "(The Client)" },
+        ].map((side, i) => (
+          <div key={i} className="space-y-6">
+            <p className="font-semibold text-sm">{side.party}</p>
+            <p className="text-xs text-muted-foreground">{side.role}</p>
+            <div className="space-y-4 mt-4">
+              <div className="border-b border-foreground/30 pb-1">
+                <p className="text-[10px] text-muted-foreground">Signature</p>
+              </div>
+              <div className="border-b border-foreground/30 pb-1">
+                <p className="text-[10px] text-muted-foreground">Name</p>
+              </div>
+              <div className="border-b border-foreground/30 pb-1">
+                <p className="text-[10px] text-muted-foreground">Title</p>
+              </div>
+              <div className="border-b border-foreground/30 pb-1">
+                <p className="text-[10px] text-muted-foreground">Date</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   </div>
 );
 
