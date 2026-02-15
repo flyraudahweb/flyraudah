@@ -22,6 +22,7 @@ const Proposal = () => {
       const pdfHeight = 297;
       const marginX = 15;
       const marginTop = 15;
+      const marginBottom = 20;
       const contentWidth = pdfWidth - marginX * 2;
       const gap = 3;
       let currentY = marginTop;
@@ -36,8 +37,7 @@ const Proposal = () => {
         const imgData = canvas.toDataURL("image/png");
         const imgHeightMm = (canvas.height * contentWidth) / canvas.width;
 
-        // Always check if section fits, even for the first section on a page
-        if (currentY + imgHeightMm > pdfHeight - marginTop) {
+        if (currentY + imgHeightMm > pdfHeight - marginBottom) {
           if (currentY > marginTop) {
             // Not at top of page, add new page
             pdf.addPage();
@@ -98,6 +98,7 @@ const Proposal = () => {
           <MediaBrandingPage />
           <PricingTimelinePage />
           <MOUPage />
+          <ContactTeamPage />
         </div>
       </div>
     </>
@@ -105,7 +106,7 @@ const Proposal = () => {
 };
 
 const CoverPage = () => (
-  <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "40mm 25mm" }}>
+  <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "30mm 25mm" }}>
     <div data-pdf-section className="flex flex-col items-center text-center space-y-2">
       <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
       <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB NIGERIA LIMITED</h2>
@@ -465,8 +466,12 @@ const MOUPage = () => (
       </div>
     </div>
 
-    {/* Team & Contact - merged from ContactPage */}
-    <div data-pdf-section className="mt-16">
+  </div>
+);
+
+const ContactTeamPage = () => (
+  <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
+    <div data-pdf-section>
       <SectionTitle number="08" title="Contact & Team" />
       <div className="mt-6 space-y-4">
         {[
