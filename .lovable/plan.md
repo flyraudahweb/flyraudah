@@ -1,46 +1,63 @@
 
-# Fix: Cover Page Text Too Small in PDF
+# Render "Key Documentary Pillars" as a Table
 
-## Root Cause
+## What the User Sees Now
+Section 3 ("Key Documentary Pillars") renders as bullet-point blocks — one card per pillar with checklist items. The original PDF has it as a clean two-column table: **Pillar | Key Highlights to Feature**.
 
-The PDF engine captures each `data-pdf-section` element independently via `html2canvas` and scales it to fit `contentWidth = 180mm` in the PDF.
+## What Changes (3 small, targeted edits — no big refactor)
 
-The problem is a mismatch in **captured canvas widths**:
+### 1. `src/data/proposalTemplates.ts` — Add `tableView` flag to interface + Gombe template
 
-- **Other pages** (Executive Summary, Feature pages, etc.) have their `data-pdf-section` div sitting *inside* a `padding: "25mm"` outer container. At 800px container width, 25mm on each side ≈ ~94px × 2 = ~188px of horizontal padding. So the inner section content is captured at roughly **612px** wide.
-- **Cover page** has its single `data-pdf-section` as a direct child of `padding: "20mm 25mm"` — same horizontal padding as others (25mm each side), so technically the same ~612px capture width. However, the PDF engine line `section.style.padding = "8px 4px"` temporarily sets padding on the **section element itself**, not the outer page wrapper. Since the cover's `data-pdf-section` is an unstyled inner div (no explicit width), it fills the full inner width of the outer `proposal-page` div.
+Add one optional boolean field `tableView?: boolean` to the `featurePages` entry type. When `true`, the feature page renders as a table instead of bullet blocks.
 
-The actual root cause is simpler and confirmed by the screenshots: the cover page is captured at the **full 800px container width** because the `data-pdf-section` is an inline div with no constraints. The outer `proposal-page` div has `padding: "20mm 25mm"` but that padding applies to the *outer* element, and `html2canvas` captures the *section* element's rendered dimensions. The section div naturally expands to fill the content area of its padded parent — which is correct. But the engine then injects `section.style.padding = "8px 4px"` temporarily during capture, which **overrides the outer page's padding effect** for that capture snapshot.
+Update the first `featurePages` entry in `gombeTemplate` (Key Documentary Pillars) to set `tableView: true`. The existing `features` array already has the right data — each feature's `title` becomes the "Pillar" column and `items.join(", ")` becomes the "Key Highlights" column.
 
-More precisely: looking at the reference screenshot showing the cover page PDF output — the content is narrow with large left/right margins in the PDF, meaning the captured image is being placed correctly width-wise (180mm) but the text inside appears small because the cover page's `data-pdf-section` content area is being captured much wider than intended.
+```typescript
+// In ProposalData interface
+featurePages: {
+  sectionTitle: string;
+  subtitle?: string;
+  description?: string;
+  tableView?: boolean;   // NEW: render features as a 2-col table
+  features: FeatureSection[];
+  retainerBox?: { ... };
+}[];
 
-## The Real Fix
+// In gombeTemplate, first featurePages entry:
+{
+  sectionTitle: "Key Documentary Pillars",
+  subtitle: 'The "Story" Hubs',
+  tableView: true,   // NEW
+  features: [ ... ] // unchanged
+}
+```
 
-The correct fix is to give the cover page `data-pdf-section` explicit **horizontal padding that mirrors the page padding**, so when `html2canvas` captures it, the content has the same effective margins as all other pages.
+### 2. `src/pages/Proposal.tsx` — Update `FeaturePage` to render a table when `tableView` is true
 
-Currently the PDF capture loop injects `section.style.padding = "8px 4px"` (8px top/bottom, 4px left/right). For all other pages, their sections are already inside a `25mm`-padded outer div, so the content naturally occupies the inner area. The cover's single section wraps everything inside the outer padded div — meaning the temporary `8px 4px` padding on the section itself doesn't replicate the outer page's 25mm side padding.
+Inside the `FeaturePage` component, after the subtitle/description block, check `page.tableView`. If true, render a styled `<table>` with two columns instead of the `FeatureBlock` grid:
 
-**Solution**: Add `data-pdf-margin` attribute to the cover page's section div and modify the PDF engine to detect it, OR — more simply — move the CoverPage's outer padding **onto** the `data-pdf-section` div itself (and remove it from the outer `proposal-page` div), so the captured element includes its own margins, matching what other page sections "see" from their padded parents.
+```
+| Pillar                | Key Highlights to Feature                                    |
+|-----------------------|--------------------------------------------------------------|
+| Industrial Revolution | The 1,000-hectare Industrial Park, N60bn+ in private ...    |
+| Education & Youth     | Enrolling 450,000+ out-of-school children (BESDA), ...     |
+| The Health Miracle    | "1-Ward-1-PHC" project (114 centers), Go-Health ...        |
+| Infrastructure        | Network 11-100 project (over 1,000km of roads), ...        |
+| Civil Service Reform  | Implementation of the N70,000 minimum wage, ...            |
+```
 
-The cleanest approach with **minimal change**: add a CSS class `cover-pdf-section` to the cover's `data-pdf-section` that sets `padding: 0 25mm` (matching other pages' side padding), so when the engine captures that element, the content has the same effective side margins as all other page sections. The top/bottom padding doesn't matter since the engine injects `8px` anyway.
+The table uses the same primary-color header style as the pricing tables (dark background, white text), alternating row shading, and the emoji from `feature.title` is preserved in the Pillar cell. The "Key Highlights" cell joins `feature.items` with `", "`.
 
-Actually, the simplest and most targeted fix: in `handleDownloadPDF`, detect if the section is the cover section (first section or by a `data-cover-section` attribute) and skip the padding injection for it — OR set a larger padding that matches the 25mm side margins.
-
-**Cleanest fix (two targeted changes):**
-
-1. Add `data-cover` attribute to the cover page's `data-pdf-section` div.
-2. In `handleDownloadPDF`, when processing a section with `data-cover`, instead of injecting `8px 4px`, inject padding that replicates `25mm` side margins relative to the 800px capture width. At 800px, 25mm ≈ 94px, so inject `section.style.padding = "8px 94px"` for cover, `"8px 4px"` for all others.
-
-This makes the cover's captured content width match all other pages, and text scales identically when both are placed at 180mm in the PDF.
+### What Does NOT Change
+- All other templates (Raudah) — untouched
+- The AI edge function — untouched
+- The Production Strategy, Media Distribution, and all other feature pages — still render as bullet blocks
+- Team toggle, PDF download, print, MOU, all other sections — untouched
+- The `FeatureBlock` component — stays, still used for all non-tableView pages
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Proposal.tsx` | 1. Add `data-cover` attribute to cover page's `data-pdf-section` div. 2. In `handleDownloadPDF`, check for `data-cover` and apply `"8px 94px"` padding during capture instead of `"8px 4px"`. |
-
-## What Does NOT Change
-- Visual layout on screen — identical
-- All other pages and their PDF capture logic — unchanged
-- MOU toggle, team toggle, templates — unchanged
-- Cover page structure and content — unchanged, just one attribute added
+| `src/data/proposalTemplates.ts` | Add `tableView?: boolean` to interface; set it on Gombe's first feature page |
+| `src/pages/Proposal.tsx` | Update `FeaturePage` to branch on `page.tableView` and render a `<table>` |
