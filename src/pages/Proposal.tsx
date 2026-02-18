@@ -19,6 +19,7 @@ const Proposal = () => {
   const proposalRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
   const [showTeam, setShowTeam] = useState(true);
+  const [showMOU, setShowMOU] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("raudah");
   const [proposalData, setProposalData] = useState<ProposalData>(raudahTemplate);
   const [aiText, setAiText] = useState("");
@@ -198,6 +199,11 @@ const Proposal = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <Switch id="show-mou" checked={showMOU} onCheckedChange={setShowMOU} />
+              <Label htmlFor="show-mou" className="text-sm cursor-pointer whitespace-nowrap">Include MOU</Label>
+            </div>
+
+            <div className="flex items-center gap-2">
               <Switch id="show-team" checked={showTeam} onCheckedChange={setShowTeam} />
               <Label htmlFor="show-team" className="text-sm cursor-pointer whitespace-nowrap">Include Team</Label>
             </div>
@@ -263,12 +269,14 @@ const Proposal = () => {
               sectionStart={proposalData.featurePages.length + 5}
             />
           )}
-          <MOUPage
-            data={proposalData}
-            sectionNumber={String(
-              proposalData.featurePages.length + 4 + (proposalData.appendixSections?.length ? 1 : 0)
-            ).padStart(2, "0")}
-          />
+          {showMOU && (
+            <MOUPage
+              data={proposalData}
+              sectionNumber={String(
+                proposalData.featurePages.length + 4 + (proposalData.appendixSections?.length ? 1 : 0)
+              ).padStart(2, "0")}
+            />
+          )}
           <ContactTeamPage
             showTeam={showTeam}
             sectionNumber={String(
