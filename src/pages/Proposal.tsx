@@ -123,7 +123,10 @@ const Proposal = () => {
 
       for (const section of sections) {
         const prevPadding = section.style.padding;
-        section.style.padding = "8px 4px";
+        const isCover = section.hasAttribute("data-cover");
+        // Cover page needs 94px side padding (≈25mm at 800px width) to match
+        // the effective content width of all other pages that sit inside a 25mm-padded parent.
+        section.style.padding = isCover ? "8px 94px" : "8px 4px";
 
         const canvas = await html2canvas(section, {
           scale: 3,
@@ -316,7 +319,7 @@ const FeatureBlock = ({ title, items }: { title: string; items: string[] }) => (
 
 const CoverPage = ({ data }: { data: ProposalData }) => (
   <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "20mm 25mm" }}>
-    <div data-pdf-section>
+    <div data-pdf-section data-cover>
       {/* Fixed Letterhead */}
       <div className="flex flex-col items-center text-center space-y-2">
         <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
