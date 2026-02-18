@@ -103,6 +103,13 @@ const Proposal = () => {
   const handleDownloadPDF = async () => {
     if (!proposalRef.current || generating) return;
     setGenerating(true);
+    const globalStyle = document.createElement("style");
+    globalStyle.id = "pdf-capture-override";
+    globalStyle.textContent = `
+      [data-pdf-section] { margin-top: 0 !important; margin-bottom: 0 !important; }
+      [data-pdf-section] > * { margin-top: 0 !important; }
+    `;
+
     try {
       const sections = proposalRef.current.querySelectorAll<HTMLElement>("[data-pdf-section]");
       const pdf = new jsPDF("p", "mm", "a4");
@@ -121,6 +128,10 @@ const Proposal = () => {
       container.style.width = "800px";
       container.style.maxWidth = "800px";
 
+      // Inject style to strip margins from sections & their direct children
+      // This prevents blank whitespace being captured in the canvas
+      document.head.appendChild(globalStyle);
+
       for (const section of sections) {
         const prevPadding = section.style.padding;
         section.style.padding = "8px 4px";
@@ -130,6 +141,7 @@ const Proposal = () => {
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
+          windowWidth: 800,
         });
 
         section.style.padding = prevPadding;
@@ -163,9 +175,14 @@ const Proposal = () => {
     } catch (e) {
       console.error("PDF generation failed:", e);
     } finally {
+      // Always clean up the injected style
+      if (document.head.contains(globalStyle)) {
+        document.head.removeChild(globalStyle);
+      }
       setGenerating(false);
     }
   };
+
 
   return (
     <>
