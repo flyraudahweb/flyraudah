@@ -22,20 +22,25 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a proposal structuring assistant for FADAK MEDIA HUB NIGERIA LIMITED. 
+    const systemPrompt = `You are a proposal structuring assistant for FADAK MEDIA HUB NIGERIA LIMITED.
 Given raw text (from a PDF or pasted content), extract and structure it into a professional proposal format.
 
-You MUST call the "structure_proposal" function with the extracted data. Map the content intelligently:
-- Identify the client/recipient name, title, and location
-- Extract an executive summary or create one from the content
-- Identify problems/objectives being addressed
-- Group features/deliverables/services into logical sections
-- Extract any pricing/budget tables with their items and costs
-- Identify timeline/phases
-- Create appropriate MOU clauses based on the scope and pricing
-- If there are tables in the content, preserve them in the pricing tables structure
+You MUST call the "structure_proposal" function with ALL extracted data. CRITICAL RULES:
 
-Be thorough — capture ALL content from the source material. Do not omit sections.`;
+1. NEVER omit any content from the source material. Every section must be captured.
+2. If the document has a formal address block (Date, recipient name/title, address, Attention line, subject line, letter body), capture it in "coverLetter".
+3. Sections like "Justification of Project Costs", "Conclusion", "Call to Action", "Path Forward" — these are FREE-PROSE sections that MUST go into "appendixSections". Do NOT drop them.
+4. The formal address block (Date: ..., The Executive Governor..., Government House..., Attention: ...) goes into "coverLetter". Parse each field carefully.
+5. Feature/deliverable bullet points go into "featurePages". Prose justifications and conclusions go into "appendixSections".
+6. Preserve all numbered/roman-numeral sub-sections in appendixSections.subSections.
+7. Map the content intelligently:
+   - Identify the client/recipient name, title, and location
+   - Extract or compose an executive summary from the content
+   - Identify problems/objectives being addressed
+   - Group features/deliverables/services into logical featurePages
+   - Extract any pricing/budget tables with their items and costs
+   - Identify timeline/phases
+   - Create appropriate MOU clauses based on the scope and pricing`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -46,27 +51,41 @@ Be thorough — capture ALL content from the source material. Do not omit sectio
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Structure this content into a proposal:\n\n${text.slice(0, 15000)}` },
+            { role: "user", content: `Structure this content into a proposal. DO NOT omit any section — every paragraph, justification, conclusion, and letter block must be captured:\n\n${text}` },
           ],
           tools: [
             {
               type: "function",
               function: {
                 name: "structure_proposal",
-                description: "Return a fully structured proposal from the extracted content.",
+                description: "Return a fully structured proposal from the extracted content. Include ALL content — nothing may be omitted.",
                 parameters: {
                   type: "object",
                   properties: {
-                    proposalTitle: { type: "string", description: "Multi-line proposal title" },
+                    proposalTitle: { type: "string", description: "Multi-line proposal title (use \\n for line breaks)" },
                     clientName: { type: "string" },
                     clientTitle: { type: "string", description: "e.g. 'Prepared For:'" },
                     clientLocation: { type: "string" },
                     date: { type: "string" },
                     demoUrl: { type: "string", description: "Optional demo URL" },
-                    executiveSummary: { type: "array", items: { type: "string" }, description: "Array of paragraphs" },
+                    coverLetter: {
+                      type: "object",
+                      description: "Optional formal letter address block that appears before the proposal title. Extract this if the document starts with a formal address (Date, recipient name, Government House, Attention line, subject, letter body).",
+                      properties: {
+                        date: { type: "string", description: "e.g. '2026' or 'February 2026'" },
+                        recipient: { type: "string", description: "Full recipient name and title, e.g. 'The Executive Governor of Gombe State,\\nHis Excellency, Muhammadu Inuwa Yahaya (CON),'" },
+                        address: { type: "string", description: "e.g. 'Government House, Gombe, Gombe State.'" },
+                        attention: { type: "string", description: "e.g. 'The Honorable Commissioner for Information and Culture Sir,'" },
+                        salutation: { type: "string", description: "e.g. 'Sir,'" },
+                        subject: { type: "string", description: "The letter subject/title line in UPPERCASE" },
+                        body: { type: "string", description: "Full letter body text. Use \\n\\n for paragraph breaks. Include opening, objectives, deliverables, and closing/signature." },
+                      },
+                      required: ["recipient"],
+                    },
+                    executiveSummary: { type: "array", items: { type: "string" }, description: "Array of paragraphs for the executive summary" },
                     problems: {
                       type: "array",
                       items: {
@@ -136,6 +155,30 @@ Be thorough — capture ALL content from the source material. Do not omit sectio
                         required: ["phase", "task"],
                       },
                     },
+                    appendixSections: {
+                      type: "array",
+                      description: "REQUIRED for free-prose content that does not fit bullet lists: Justification of Costs, Conclusion, Call to Action, Path Forward, etc. NEVER drop this content.",
+                      items: {
+                        type: "object",
+                        properties: {
+                          title: { type: "string", description: "Section heading, e.g. 'Justification of Project Costs'" },
+                          body: { type: "string", description: "Opening paragraph(s) for this section. Use \\n\\n for paragraph breaks." },
+                          subSections: {
+                            type: "array",
+                            description: "Numbered/roman-numeral sub-sections within this appendix section",
+                            items: {
+                              type: "object",
+                              properties: {
+                                heading: { type: "string", description: "e.g. 'I. Protection of Political Legacy' or '1. Global Marketing Tool'" },
+                                content: { type: "string", description: "Full text of this sub-section. Use \\n\\n for paragraph breaks." },
+                              },
+                              required: ["heading", "content"],
+                            },
+                          },
+                        },
+                        required: ["title", "body"],
+                      },
+                    },
                     mouParties: {
                       type: "object",
                       properties: { partyA: { type: "string" }, partyB: { type: "string" } },
@@ -172,6 +215,7 @@ Be thorough — capture ALL content from the source material. Do not omit sectio
             },
           ],
           tool_choice: { type: "function", function: { name: "structure_proposal" } },
+          max_tokens: 16000,
         }),
       }
     );

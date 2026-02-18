@@ -36,10 +36,21 @@ export interface ProposalData {
   date: string;
   demoUrl?: string;
 
+  // Optional: formal letter address block (left-aligned, before proposal title on cover)
+  coverLetter?: {
+    date?: string;
+    recipient: string;       // e.g. "The Executive Governor of Gombe State, His Excellency..."
+    address?: string;        // e.g. "Government House, Gombe, Gombe State."
+    attention?: string;      // e.g. "The Honorable Commissioner for Information and Culture Sir,"
+    salutation?: string;     // e.g. "Sir,"
+    subject?: string;        // e.g. "LETTER OF PROPOSAL: DOCUMENTING THE GOMBE MIRACLE..."
+    body?: string;           // Full letter body paragraphs (use \n for paragraph breaks)
+  };
+
   // Executive Summary
   executiveSummary: string[];
 
-  // Problems
+  // Problems / Objectives
   problems: { title: string; desc: string }[];
 
   // Feature sections (multiple pages)
@@ -57,6 +68,13 @@ export interface ProposalData {
 
   // Timeline
   timeline: TimelineItem[];
+
+  // Optional: free-prose appendix sections (Justification of Costs, Conclusion, etc.)
+  appendixSections?: {
+    title: string;
+    body: string;  // Rich text; use \n\n for paragraph breaks
+    subSections?: { heading: string; content: string }[];
+  }[];
 
   // MOU
   mouParties: { partyA: string; partyB: string };
@@ -179,6 +197,16 @@ export const gombeTemplate: ProposalData = {
   clientLocation: "Government House, Gombe, Gombe State",
   date: "2026",
 
+  coverLetter: {
+    date: "2026",
+    recipient: "The Executive Governor of Gombe State,\nHis Excellency, Muhammadu Inuwa Yahaya (CON),",
+    address: "Government House, Gombe, Gombe State.",
+    attention: "The Honorable Commissioner for Information and Culture Sir,",
+    salutation: "Sir,",
+    subject: "LETTER OF PROPOSAL: DOCUMENTING THE \"GOMBE MIRACLE\" – A CINEMATIC REVIEW OF HUMAN CAPITAL AND INVESTMENT UNDER THE ADMINISTRATION OF GOVERNOR MUHAMMADU INUWA (CON) FROM (2019–2026)",
+    body: "I am writing to formally propose the production of a high-impact, multi-platform media documentary titled \"The Jewel's Transformation.\" This project is designed to showcase the unprecedented strides your administration has made in transforming Gombe State into a national model for industrialization, human capital development, and fiscal discipline.\n\nUnder your leadership, Gombe has moved from a state of \"recovery\" to becoming Nigeria's #1 destination for Ease of Doing Business. From the landmark Network 11-100 road projects to the revolutionary Muhammadu Buhari Industrial Park and the massive investment in Health (Go-Health) and Education (BESDA), the \"Gombe Model\" is a story that deserves a world-class narrative.\n\nThe Objective: As we enter the consolidation phase of 2026, it is vital to institutionalize your legacy. This documentary will serve as:\n1. A Global Marketing Tool: Attracting further Foreign Direct Investment (FDI) to the Industrial Park.\n2. A Historical Record: Documenting the tangible impact of your policies on the lives of the 11 Local Government Areas.\n3. A National Benchmark: Positioning Gombe as the premier example of sub-national governance in Africa.\n\nThe Deliverables: Our team is prepared to deploy state-of-the-art 4K cinematography and drone technology to produce a 30-minute master documentary for national television (Channels, Arise, NTA), alongside a series of digital \"Impact Clips\" for the youth demographic on social media.\n\nAttached to this letter is a detailed proposal covering the thematic pillars, production timeline, and a comprehensive justification of costs. We are eager to partner with the Gombe State Government to ensure that the story of this transformation is told with the prestige and clarity it deserves.\n\nWe look forward to a favorable response to discuss the commencement of this historic project.\n\nYours Faithfully,\nFatima Dauda Kurfi\nLead Consultant/Executive Producer\nFADAK MEDIA",
+  },
+
   executiveSummary: [
     "Since 2019, Gombe State has undergone a radical socio-economic shift under the leadership of Governor Muhammadu Inuwa Yahaya (CON). Guided by the 10-year development plan (DEVAGOM 2021-2030), the administration has moved from \"recovery\" to \"consolidation.\"",
     "This proposal outlines a multi-platform media documentary designed to showcase Gombe as a national model for human capital development and industrial investment.",
@@ -259,6 +287,39 @@ export const gombeTemplate: ProposalData = {
     { phase: "Week 3–6", task: "Production: Filming across the 11 LGAs" },
     { phase: "Week 7–9", task: "Post-Production: Editing, voiceovers, and graphics" },
     { phase: "Week 10", task: "Launch: Grand premiere and media rollout" },
+  ],
+
+  appendixSections: [
+    {
+      title: "Justification of Project Costs",
+      body: "The proposed budget for \"The Jewel's Transformation\" is structured to ensure that the documentary serves as a high-impact strategic asset for Gombe State. The costs are justified based on the following strategic pillars:",
+      subSections: [
+        {
+          heading: "I. Protection of Political & Developmental Legacy",
+          content: "In the digital age, a narrative left untold is a narrative lost. Governor Inuwa Yahaya has executed landmark projects—such as the Network 11-100 and the BESDA education reforms. High-quality documentation ensures that these achievements are preserved in history and protected from misinformation.\n\nValue: Institutionalizing the \"Gombe Model\" of governance for future generations.",
+        },
+        {
+          heading: "II. Investment Promotion & Brand Equity (FDI Attraction)",
+          content: "Gombe State has been ranked #1 in Nigeria for Ease of Doing Business (PEBEC 2021, 2023) and 1st in road infrastructure (PCL 2025). To attract international investors to the Muhammadu Buhari Industrial Park, the state needs a marketing tool that matches global standards.\n\nValue: A cinematic documentary acts as a \"Video Prospectus\" that can be shown at international investment summits, potentially attracting billions in private sector capital.",
+        },
+        {
+          heading: "III. Public Trust & Social Contract (Accountability)",
+          content: "The 2026 \"Budget of Consolidation\" is a promise to the people. By showing visual evidence of 114 functional PHCs and 1,200+ renovated classrooms across all 11 LGAs, the administration strengthens the \"Social Contract.\"\n\nValue: Increasing \"Political Capital\" and citizen cooperation by making the government's work visible to the grassroots.",
+        },
+        {
+          heading: "IV. Premium Production for National Prestige",
+          content: "To compete for attention on national platforms like Channels TV, Arise News, and NTA, the production quality must be world-class.\n\n• 4K & Drone Technology: Essential to show the massive scale of infrastructure projects (Roads and the Industrial Park).\n• National Airtime: Ensures that the Gombe success story is heard in Abuja and Lagos, where federal policy-makers and corporate leaders reside.",
+        },
+        {
+          heading: "V. Cost-Benefit Analysis",
+          content: "National Airtime — National visibility for the \"Jewel in the Savannah\" brand.\nHigh-End Production — Credibility with international donors (World Bank, AfDB, etc.).\nDigital Distribution — Engaging the youth demographic (50% of the population) via social media.",
+        },
+      ],
+    },
+    {
+      title: "Conclusion & Call to Action",
+      body: "The trajectory of Gombe State since 2019 is a testament to what is possible when visionary leadership meets disciplined execution. From the industrial blueprint of the Muhammadu Buhari Industrial Park to the historic enrollment of 450,000 out-of-school children, Gombe State is no longer just \"The Jewel in the Savannah\"; it is now the Industrial Hub of the North-East.\n\nThis documentary will ensure that the legacy of Governor Inuwa Yahaya's administration is documented with the prestige and clarity it deserves, and the \"Gombe Miracle\" is a story that belongs to all Nigerians.\n\nHowever, achievements that are not documented are often forgotten. \"The Jewel's Transformation\" is more than a television program; it is a strategic asset designed to:\n1. Seal the Legacy of the Inuwa Yahaya administration as the most transformative era in the state's history.\n2. Market the State as Nigeria's premier destination for sustainable investment.\n3. Inspire the Citizens by showing them how far they have come under this leadership.\n\nThe Path Forward: We are prepared to move into the pre-production phase immediately. We humbly request a brief audience with your office to:\n• Review the technical roadmap and interview list.\n• Finalize the production budget and timeline.\n• Discuss the strategic launch date to align with the state's 2026 calendar of events.\n\nYour Excellency, Gombe is no longer just a state in the North-East; it is a national benchmark. Let us help you tell that story to the world with the prestige and excellence it deserves.\n\nRespectfully Submitted,\nFatima Dauda Kurfi\nLead Consultant/Executive Producer\nFADAK MEDIA",
+    },
   ],
 
   mouParties: {
