@@ -257,8 +257,24 @@ const Proposal = () => {
             <FeaturePage key={idx} sectionNumber={String(idx + 3).padStart(2, "0")} page={page} />
           ))}
           <PricingTimelinePage data={proposalData} sectionStart={proposalData.featurePages.length + 3} />
-          <MOUPage data={proposalData} sectionNumber={String(proposalData.featurePages.length + 4).padStart(2, "0")} />
-          <ContactTeamPage showTeam={showTeam} sectionNumber={String(proposalData.featurePages.length + 5).padStart(2, "0")} />
+          {proposalData.appendixSections && proposalData.appendixSections.length > 0 && (
+            <AppendixPage
+              sections={proposalData.appendixSections}
+              sectionStart={proposalData.featurePages.length + 5}
+            />
+          )}
+          <MOUPage
+            data={proposalData}
+            sectionNumber={String(
+              proposalData.featurePages.length + 4 + (proposalData.appendixSections?.length ? 1 : 0)
+            ).padStart(2, "0")}
+          />
+          <ContactTeamPage
+            showTeam={showTeam}
+            sectionNumber={String(
+              proposalData.featurePages.length + 5 + (proposalData.appendixSections?.length ? 1 : 0)
+            ).padStart(2, "0")}
+          />
         </div>
       </div>
     </>
@@ -291,7 +307,8 @@ const FeatureBlock = ({ title, items }: { title: string; items: string[] }) => (
 );
 
 const CoverPage = ({ data }: { data: ProposalData }) => (
-  <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "30mm 25mm" }}>
+  <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "20mm 25mm" }}>
+    {/* Fixed Letterhead */}
     <div data-pdf-section className="flex flex-col items-center text-center space-y-2">
       <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
       <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB NIGERIA LIMITED</h2>
@@ -299,6 +316,38 @@ const CoverPage = ({ data }: { data: ProposalData }) => (
       <p className="text-sm text-muted-foreground italic">Media · Technology · Strategy</p>
     </div>
 
+    {/* Optional: Formal Letter Address Block */}
+    {data.coverLetter && (
+      <div data-pdf-section className="mt-8 text-left space-y-3 text-sm leading-relaxed border-t border-border pt-6">
+        {data.coverLetter.date && (
+          <p className="text-foreground/80">Date: <span className="font-semibold">{data.coverLetter.date}</span></p>
+        )}
+        <div className="mt-2 space-y-0.5">
+          {data.coverLetter.recipient.split("\n").map((line, i) => (
+            <p key={i} className="font-semibold text-foreground">{line}</p>
+          ))}
+          {data.coverLetter.address && <p className="text-foreground/80">{data.coverLetter.address}</p>}
+        </div>
+        {data.coverLetter.attention && (
+          <p className="mt-2"><span className="font-semibold">Attention:</span> {data.coverLetter.attention}</p>
+        )}
+        {data.coverLetter.salutation && (
+          <p className="mt-1 font-semibold">{data.coverLetter.salutation}</p>
+        )}
+        {data.coverLetter.subject && (
+          <p className="mt-2 font-bold uppercase text-xs tracking-wide text-[hsl(var(--primary))]">{data.coverLetter.subject}</p>
+        )}
+        {data.coverLetter.body && (
+          <div className="mt-3 space-y-3 text-sm text-foreground/80">
+            {data.coverLetter.body.split("\n\n").map((para, i) => (
+              <p key={i} style={{ whiteSpace: "pre-line" }}>{para}</p>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Proposal Title Block */}
     <div data-pdf-section className="flex flex-col items-center text-center mt-8">
       <div className="border-t border-b border-[hsl(var(--secondary))] py-8 px-4 space-y-4 w-full">
         <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Proposal</p>
@@ -442,6 +491,45 @@ const PricingTimelinePage = ({ data, sectionStart }: { data: ProposalData; secti
       </div>
     </div>
   </div>
+);
+
+const AppendixPage = ({
+  sections,
+  sectionStart,
+}: {
+  sections: NonNullable<ProposalData["appendixSections"]>;
+  sectionStart: number;
+}) => (
+  <>
+    {sections.map((section, idx) => (
+      <div key={idx} className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
+        <div data-pdf-section>
+          <SectionTitle number={String(sectionStart + idx).padStart(2, "0")} title={section.title} />
+          {section.body && (
+            <div className="mt-6 space-y-3 text-sm leading-relaxed text-foreground/90">
+              {section.body.split("\n\n").map((para, pi) => (
+                <p key={pi} style={{ whiteSpace: "pre-line" }}>{para}</p>
+              ))}
+            </div>
+          )}
+        </div>
+        {section.subSections && section.subSections.length > 0 && (
+          <div className="mt-6 space-y-6">
+            {section.subSections.map((sub, si) => (
+              <div data-pdf-section key={si} className="pl-4 border-l-2 border-[hsl(var(--secondary))]">
+                <p className="font-bold text-sm text-[hsl(var(--primary))] mb-2">{sub.heading}</p>
+                <div className="space-y-2 text-sm text-foreground/80">
+                  {sub.content.split("\n\n").map((para, pi) => (
+                    <p key={pi} style={{ whiteSpace: "pre-line" }}>{para}</p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    ))}
+  </>
 );
 
 const MOUPage = ({ data, sectionNumber }: { data: ProposalData; sectionNumber: string }) => (
