@@ -1,63 +1,57 @@
 
-# Render "Key Documentary Pillars" as a Table
+# Fix: Blank White Space on Cover Page PDF
 
-## What the User Sees Now
-Section 3 ("Key Documentary Pillars") renders as bullet-point blocks — one card per pillar with checklist items. The original PDF has it as a clean two-column table: **Pillar | Key Highlights to Feature**.
+## Root Cause
 
-## What Changes (3 small, targeted edits — no big refactor)
+The `CoverPage` component currently has **4 separate `data-pdf-section` attributes** on individual inner divs:
 
-### 1. `src/data/proposalTemplates.ts` — Add `tableView` flag to interface + Gombe template
+1. Letterhead (logo + company name) — small element
+2. Cover letter block (address, attention, body) — conditional
+3. Proposal title block (title, client name, location) — medium element
+4. Date/Confidential block — small element
 
-Add one optional boolean field `tableView?: boolean` to the `featurePages` entry type. When `true`, the feature page renders as a table instead of bullet blocks.
+The PDF engine (`handleDownloadPDF`) queries ALL `[data-pdf-section]` elements across the whole document and captures each one as a standalone image via `html2canvas`. It then stacks them in the PDF with only a 3mm gap between each image.
 
-Update the first `featurePages` entry in `gombeTemplate` (Key Documentary Pillars) to set `tableView: true`. The existing `features` array already has the right data — each feature's `title` becomes the "Pillar" column and `items.join(", ")` becomes the "Key Highlights" column.
+This means:
+- The `mt-8` (32px) spacing between sections is **lost** — the engine doesn't see whitespace, only element content
+- The `py-8` padding inside the title block box is captured, but the margin above it is not
+- Each captured section is tiny, and when stacked, they leave a **large blank remainder** on the first PDF page because the sum of the tiny captured heights is far less than one full A4 page height
 
-```typescript
-// In ProposalData interface
-featurePages: {
-  sectionTitle: string;
-  subtitle?: string;
-  description?: string;
-  tableView?: boolean;   // NEW: render features as a 2-col table
-  features: FeatureSection[];
-  retainerBox?: { ... };
-}[];
+## The Fix — One Change Only
 
-// In gombeTemplate, first featurePages entry:
-{
-  sectionTitle: "Key Documentary Pillars",
-  subtitle: 'The "Story" Hubs',
-  tableView: true,   // NEW
-  features: [ ... ] // unchanged
-}
+**Merge all 4 `data-pdf-section` attributes into ONE wrapper** around all the cover page content. When the entire cover is one captured image, `html2canvas` captures the full layout including all margins, paddings, and spacing — exactly as it looks on screen.
+
+The outer `div.proposal-page` (which controls `max-width`, `shadow`, and padding) stays as-is. A new inner `div data-pdf-section` wraps everything inside it.
+
+### Before (4 separate sections):
+```
+div.proposal-page
+  ├── div[data-pdf-section]   ← letterhead only
+  ├── div[data-pdf-section]   ← cover letter block (conditional)
+  ├── div[data-pdf-section]   ← title block
+  └── div[data-pdf-section]   ← date block
 ```
 
-### 2. `src/pages/Proposal.tsx` — Update `FeaturePage` to render a table when `tableView` is true
-
-Inside the `FeaturePage` component, after the subtitle/description block, check `page.tableView`. If true, render a styled `<table>` with two columns instead of the `FeatureBlock` grid:
-
+### After (1 unified section):
 ```
-| Pillar                | Key Highlights to Feature                                    |
-|-----------------------|--------------------------------------------------------------|
-| Industrial Revolution | The 1,000-hectare Industrial Park, N60bn+ in private ...    |
-| Education & Youth     | Enrolling 450,000+ out-of-school children (BESDA), ...     |
-| The Health Miracle    | "1-Ward-1-PHC" project (114 centers), Go-Health ...        |
-| Infrastructure        | Network 11-100 project (over 1,000km of roads), ...        |
-| Civil Service Reform  | Implementation of the N70,000 minimum wage, ...            |
+div.proposal-page
+  └── div[data-pdf-section]   ← wraps everything
+        ├── div               ← letterhead
+        ├── div               ← cover letter block (conditional)
+        ├── div               ← title block
+        └── div               ← date block
 ```
 
-The table uses the same primary-color header style as the pricing tables (dark background, white text), alternating row shading, and the emoji from `feature.title` is preserved in the Pillar cell. The "Key Highlights" cell joins `feature.items` with `", "`.
-
-### What Does NOT Change
-- All other templates (Raudah) — untouched
-- The AI edge function — untouched
-- The Production Strategy, Media Distribution, and all other feature pages — still render as bullet blocks
-- Team toggle, PDF download, print, MOU, all other sections — untouched
-- The `FeatureBlock` component — stays, still used for all non-tableView pages
-
-## Files to Modify
+## File to Modify
 
 | File | Change |
 |------|--------|
-| `src/data/proposalTemplates.ts` | Add `tableView?: boolean` to interface; set it on Gombe's first feature page |
-| `src/pages/Proposal.tsx` | Update `FeaturePage` to branch on `page.tableView` and render a `<table>` |
+| `src/pages/Proposal.tsx` | In `CoverPage`: remove `data-pdf-section` from the 4 inner divs; add one `data-pdf-section` wrapper div around all content inside `div.proposal-page` |
+
+## What Does NOT Change
+- The visual layout on screen — identical
+- All spacing, margins, and padding — preserved
+- The letter address block rendering — unchanged
+- PDF engine logic (`handleDownloadPDF`) — untouched
+- All other pages and their `data-pdf-section` attributes — untouched
+- MOU toggle, team toggle, templates — all untouched
