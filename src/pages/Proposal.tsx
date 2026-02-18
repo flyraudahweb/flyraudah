@@ -333,67 +333,69 @@ const FeatureBlock = ({ title, items }: { title: string; items: string[] }) => (
 
 const CoverPage = ({ data }: { data: ProposalData }) => (
   <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "20mm 25mm" }}>
-    {/* Fixed Letterhead */}
-    <div data-pdf-section className="flex flex-col items-center text-center space-y-2">
-      <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
-      <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB NIGERIA LIMITED</h2>
-      <p className="text-xs text-muted-foreground font-medium">RC: 8426199</p>
-      <p className="text-sm text-muted-foreground italic">Media · Technology · Strategy</p>
-    </div>
+    <div data-pdf-section>
+      {/* Fixed Letterhead */}
+      <div className="flex flex-col items-center text-center space-y-2">
+        <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
+        <h2 className="text-lg font-semibold tracking-[0.3em] uppercase text-muted-foreground">FADAK MEDIA HUB NIGERIA LIMITED</h2>
+        <p className="text-xs text-muted-foreground font-medium">RC: 8426199</p>
+        <p className="text-sm text-muted-foreground italic">Media · Technology · Strategy</p>
+      </div>
 
-    {/* Optional: Formal Letter Address Block */}
-    {data.coverLetter && (
-      <div data-pdf-section className="mt-8 text-left space-y-3 text-sm leading-relaxed border-t border-border pt-6">
-        {data.coverLetter.date && (
-          <p className="text-foreground/80">Date: <span className="font-semibold">{data.coverLetter.date}</span></p>
-        )}
-        <div className="mt-2 space-y-0.5">
-          {data.coverLetter.recipient.split("\n").map((line, i) => (
-            <p key={i} className="font-semibold text-foreground">{line}</p>
-          ))}
-          {data.coverLetter.address && <p className="text-foreground/80">{data.coverLetter.address}</p>}
-        </div>
-        {data.coverLetter.attention && (
-          <p className="mt-2"><span className="font-semibold">Attention:</span> {data.coverLetter.attention}</p>
-        )}
-        {data.coverLetter.salutation && (
-          <p className="mt-1 font-semibold">{data.coverLetter.salutation}</p>
-        )}
-        {data.coverLetter.subject && (
-          <p className="mt-2 font-bold uppercase text-xs tracking-wide text-[hsl(var(--primary))]">{data.coverLetter.subject}</p>
-        )}
-        {data.coverLetter.body && (
-          <div className="mt-3 space-y-3 text-sm text-foreground/80">
-            {data.coverLetter.body.split("\n\n").map((para, i) => (
-              <p key={i} style={{ whiteSpace: "pre-line" }}>{para}</p>
+      {/* Optional: Formal Letter Address Block */}
+      {data.coverLetter && (
+        <div className="mt-8 text-left space-y-3 text-sm leading-relaxed border-t border-border pt-6">
+          {data.coverLetter.date && (
+            <p className="text-foreground/80">Date: <span className="font-semibold">{data.coverLetter.date}</span></p>
+          )}
+          <div className="mt-2 space-y-0.5">
+            {data.coverLetter.recipient.split("\n").map((line, i) => (
+              <p key={i} className="font-semibold text-foreground">{line}</p>
             ))}
+            {data.coverLetter.address && <p className="text-foreground/80">{data.coverLetter.address}</p>}
           </div>
+          {data.coverLetter.attention && (
+            <p className="mt-2"><span className="font-semibold">Attention:</span> {data.coverLetter.attention}</p>
+          )}
+          {data.coverLetter.salutation && (
+            <p className="mt-1 font-semibold">{data.coverLetter.salutation}</p>
+          )}
+          {data.coverLetter.subject && (
+            <p className="mt-2 font-bold uppercase text-xs tracking-wide text-[hsl(var(--primary))]">{data.coverLetter.subject}</p>
+          )}
+          {data.coverLetter.body && (
+            <div className="mt-3 space-y-3 text-sm text-foreground/80">
+              {data.coverLetter.body.split("\n\n").map((para, i) => (
+                <p key={i} style={{ whiteSpace: "pre-line" }}>{para}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Proposal Title Block */}
+      <div className="flex flex-col items-center text-center mt-8">
+        <div className="border-t border-b border-[hsl(var(--secondary))] py-8 px-4 space-y-4 w-full">
+          <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Proposal</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-[hsl(var(--primary))]" style={{ fontFamily: "Playfair Display, serif", whiteSpace: "pre-line" }}>
+            {data.proposalTitle}
+          </h1>
+        </div>
+
+        <div className="space-y-2 text-sm text-muted-foreground mt-8">
+          <p className="font-semibold">{data.clientTitle}</p>
+          <p className="text-foreground font-bold text-lg">{data.clientName}</p>
+          <p>{data.clientLocation}</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center text-center mt-8 space-y-2 text-sm text-muted-foreground">
+        <p>{data.date}</p>
+        <p>Confidential</p>
+        {data.demoUrl && (
+          <p className="text-xs">Demo: <a href={`https://${data.demoUrl}`} className="text-[hsl(var(--primary))] underline">{data.demoUrl}</a></p>
         )}
       </div>
-    )}
-
-    {/* Proposal Title Block */}
-    <div data-pdf-section className="flex flex-col items-center text-center mt-8">
-      <div className="border-t border-b border-[hsl(var(--secondary))] py-8 px-4 space-y-4 w-full">
-        <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Proposal</p>
-        <h1 className="text-3xl md:text-4xl font-bold text-[hsl(var(--primary))]" style={{ fontFamily: "Playfair Display, serif", whiteSpace: "pre-line" }}>
-          {data.proposalTitle}
-        </h1>
-      </div>
-
-      <div className="space-y-2 text-sm text-muted-foreground mt-8">
-        <p className="font-semibold">{data.clientTitle}</p>
-        <p className="text-foreground font-bold text-lg">{data.clientName}</p>
-        <p>{data.clientLocation}</p>
-      </div>
-    </div>
-
-    <div data-pdf-section className="flex flex-col items-center text-center mt-8 space-y-2 text-sm text-muted-foreground">
-      <p>{data.date}</p>
-      <p>Confidential</p>
-      {data.demoUrl && (
-        <p className="text-xs">Demo: <a href={`https://${data.demoUrl}`} className="text-[hsl(var(--primary))] underline">{data.demoUrl}</a></p>
-      )}
     </div>
   </div>
 );
