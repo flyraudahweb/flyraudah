@@ -412,13 +412,41 @@ const FeaturePage = ({ sectionNumber, page }: { sectionNumber: string; page: Pro
         </div>
       )}
     </div>
-    <div className="mt-4 space-y-6">
-      {page.features.map((feature, i) => (
-        <div data-pdf-section key={i}>
-          <FeatureBlock title={feature.title} items={feature.items} />
-        </div>
-      ))}
-    </div>
+
+    {page.tableView ? (
+      /* ── Table view: Pillar | Key Highlights ── */
+      <div data-pdf-section className="mt-4 overflow-hidden rounded-lg border border-border">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+              <th className="px-4 py-3 text-left font-semibold w-[35%]">Pillar</th>
+              <th className="px-4 py-3 text-left font-semibold">Key Highlights to Feature</th>
+            </tr>
+          </thead>
+          <tbody>
+            {page.features.map((feature, i) => (
+              <tr
+                key={i}
+                style={{ background: i % 2 === 0 ? "hsl(var(--muted))" : "white" }}
+              >
+                <td className="px-4 py-3 font-semibold text-[hsl(var(--primary))] align-top">{feature.title}</td>
+                <td className="px-4 py-3 text-foreground/80 align-top">{feature.items.join(", ")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      /* ── Default bullet-block view ── */
+      <div className="mt-4 space-y-6">
+        {page.features.map((feature, i) => (
+          <div data-pdf-section key={i}>
+            <FeatureBlock title={feature.title} items={feature.items} />
+          </div>
+        ))}
+      </div>
+    )}
+
     {page.retainerBox && (
       <div data-pdf-section className="mt-8 p-4 rounded-lg border border-dashed border-[hsl(var(--secondary))] bg-[hsl(var(--secondary))]/5">
         <p className="text-sm font-semibold text-[hsl(var(--primary))]">{page.retainerBox.label}</p>

@@ -58,6 +58,7 @@ export interface ProposalData {
     sectionTitle: string;
     subtitle?: string;
     description?: string;
+    tableView?: boolean;   // When true, renders features as a 2-col table (Pillar | Key Highlights)
     features: FeatureSection[];
     retainerBox?: { label: string; amount: string; note: string };
   }[];
@@ -224,6 +225,7 @@ export const gombeTemplate: ProposalData = {
     {
       sectionTitle: "Key Documentary Pillars",
       subtitle: "The \"Story\" Hubs",
+      tableView: true,
       features: [
         { title: "🏭 Industrial Revolution", items: ["The 1,000-hectare Industrial Park", "N60bn+ in private investments", "Dadin Kowa Hydro-power link"] },
         { title: "📚 Education & Youth", items: ["Enrolling 450,000+ out-of-school children (BESDA)", "Building 1,800 classrooms", "GOSTEC youth jobs initiative"] },
