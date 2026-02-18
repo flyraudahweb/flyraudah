@@ -1,57 +1,25 @@
 
+# Add Toggle for Team Section in Proposal
 
-# Fix PDF Text Clipping and Demo Link Label
+## What Changes
 
-## Root Cause
+Add a "Show Team Section" toggle (switch) above the proposal content, next to the existing Print/Download buttons. When toggled off, the team members and their photos will be hidden from both the on-screen view and the generated PDF. The contact info (email, website, address) will still be shown.
 
-The text clipping (e.g., "yideo" instead of "video", "IIMITED" instead of "LIMITED", "muless" instead of "unless") is caused by `html2canvas` cutting off the top/bottom pixels of text in each captured `data-pdf-section`. When sections have no vertical padding, the bitmap capture clips character ascenders/descenders at section boundaries.
+## Technical Details
 
-## Changes (File: `src/pages/Proposal.tsx`)
+**File: `src/pages/Proposal.tsx`**
 
-### 1. Add vertical padding to all PDF sections via inline style
+1. **New state variable**: Add `const [showTeam, setShowTeam] = useState(true);` at the top of the `Proposal` component.
 
-Before capturing each section in `handleDownloadPDF`, temporarily add padding to each `data-pdf-section` element to give html2canvas breathing room around text. Then remove it after capture. This prevents letter clipping without affecting the on-screen layout.
+2. **Toggle UI**: Add a labeled Switch component in the button bar area (near the Print/Download buttons):
+   ```
+   [Switch] Include Team Section
+   ```
 
-```
-for (const section of sections) {
-  // Temporarily add padding for clean capture
-  const prevPadding = section.style.padding;
-  section.style.padding = "6px 2px";
+3. **Pass prop to ContactTeamPage**: Change `<ContactTeamPage />` to `<ContactTeamPage showTeam={showTeam} />`.
 
-  const canvas = await html2canvas(section, { ... });
+4. **Update `ContactTeamPage` component**: Accept a `showTeam` prop. Conditionally render the team member cards (Fatima, Abubakar, Aliyu) only when `showTeam` is `true`. The contact info block (email, website, address) and section header will always remain visible but the title will change:
+   - `showTeam = true` --> "Contact & Team" (section 08)
+   - `showTeam = false` --> "Contact Information" (section 08)
 
-  // Restore original padding
-  section.style.padding = prevPadding;
-  ...
-}
-```
-
-### 2. Increase html2canvas scale from 2 to 3
-
-Higher resolution capture produces sharper text in the final PDF, reducing the blurry/cut appearance when scaled to A4 dimensions.
-
-### 3. Set a fixed width on the container before PDF generation
-
-Before iterating sections, temporarily set the proposal container to a fixed pixel width (e.g., 800px) so html2canvas renders consistently regardless of the user's viewport size. Restore after generation.
-
-### 4. Label the demo link on the Cover Page
-
-Change the bare link on line 135-137 from:
-```
-<a href="...">raudahtravels.lovable.app</a>
-```
-to:
-```
-<p>Demo: <a href="...">raudahtravels.lovable.app</a></p>
-```
-
-### 5. Label the footer demo link
-
-Same change for the footer link on line 515-517 -- prefix with "Demo:" for clarity.
-
-## Summary
-
-- Lines 30-61 (`handleDownloadPDF`): Add temp padding to sections before capture, increase scale to 3, set fixed container width
-- Lines 132-138 (Cover Page): Add "Demo:" label to link
-- Lines 515-517 (Footer): Add "Demo:" label to link
-
+This keeps the letterhead, footer, and contact details intact while letting users remove team profiles for proposals where they are not needed.
