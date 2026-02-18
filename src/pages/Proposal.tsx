@@ -4,6 +4,8 @@ import teamFatima from "@/assets/team-fatima.jpg";
 import teamAbubakar from "@/assets/team-abubakar.jpg";
 import teamAliyu from "@/assets/team-aliyu.jpg";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useRef, useState } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -11,6 +13,7 @@ import html2canvas from "html2canvas";
 const Proposal = () => {
   const proposalRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
+  const [showTeam, setShowTeam] = useState(true);
 
   const handleDownloadPDF = async () => {
     if (!proposalRef.current || generating) return;
@@ -101,14 +104,20 @@ const Proposal = () => {
       `}</style>
 
       <div className="proposal-wrapper bg-muted min-h-screen py-8 print:py-0 print:bg-white">
-        <div className="no-print max-w-[210mm] mx-auto mb-4 px-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={() => window.print()} className="gap-2">
-            <Printer className="h-4 w-4" /> Print
-          </Button>
-          <Button onClick={handleDownloadPDF} disabled={generating} className="gap-2">
-            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {generating ? "Generating…" : "Download PDF"}
-          </Button>
+        <div className="no-print max-w-[210mm] mx-auto mb-4 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Switch id="show-team" checked={showTeam} onCheckedChange={setShowTeam} />
+            <Label htmlFor="show-team" className="text-sm cursor-pointer">Include Team Section</Label>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => window.print()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+            <Button onClick={handleDownloadPDF} disabled={generating} className="gap-2">
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {generating ? "Generating…" : "Download PDF"}
+            </Button>
+          </div>
         </div>
 
         <div ref={proposalRef}>
@@ -118,7 +127,7 @@ const Proposal = () => {
           <MediaBrandingPage />
           <PricingTimelinePage />
           <MOUPage />
-          <ContactTeamPage />
+          <ContactTeamPage showTeam={showTeam} />
         </div>
       </div>
     </>
@@ -487,26 +496,28 @@ const MOUPage = () => (
   </div>
 );
 
-const ContactTeamPage = () => (
+const ContactTeamPage = ({ showTeam }: { showTeam: boolean }) => (
   <div className="proposal-page page-break bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "25mm" }}>
     <div data-pdf-section>
-      <SectionTitle number="08" title="Contact & Team" />
-      <div className="mt-6 space-y-4">
-        {[
-          { name: "Fatima Dauda Kurfi", role: "CHIEF EXECUTIVE DIRECTOR, FADAK MEDIA HUB", phone: "09160628769", photo: teamFatima },
-          { name: "Abubakar Lawal Abba", role: "PROJECT LEAD", phone: "07034681817", photo: teamAbubakar },
-          { name: "Aliyu Wada Umar", role: "PROJECT TECHNICAL DIRECTOR", phone: "09063412927", photo: teamAliyu },
-        ].map((person, i) => (
-          <div key={i} className="flex items-center gap-4 p-4 rounded-lg border border-border">
-            <img src={person.photo} alt={person.name} className="w-20 h-20 rounded-full object-cover flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-sm">{person.name}</p>
-              <p className="text-xs text-muted-foreground">{person.role}</p>
+      <SectionTitle number="08" title={showTeam ? "Contact & Team" : "Contact Information"} />
+      {showTeam && (
+        <div className="mt-6 space-y-4">
+          {[
+            { name: "Fatima Dauda Kurfi", role: "CHIEF EXECUTIVE DIRECTOR, FADAK MEDIA HUB", phone: "09160628769", photo: teamFatima },
+            { name: "Abubakar Lawal Abba", role: "PROJECT LEAD", phone: "07034681817", photo: teamAbubakar },
+            { name: "Aliyu Wada Umar", role: "PROJECT TECHNICAL DIRECTOR", phone: "09063412927", photo: teamAliyu },
+          ].map((person, i) => (
+            <div key={i} className="flex items-center gap-4 p-4 rounded-lg border border-border">
+              <img src={person.photo} alt={person.name} className="w-20 h-20 rounded-full object-cover flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-sm">{person.name}</p>
+                <p className="text-xs text-muted-foreground">{person.role}</p>
+              </div>
+              <p className="ml-auto text-sm font-mono">{person.phone}</p>
             </div>
-            <p className="ml-auto text-sm font-mono">{person.phone}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
 
     <div data-pdf-section>
