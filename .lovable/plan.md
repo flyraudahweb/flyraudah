@@ -1,110 +1,63 @@
 
-# Fix AI Proposal Generator + Gombe Template + Letter Address Block
+# Render "Key Documentary Pillars" as a Table
 
-## Problems Identified
+## What the User Sees Now
+Section 3 ("Key Documentary Pillars") renders as bullet-point blocks — one card per pillar with checklist items. The original PDF has it as a clean two-column table: **Pillar | Key Highlights to Feature**.
 
-### Problem 1 — AI Removes Content
-The edge function does two things that cause data loss:
-- **Hard truncates input** at 15,000 characters (`text.slice(0, 15000)`). The pasted Gombe text is ~6,000 chars but the prompt + system message overhead means the AI sees less of the actual content.
-- **Overly rigid structure mapping**: The `featurePages` schema forces all prose into bullet-point feature blocks, so rich sections like "Justification of Project Costs" (with 5 strategic pillars) and "Conclusion & Call to Action" get silently dropped because they don't fit into `{ title, items[] }` arrays.
-- **Fix**: Add two new optional fields to the schema — `coverLetter` (for the formal address block) and `appendixSections` (for free-prose sections like Justification and Conclusion that don't fit feature/pricing formats). Update the system prompt to be explicit that NO content should be omitted.
+## What Changes (3 small, targeted edits — no big refactor)
 
-### Problem 2 — No Letter Address Block on Cover Page
-The PDF has a formal left-aligned block:
-```
-Date: [date]
-The Executive Governor of Gombe State, His Excellency...
-Government House, Gombe...
-Attention: The Honorable Commissioner for Information and Culture Sir,
-```
-This is a formal **letter header** that appears before the main proposal title. Currently, `ProposalData` has no field for this and `CoverPage` has no UI for it.
+### 1. `src/data/proposalTemplates.ts` — Add `tableView` flag to interface + Gombe template
 
-### Problem 3 — Gombe Template Missing Sections
-The hardcoded `gombeTemplate` in `proposalTemplates.ts` is missing:
-- The formal letter address block
-- Section 7: Justification of Project Costs (5 detailed pillars)
-- Section 8: Conclusion & Call to Action
+Add one optional boolean field `tableView?: boolean` to the `featurePages` entry type. When `true`, the feature page renders as a table instead of bullet blocks.
 
----
-
-## Changes Required
-
-### 1. Update `ProposalData` interface in `src/data/proposalTemplates.ts`
-
-Add two new optional fields:
+Update the first `featurePages` entry in `gombeTemplate` (Key Documentary Pillars) to set `tableView: true`. The existing `features` array already has the right data — each feature's `title` becomes the "Pillar" column and `items.join(", ")` becomes the "Key Highlights" column.
 
 ```typescript
-// Optional: formal letter address (left-aligned before proposal title on cover)
-coverLetter?: {
-  date?: string;
-  recipient: string;        // "The Executive Governor of Gombe State..."
-  address?: string;         // "Government House, Gombe..."
-  attention?: string;       // "The Honorable Commissioner for Information and Culture Sir,"
-  salutation?: string;      // "Sir,"
-  subject?: string;         // "LETTER OF PROPOSAL: DOCUMENTING..."
-  body?: string;            // The letter body paragraphs
-};
-
-// Optional: free-prose appendix sections (Justification, Conclusion, etc.)
-appendixSections?: {
-  title: string;
-  body: string;             // Rich text, may contain \n for paragraphs
-  subSections?: { heading: string; content: string }[];
+// In ProposalData interface
+featurePages: {
+  sectionTitle: string;
+  subtitle?: string;
+  description?: string;
+  tableView?: boolean;   // NEW: render features as a 2-col table
+  features: FeatureSection[];
+  retainerBox?: { ... };
 }[];
+
+// In gombeTemplate, first featurePages entry:
+{
+  sectionTitle: "Key Documentary Pillars",
+  subtitle: 'The "Story" Hubs',
+  tableView: true,   // NEW
+  features: [ ... ] // unchanged
+}
 ```
 
-Also update the hardcoded `gombeTemplate` to include:
-- `coverLetter` block with the recipient address and attention line
-- `appendixSections` with the full Justification of Costs and Conclusion content from the PDF
+### 2. `src/pages/Proposal.tsx` — Update `FeaturePage` to render a table when `tableView` is true
 
-### 2. Update `CoverPage` component in `src/pages/Proposal.tsx`
-
-Add an optional letter address block **before** the main title section. When `data.coverLetter` exists, render a left-aligned formal block:
+Inside the `FeaturePage` component, after the subtitle/description block, check `page.tableView`. If true, render a styled `<table>` with two columns instead of the `FeatureBlock` grid:
 
 ```
-[Left aligned, formal style]
-Date: 2026
-
-The Executive Governor of Gombe State,
-His Excellency, Muhammadu Inuwa Yahaya (CON),
-Government House, Gombe, Gombe State.
-
-Attention: The Honorable Commissioner for Information and Culture Sir,
-
-[Subject line in bold]
-
-[Letter body paragraphs]
+| Pillar                | Key Highlights to Feature                                    |
+|-----------------------|--------------------------------------------------------------|
+| Industrial Revolution | The 1,000-hectare Industrial Park, N60bn+ in private ...    |
+| Education & Youth     | Enrolling 450,000+ out-of-school children (BESDA), ...     |
+| The Health Miracle    | "1-Ward-1-PHC" project (114 centers), Go-Health ...        |
+| Infrastructure        | Network 11-100 project (over 1,000km of roads), ...        |
+| Civil Service Reform  | Implementation of the N70,000 minimum wage, ...            |
 ```
 
-This section renders before the centered proposal title box and uses the existing letterhead.
+The table uses the same primary-color header style as the pricing tables (dark background, white text), alternating row shading, and the emoji from `feature.title` is preserved in the Pillar cell. The "Key Highlights" cell joins `feature.items` with `", "`.
 
-### 3. Add `AppendixPage` component in `src/pages/Proposal.tsx`
-
-A new page component that renders `appendixSections` — free prose sections with optional sub-headings (roman numerals like the Justification section). These render between the Pricing/Timeline page and the MOU page.
-
-### 4. Update `supabase/functions/generate-proposal/index.ts`
-
-Three key fixes:
-- **Remove the 15,000 char truncation** — pass the full text (the model supports it)
-- **Add `coverLetter` and `appendixSections` to the tool schema** so the AI knows to extract them
-- **Update the system prompt** to explicitly say: *"NEVER omit any content. Justification sections, conclusions, letter bodies, and call-to-action paragraphs must go into `appendixSections`. The formal address block (Date, recipient, Attention line) goes into `coverLetter`."*
-
----
+### What Does NOT Change
+- All other templates (Raudah) — untouched
+- The AI edge function — untouched
+- The Production Strategy, Media Distribution, and all other feature pages — still render as bullet blocks
+- Team toggle, PDF download, print, MOU, all other sections — untouched
+- The `FeatureBlock` component — stays, still used for all non-tableView pages
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/data/proposalTemplates.ts` | Add `coverLetter` and `appendixSections` fields to interface + update `gombeTemplate` with all missing content |
-| `src/pages/Proposal.tsx` | Update `CoverPage` to render letter address block; add `AppendixPage` component; wire it into the page render loop |
-| `supabase/functions/generate-proposal/index.ts` | Remove truncation, add new schema fields, strengthen system prompt |
-
----
-
-## What Stays the Same
-
-- FADAK letterhead (logo, RC number, company name) — always fixed
-- Footer (email, website, address, copyright) — always fixed
-- Team section toggle — unchanged
-- PDF download & print — unchanged
-- All existing templates (Raudah) — unchanged
+| `src/data/proposalTemplates.ts` | Add `tableView?: boolean` to interface; set it on Gombe's first feature page |
+| `src/pages/Proposal.tsx` | Update `FeaturePage` to branch on `page.tableView` and render a `<table>` |
