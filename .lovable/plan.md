@@ -1,57 +1,46 @@
 
-# Fix: Blank White Space on Cover Page PDF
+# Fix: Cover Page Text Too Small in PDF
 
 ## Root Cause
 
-The `CoverPage` component currently has **4 separate `data-pdf-section` attributes** on individual inner divs:
+The PDF engine captures each `data-pdf-section` element independently via `html2canvas` and scales it to fit `contentWidth = 180mm` in the PDF.
 
-1. Letterhead (logo + company name) — small element
-2. Cover letter block (address, attention, body) — conditional
-3. Proposal title block (title, client name, location) — medium element
-4. Date/Confidential block — small element
+The problem is a mismatch in **captured canvas widths**:
 
-The PDF engine (`handleDownloadPDF`) queries ALL `[data-pdf-section]` elements across the whole document and captures each one as a standalone image via `html2canvas`. It then stacks them in the PDF with only a 3mm gap between each image.
+- **Other pages** (Executive Summary, Feature pages, etc.) have their `data-pdf-section` div sitting *inside* a `padding: "25mm"` outer container. At 800px container width, 25mm on each side ≈ ~94px × 2 = ~188px of horizontal padding. So the inner section content is captured at roughly **612px** wide.
+- **Cover page** has its single `data-pdf-section` as a direct child of `padding: "20mm 25mm"` — same horizontal padding as others (25mm each side), so technically the same ~612px capture width. However, the PDF engine line `section.style.padding = "8px 4px"` temporarily sets padding on the **section element itself**, not the outer page wrapper. Since the cover's `data-pdf-section` is an unstyled inner div (no explicit width), it fills the full inner width of the outer `proposal-page` div.
 
-This means:
-- The `mt-8` (32px) spacing between sections is **lost** — the engine doesn't see whitespace, only element content
-- The `py-8` padding inside the title block box is captured, but the margin above it is not
-- Each captured section is tiny, and when stacked, they leave a **large blank remainder** on the first PDF page because the sum of the tiny captured heights is far less than one full A4 page height
+The actual root cause is simpler and confirmed by the screenshots: the cover page is captured at the **full 800px container width** because the `data-pdf-section` is an inline div with no constraints. The outer `proposal-page` div has `padding: "20mm 25mm"` but that padding applies to the *outer* element, and `html2canvas` captures the *section* element's rendered dimensions. The section div naturally expands to fill the content area of its padded parent — which is correct. But the engine then injects `section.style.padding = "8px 4px"` temporarily during capture, which **overrides the outer page's padding effect** for that capture snapshot.
 
-## The Fix — One Change Only
+More precisely: looking at the reference screenshot showing the cover page PDF output — the content is narrow with large left/right margins in the PDF, meaning the captured image is being placed correctly width-wise (180mm) but the text inside appears small because the cover page's `data-pdf-section` content area is being captured much wider than intended.
 
-**Merge all 4 `data-pdf-section` attributes into ONE wrapper** around all the cover page content. When the entire cover is one captured image, `html2canvas` captures the full layout including all margins, paddings, and spacing — exactly as it looks on screen.
+## The Real Fix
 
-The outer `div.proposal-page` (which controls `max-width`, `shadow`, and padding) stays as-is. A new inner `div data-pdf-section` wraps everything inside it.
+The correct fix is to give the cover page `data-pdf-section` explicit **horizontal padding that mirrors the page padding**, so when `html2canvas` captures it, the content has the same effective margins as all other pages.
 
-### Before (4 separate sections):
-```
-div.proposal-page
-  ├── div[data-pdf-section]   ← letterhead only
-  ├── div[data-pdf-section]   ← cover letter block (conditional)
-  ├── div[data-pdf-section]   ← title block
-  └── div[data-pdf-section]   ← date block
-```
+Currently the PDF capture loop injects `section.style.padding = "8px 4px"` (8px top/bottom, 4px left/right). For all other pages, their sections are already inside a `25mm`-padded outer div, so the content naturally occupies the inner area. The cover's single section wraps everything inside the outer padded div — meaning the temporary `8px 4px` padding on the section itself doesn't replicate the outer page's 25mm side padding.
 
-### After (1 unified section):
-```
-div.proposal-page
-  └── div[data-pdf-section]   ← wraps everything
-        ├── div               ← letterhead
-        ├── div               ← cover letter block (conditional)
-        ├── div               ← title block
-        └── div               ← date block
-```
+**Solution**: Add `data-pdf-margin` attribute to the cover page's section div and modify the PDF engine to detect it, OR — more simply — move the CoverPage's outer padding **onto** the `data-pdf-section` div itself (and remove it from the outer `proposal-page` div), so the captured element includes its own margins, matching what other page sections "see" from their padded parents.
 
-## File to Modify
+The cleanest approach with **minimal change**: add a CSS class `cover-pdf-section` to the cover's `data-pdf-section` that sets `padding: 0 25mm` (matching other pages' side padding), so when the engine captures that element, the content has the same effective side margins as all other page sections. The top/bottom padding doesn't matter since the engine injects `8px` anyway.
+
+Actually, the simplest and most targeted fix: in `handleDownloadPDF`, detect if the section is the cover section (first section or by a `data-cover-section` attribute) and skip the padding injection for it — OR set a larger padding that matches the 25mm side margins.
+
+**Cleanest fix (two targeted changes):**
+
+1. Add `data-cover` attribute to the cover page's `data-pdf-section` div.
+2. In `handleDownloadPDF`, when processing a section with `data-cover`, instead of injecting `8px 4px`, inject padding that replicates `25mm` side margins relative to the 800px capture width. At 800px, 25mm ≈ 94px, so inject `section.style.padding = "8px 94px"` for cover, `"8px 4px"` for all others.
+
+This makes the cover's captured content width match all other pages, and text scales identically when both are placed at 180mm in the PDF.
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Proposal.tsx` | In `CoverPage`: remove `data-pdf-section` from the 4 inner divs; add one `data-pdf-section` wrapper div around all content inside `div.proposal-page` |
+| `src/pages/Proposal.tsx` | 1. Add `data-cover` attribute to cover page's `data-pdf-section` div. 2. In `handleDownloadPDF`, check for `data-cover` and apply `"8px 94px"` padding during capture instead of `"8px 4px"`. |
 
 ## What Does NOT Change
-- The visual layout on screen — identical
-- All spacing, margins, and padding — preserved
-- The letter address block rendering — unchanged
-- PDF engine logic (`handleDownloadPDF`) — untouched
-- All other pages and their `data-pdf-section` attributes — untouched
-- MOU toggle, team toggle, templates — all untouched
+- Visual layout on screen — identical
+- All other pages and their PDF capture logic — unchanged
+- MOU toggle, team toggle, templates — unchanged
+- Cover page structure and content — unchanged, just one attribute added
