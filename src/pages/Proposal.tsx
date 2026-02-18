@@ -133,9 +133,6 @@ const Proposal = () => {
       document.head.appendChild(globalStyle);
 
       for (const section of sections) {
-        const prevPadding = section.style.padding;
-        section.style.padding = "8px 4px";
-
         const canvas = await html2canvas(section, {
           scale: 3,
           useCORS: true,
@@ -143,8 +140,6 @@ const Proposal = () => {
           backgroundColor: "#ffffff",
           windowWidth: 800,
         });
-
-        section.style.padding = prevPadding;
 
         const imgData = canvas.toDataURL("image/png");
         const imgHeightMm = (canvas.height * contentWidth) / canvas.width;
@@ -332,8 +327,8 @@ const FeatureBlock = ({ title, items }: { title: string; items: string[] }) => (
 );
 
 const CoverPage = ({ data }: { data: ProposalData }) => (
-  <div className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "20mm 25mm" }}>
-    <div data-pdf-section>
+  <div data-pdf-section className="proposal-page bg-white max-w-[210mm] mx-auto shadow-lg print:shadow-none" style={{ padding: "20mm 25mm" }}>
+    <div>
       {/* Fixed Letterhead */}
       <div className="flex flex-col items-center text-center space-y-2">
         <img src={fadakLogo} alt="Fadak Media Hub" className="h-20 mx-auto object-contain" />
