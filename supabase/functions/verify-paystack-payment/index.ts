@@ -65,6 +65,25 @@ serve(async (req: Request) => {
       .update({ status: "confirmed" })
       .eq("id", bookingId);
 
+    // Send payment receipt email (fire-and-forget, don't block verification)
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/send-payment-receipt`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({
+          bookingId,
+          paymentAmount: verifyData.data.amount / 100, // Paystack returns amount in kobo
+          reference,
+        }),
+      });
+    } catch (emailErr) {
+      console.error("Failed to send receipt email:", emailErr);
+      // Don't fail the verification if email fails
+    }
+
     return new Response(JSON.stringify({ status: "verified", bookingId }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
