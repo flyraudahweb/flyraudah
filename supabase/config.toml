@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.generate-proposal]
 verify_jwt = false
+
+[functions.send-payment-receipt]
+verify_jwt = false

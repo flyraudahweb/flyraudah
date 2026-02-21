@@ -27,16 +27,30 @@ const AdminPayments = () => {
   });
 
   const verifyMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "verified" | "rejected" }) => {
+    mutationFn: async ({ id, status, bookingId, amount }: { id: string; status: "verified" | "rejected"; bookingId: string; amount: number }) => {
       const { error } = await supabase
         .from("payments")
         .update({ status, verified_at: new Date().toISOString(), verified_by: user?.id })
         .eq("id", id);
       if (error) throw error;
+
+      // If verified, also confirm the booking
+      if (status === "verified") {
+        await supabase.from("bookings").update({ status: "confirmed" }).eq("id", bookingId);
+
+        // Send receipt email
+        try {
+          await supabase.functions.invoke("send-payment-receipt", {
+            body: { bookingId, paymentAmount: amount },
+          });
+        } catch (emailErr) {
+          console.error("Receipt email failed:", emailErr);
+        }
+      }
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["admin-all-payments"] });
-      toast({ title: `Payment ${vars.status}` });
+      toast({ title: `Payment ${vars.status}`, description: vars.status === "verified" ? "Receipt email sent to pilgrim" : undefined });
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -89,10 +103,10 @@ const AdminPayments = () => {
                             <a href={payment.proof_of_payment_url} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" /></a>
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => verifyMutation.mutate({ id: payment.id, status: "verified" })}>
+                        <Button variant="ghost" size="icon" onClick={() => verifyMutation.mutate({ id: payment.id, status: "verified", bookingId: payment.booking_id, amount: Number(payment.amount) })}>
                           <Check className="h-4 w-4 text-primary" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => verifyMutation.mutate({ id: payment.id, status: "rejected" })}>
+                        <Button variant="ghost" size="icon" onClick={() => verifyMutation.mutate({ id: payment.id, status: "rejected", bookingId: payment.booking_id, amount: Number(payment.amount) })}>
                           <X className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
