@@ -44,8 +44,8 @@ const ALL_MENU_ITEMS = [
   { title: "Activity", url: "/admin/activity", icon: History, permission: "activity" },
   { title: "Amendments", url: "/admin/amendments", icon: Pencil, permission: "amendments" },
   { title: "Support Tickets", url: "/admin/support", icon: Headset, permission: "support" },
-  { title: "Settings", url: "/admin/settings", icon: Settings, permission: "settings" },
   { title: "Staff Management", url: "/admin/staff", icon: ShieldCheck, permission: "staff_management" },
+  { title: "Settings", url: "/admin/settings", icon: Settings, permission: "settings" },
 ];
 
 const AdminSidebar = () => {

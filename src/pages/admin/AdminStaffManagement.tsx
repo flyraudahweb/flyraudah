@@ -169,35 +169,31 @@ export default function AdminStaffManagement() {
         if (!inviteEmail.trim()) return toast.error("Email is required");
         setInviting(true);
         try {
-            // Create auth user via Supabase admin invite
-            const { data, error } = await supabase.auth.admin?.inviteUserByEmail
-                ? await (supabase.auth as any).admin.inviteUserByEmail(inviteEmail, {
-                    data: { full_name: inviteFullName },
-                })
-                : { data: null, error: new Error("Admin invite not available from client — use Supabase dashboard or an edge function") };
+            const { data, error } = await supabase.functions.invoke("invite-staff", {
+                body: {
+                    email: inviteEmail.trim(),
+                    full_name: inviteFullName.trim() || undefined,
+                    role: inviteRole,
+                    permissions: inviteRole === "staff" ? invitePerms : [],
+                },
+            });
 
             if (error) {
-                toast.error(error.message);
+                toast.error(error.message ?? "Failed to send invitation");
                 return;
             }
 
-            const newUserId = data?.user?.id;
-            if (newUserId) {
-                // Assign role
-                await supabase.from("user_roles").insert({ user_id: newUserId, role: inviteRole as never });
-
-                // Assign permissions if staff
-                if (inviteRole === "staff" && invitePerms.length > 0) {
-                    await supabase.from("staff_permissions").insert(
-                        invitePerms.map((p) => ({ user_id: newUserId, permission: p, granted_by: user?.id }))
-                    );
-                }
-
-                toast.success(`Invitation sent to ${inviteEmail}`);
-                qc.invalidateQueries({ queryKey: ["staff-list"] });
-                setInviteOpen(false);
-                setInviteEmail(""); setInviteFullName(""); setInvitePerms(["overview"]);
+            if (data?.error) {
+                toast.error(data.error);
+                return;
             }
+
+            toast.success(`Invitation sent to ${inviteEmail}`);
+            qc.invalidateQueries({ queryKey: ["staff-list"] });
+            setInviteOpen(false);
+            setInviteEmail("");
+            setInviteFullName("");
+            setInvitePerms(["overview"]);
         } catch (e: any) {
             toast.error(e.message ?? "Something went wrong");
         } finally {

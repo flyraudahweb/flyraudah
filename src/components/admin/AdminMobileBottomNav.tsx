@@ -14,6 +14,7 @@ import {
     LogOut,
     Pencil,
     ShieldCheck,
+    Settings,
 } from "lucide-react";
 
 const ALL_NAV_ITEMS = [
@@ -29,6 +30,7 @@ const ALL_NAV_ITEMS = [
     { title: "Amendments", url: "/admin/amendments", icon: Pencil, permission: "amendments" },
     { title: "Support", url: "/admin/support", icon: Headset, permission: "support" },
     { title: "Staff", url: "/admin/staff", icon: ShieldCheck, permission: "staff_management" },
+    { title: "Settings", url: "/admin/settings", icon: Settings, permission: "settings" }, // Added Settings item
 ];
 
 const AdminMobileBottomNav = () => {
