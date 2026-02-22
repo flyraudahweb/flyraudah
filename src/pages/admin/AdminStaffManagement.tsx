@@ -169,12 +169,23 @@ export default function AdminStaffManagement() {
         if (!inviteEmail.trim()) return toast.error("Email is required");
         setInviting(true);
         try {
+            // Explicitly get the current session token — needed with the publishable key client
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            if (!token) {
+                toast.error("You must be logged in to invite staff");
+                return;
+            }
+
             const { data, error } = await supabase.functions.invoke("invite-staff", {
                 body: {
                     email: inviteEmail.trim(),
                     full_name: inviteFullName.trim() || undefined,
                     role: inviteRole,
                     permissions: inviteRole === "staff" ? invitePerms : [],
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
                 },
             });
 
