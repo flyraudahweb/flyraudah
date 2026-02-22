@@ -18,21 +18,22 @@ Deno.serve(async (req: Request) => {
             { auth: { autoRefreshToken: false, persistSession: false } }
         );
 
-        // Verify the calling user is authenticated
+        // Verify the caller is authenticated (we do this ourselves since verify_jwt=false)
         const authHeader = req.headers.get("Authorization");
-        if (!authHeader) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
         }
 
-        const userClient = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_ANON_KEY")!,
-            { global: { headers: { Authorization: authHeader } } }
+        // Use the service role client to validate the user token
+        const { data: { user }, error: authError } = await adminClient.auth.getUser(
+            authHeader.replace("Bearer ", "")
         );
-
-        const { data: { user }, error: authError } = await userClient.auth.getUser();
         if (authError || !user) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
         }
 
         // Check caller is admin or super_admin
