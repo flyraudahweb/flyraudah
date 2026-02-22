@@ -8,11 +8,11 @@ import {
     BarChart3,
     Barcode,
     UserPlus,
-
     Building2,
     History,
     Headset,
     LogOut,
+    Pencil,
 } from "lucide-react";
 
 const navItems = [
@@ -26,6 +26,7 @@ const navItems = [
 
     { title: "Banks", url: "/admin/bank-accounts", icon: Building2 },
     { title: "Activity", url: "/admin/activity", icon: History },
+    { title: "Amendments", url: "/admin/amendments", icon: Pencil },
     { title: "Support", url: "/admin/support", icon: Headset },
 ];
 

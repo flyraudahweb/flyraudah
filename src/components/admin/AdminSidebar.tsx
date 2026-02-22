@@ -13,6 +13,7 @@ import {
   Building2,
   History,
   Headset,
+  Pencil,
 } from "lucide-react";
 import {
   Sidebar,
@@ -40,6 +41,7 @@ const menuItems = [
   { title: "Agent Applications", url: "/admin/agent-applications", icon: UserPlus },
   { title: "Bank Accounts", url: "/admin/bank-accounts", icon: Building2 },
   { title: "Activity", url: "/admin/activity", icon: History },
+  { title: "Amendments", url: "/admin/amendments", icon: Pencil },
   { title: "Support Tickets", url: "/admin/support", icon: Headset },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];

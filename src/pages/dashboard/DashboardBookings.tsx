@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -7,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  CalendarCheck, Package, CheckCircle2, Clock, XCircle, Zap, Plus
+  CalendarCheck, CheckCircle2, Clock, XCircle, Zap, Plus, Loader2, Pencil
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { formatPrice } from "@/data/packages";
+import { toast } from "sonner";
+import EditBookingModal from "@/components/bookings/EditBookingModal";
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof CheckCircle2; bg: string }> = {
   confirmed: { label: "Confirmed", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", bg: "bg-emerald-500/10", icon: CheckCircle2 },
@@ -22,6 +25,9 @@ const statusConfig: Record<string, { label: string; className: string; icon: typ
 const DashboardBookings = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
+  const [editingBooking, setEditingBooking] = useState<any | null>(null);
 
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["user-bookings-full", user?.id],
@@ -49,6 +55,62 @@ const DashboardBookings = () => {
     },
     enabled: bookings.length > 0,
   });
+
+  const handlePayNow = async (booking: any, outstanding: number) => {
+    if (!user?.email) return;
+    setPayingBookingId(booking.id);
+
+    try {
+      const { data: paystackData, error: paystackError } = await supabase.functions.invoke(
+        "create-paystack-checkout",
+        {
+          body: {
+            amount: outstanding,
+            email: user.email,
+            bookingId: booking.id,
+            reference: booking.reference,
+          },
+        }
+      );
+
+      if (paystackError || !paystackData?.access_code) {
+        console.error("Paystack init error:", paystackError, paystackData);
+        toast.error("Failed to initialize payment. Please try again.");
+        return;
+      }
+
+      // Load Paystack script if not already loaded
+      if (!(window as any).PaystackPop) {
+        await new Promise((resolve) => {
+          const script = document.createElement("script");
+          script.src = "https://js.paystack.co/v1/inline.js";
+          script.async = true;
+          script.onload = () => resolve(true);
+          document.body.appendChild(script);
+        });
+      }
+
+      const handler = (window as any).PaystackPop.setup({
+        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+        email: user.email,
+        amount: Math.round(outstanding * 100),
+        access_code: paystackData.access_code,
+        callback: (response: any) => {
+          navigate(`/payment/callback?reference=${response.reference}`);
+        },
+        onClose: () => {
+          toast.info("Payment was cancelled");
+        },
+      });
+
+      handler.openIframe();
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      toast.error(err.message || "Payment failed. Please try again.");
+    } finally {
+      setPayingBookingId(null);
+    }
+  };
 
   const active = bookings.filter((b) => b.status !== "cancelled").length;
   const confirmed = bookings.filter((b) => b.status === "confirmed").length;
@@ -129,6 +191,7 @@ const DashboardBookings = () => {
             const paidPercent = bookingTotal > 0 ? Math.min(100, Math.round((bookingPaid / bookingTotal) * 100)) : 0;
             const sc = statusConfig[booking.status] || statusConfig.pending;
             const StatusIcon = sc.icon;
+            const isPaying = payingBookingId === booking.id;
 
             return (
               <Card key={booking.id} className="border-border/60 bg-background/50 backdrop-blur-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
@@ -175,14 +238,33 @@ const DashboardBookings = () => {
                         </div>
                       )}
 
-                      {/* Pay now CTA for pending/confirmed with outstanding */}
-                      {outstanding > 0 && booking.status !== "cancelled" && (
-                        <Link to="/dashboard/payments" className="mt-3 inline-flex">
-                          <Button size="sm" className="h-7 text-xs gap-1.5 gold-gradient text-secondary-foreground font-semibold">
-                            <Zap className="h-3 w-3" />
-                            Pay {formatPrice(outstanding)}
+                      {/* Actions row */}
+                      {booking.status !== "cancelled" && booking.status !== "completed" && (
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          {outstanding > 0 && (
+                            <Button
+                              size="sm"
+                              disabled={isPaying}
+                              onClick={() => handlePayNow(booking, outstanding)}
+                              className="h-7 text-xs gap-1.5 gold-gradient text-secondary-foreground font-semibold"
+                            >
+                              {isPaying ? (
+                                <><Loader2 className="h-3 w-3 animate-spin" /> Processing...</>
+                              ) : (
+                                <><Zap className="h-3 w-3" /> Pay {formatPrice(outstanding)}</>
+                              )}
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingBooking(booking)}
+                            className="h-7 text-xs gap-1.5 border-border/60"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            {booking.status === "confirmed" ? "Request Edit" : "Edit Details"}
                           </Button>
-                        </Link>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -191,6 +273,13 @@ const DashboardBookings = () => {
             );
           })}
         </div>
+      )}
+      {/* Edit modal */}
+      {editingBooking && (
+        <EditBookingModal
+          booking={editingBooking}
+          onClose={() => setEditingBooking(null)}
+        />
       )}
     </div>
   );

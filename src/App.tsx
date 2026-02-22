@@ -41,6 +41,7 @@ const AdminAgentApplications = lazyWithRetry(() => import("./pages/admin/AdminAg
 const AdminAiAssistant = lazyWithRetry(() => import("./pages/admin/AdminAiAssistant"));
 const AdminBankAccounts = lazyWithRetry(() => import("./pages/admin/AdminBankAccounts"));
 const AdminActivity = lazyWithRetry(() => import("./pages/admin/AdminActivity"));
+const AdminAmendmentRequests = lazyWithRetry(() => import("./pages/admin/AdminAmendmentRequests"));
 const AdminSupport = lazyWithRetry(() => import("./pages/admin/AdminSupport"));
 const AgentLayout = lazyWithRetry(() => import("./components/agent/AgentLayout"));
 const AgentOverview = lazyWithRetry(() => import("./pages/agent/AgentOverview"));
@@ -149,6 +150,7 @@ const App = () => (
                     <Route path="ai-assistant" element={<AdminAiAssistant />} />
                     <Route path="bank-accounts" element={<AdminBankAccounts />} />
                     <Route path="activity" element={<AdminActivity />} />
+                    <Route path="amendments" element={<AdminAmendmentRequests />} />
                     <Route path="support" element={<AdminSupport />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Route>

@@ -63,9 +63,9 @@ const AuthLayout = ({ children, title, subtitle }: Props) => {
       </div>
 
       {/* Right panel - form */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center relative overflow-hidden">
+      <div className="w-full lg:w-1/2 flex flex-col items-center lg:justify-center relative">
         {/* Mobile hero banner */}
-        <div className="lg:hidden w-full relative overflow-hidden">
+        <div className="lg:hidden w-full sticky top-0 z-50 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-emerald-800" />
           <div
             className="absolute inset-0 opacity-[0.06]"

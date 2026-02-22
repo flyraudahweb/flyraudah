@@ -81,8 +81,22 @@ const BookingWizard = () => {
   const { user } = useAuth();
   const { trackActivity } = useTrackActivity();
 
-  const [step, setStep] = useState(1);
-  const [selectedDate, setSelectedDate] = useState("");
+  // ── Draft auto-save key (per package per user) ───────────────────────────
+  const draftKey = `booking-draft-${user?.id ?? "guest"}-${id ?? "pkg"}`;
+
+  const loadDraft = () => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const draft = loadDraft();
+
+  const [step, setStep] = useState(() => draft?.step ?? 1);
+  const [selectedDate, setSelectedDate] = useState(() => draft?.selectedDate ?? "");
   const { paystackEnabled } = usePaystackEnabled();
   const [paymentMethod, setPaymentMethod] = useState<"card" | "bank">(paystackEnabled ? "card" : "bank");
   const [passportFile, setPassportFile] = useState<File | null>(null);
@@ -94,11 +108,12 @@ const BookingWizard = () => {
 
   const pilgrimForm = useForm<PilgrimForm>({
     resolver: zodResolver(pilgrimSchema),
-    defaultValues: { gender: "male", maritalStatus: "single", previousUmrah: false },
+    defaultValues: draft?.pilgrim ?? { gender: "male", maritalStatus: "single", previousUmrah: false },
   });
 
   const travelForm = useForm<TravelForm>({
     resolver: zodResolver(travelSchema),
+    defaultValues: draft?.travel ?? {},
   });
 
   const { data: pkg, isLoading: pkgLoading } = useQuery({
@@ -143,16 +158,16 @@ const BookingWizard = () => {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       if (error) return null;
       return data;
     },
     enabled: !!user?.id,
   });
 
-  // Pre-fill form when latest booking is found
+  // Pre-fill from latest booking ONLY if no draft exists
   useEffect(() => {
-    if (latestBooking) {
+    if (latestBooking && !loadDraft()) {
       const fb = latestBooking;
 
       pilgrimForm.reset({
@@ -189,7 +204,29 @@ const BookingWizard = () => {
       if (fb.gender === "female") setIsFemale(true);
       if (fb.previous_umrah) setHasPreviousUmrah(true);
     }
-  }, [latestBooking, pilgrimForm, travelForm]);
+  }, [latestBooking]);
+
+  // Auto-save draft to localStorage whenever form values change
+  const pilgrimValues = pilgrimForm.watch();
+  const travelValues = travelForm.watch();
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            step,
+            selectedDate,
+            pilgrim: pilgrimValues,
+            travel: travelValues,
+          })
+        );
+      } catch { }
+    }, 800); // debounce 800 ms
+    return () => clearTimeout(handler);
+  }, [draftKey, step, selectedDate, pilgrimValues, travelValues]);
+
 
   // ── Submit handler ────────────────────────────────────────────────────────
 
@@ -312,10 +349,11 @@ const BookingWizard = () => {
       if (paymentError) throw paymentError;
 
       // Card → Paystack Inline Popup
+      // NOTE: amount is NOT sent from client — the edge function fetches it from the DB.
       if (paymentMethod === "card") {
         const { data: paystackData, error: paystackError } = await supabase.functions.invoke(
           "create-paystack-checkout",
-          { body: { amount: paymentAmount, email: user.email, bookingId: bookingData.id, reference: bookingData.reference } }
+          { body: { email: user.email, bookingId: bookingData.id } }
         );
 
         if (paystackError || !paystackData?.access_code) {
@@ -342,10 +380,12 @@ const BookingWizard = () => {
         const handler = (window as any).PaystackPop.setup({
           key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
           email: user.email,
-          amount: Math.round(paymentAmount * 100),
+          // Use server-returned amount (not client-side paymentAmount) for display only
+          amount: Math.round((paystackData.amount ?? paymentAmount) * 100),
           access_code: paystackData.access_code,
           callback: (response: any) => {
             console.log("Payment success:", response);
+            try { localStorage.removeItem(draftKey); } catch { }
             navigate(`/payment/callback?reference=${response.reference}`);
           },
           onClose: () => {
@@ -360,6 +400,7 @@ const BookingWizard = () => {
 
       // Bank transfer → confirmation screen
       setBookingReference(bookingData.reference);
+      try { localStorage.removeItem(draftKey); } catch { }
       setStep(6);
 
       if (paymentMethod === "bank") {
