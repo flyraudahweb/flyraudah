@@ -7,7 +7,7 @@ import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Home, ChevronRight, CalendarDays, Plane, MapPin, Check, Star, Hotel } from "lucide-react";
+import { Home, ChevronRight, CalendarDays, Plane, MapPin, Check, Star, Hotel, Lock } from "lucide-react";
 import { formatPrice } from "@/data/packages";
 import { motion } from "framer-motion";
 
@@ -63,9 +63,11 @@ const PackageDetail = () => {
     budget: { badge: "bg-muted text-muted-foreground", label: "VALUE" },
   };
 
-  const tier = tierConfig[pkg.category];
-  const filledSpots = pkg.capacity - pkg.available;
-  const fillPercentage = (filledSpots / pkg.capacity) * 100;
+  const tier = tierConfig[pkg.category] || tierConfig.standard;
+  const capacity = pkg.capacity || 1;
+  const available = pkg.available ?? capacity;
+  const filledSpots = capacity - available;
+  const fillPercentage = capacity > 0 ? (filledSpots / capacity) * 100 : 0;
 
   // Get accommodation data
   const makkahAccom = pkg.package_accommodations?.find((a: any) => a.city === "Makkah");
@@ -76,20 +78,23 @@ const PackageDetail = () => {
       <Header />
 
       {/* Hero */}
-      <section className="relative pt-20 pb-8 emerald-gradient geometric-overlay">
+      <section className="relative pt-28 pb-12 bg-muted/20 border-b border-border/50">
         <div className="container mx-auto px-4 sm:px-8 lg:px-12 relative z-10">
-          <nav className="flex items-center gap-1.5 text-sm text-primary-foreground/70 mb-4">
-            <Link to="/" className="hover:text-primary-foreground transition-colors flex items-center gap-1">
+          <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+            <Link to="/" className="hover:text-primary transition-colors flex items-center gap-1">
               <Home className="h-3.5 w-3.5" />Home
             </Link>
             <ChevronRight className="h-3.5 w-3.5" />
-            <Link to="/packages" className="hover:text-primary-foreground transition-colors">
+            <Link to="/packages" className="hover:text-primary transition-colors">
               Packages
             </Link>
             <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-primary-foreground font-medium">{pkg.name}</span>
+            <span className="text-foreground font-medium">{pkg.name}</span>
           </nav>
-          <h1 className="font-heading text-4xl font-bold text-primary-foreground">{pkg.name}</h1>
+          <h1 className="font-heading text-4xl font-bold text-foreground">{pkg.name}</h1>
+          <div className="ornament-divider mt-3 mb-0 [&::before]:bg-gradient-to-r [&::before]:from-transparent [&::before]:via-border [&::before]:to-transparent [&::after]:bg-gradient-to-r [&::after]:from-transparent [&::after]:via-border [&::after]:to-transparent">
+            <div className="diamond !bg-secondary/40" />
+          </div>
         </div>
       </section>
 
@@ -136,16 +141,30 @@ const PackageDetail = () => {
             </div>
 
             {/* Capacity */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h3 className="font-heading text-lg font-bold text-foreground mb-4">Availability</h3>
-              <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                <span>{filledSpots}/{pkg.capacity} booked</span>
-                <span>{pkg.available} spots remaining</span>
+            {capacity > 0 && (
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="font-heading text-lg font-bold text-foreground mb-4">Availability</h3>
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-muted-foreground">{filledSpots}/{capacity} booked</span>
+                  {available <= 0 ? (
+                    <span className="flex items-center gap-1 text-red-500 font-semibold text-sm">
+                      <Lock className="h-3.5 w-3.5" /> SOLD OUT
+                    </span>
+                  ) : fillPercentage >= 80 ? (
+                    <span className="text-amber-600 font-semibold text-sm">Almost Full! {available} left</span>
+                  ) : (
+                    <span className="text-emerald-600 font-medium text-sm">{available} spots remaining</span>
+                  )}
+                </div>
+                <div className="h-3 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${available <= 0 ? "bg-red-500" : fillPercentage >= 80 ? "bg-amber-500" : "bg-emerald-500"
+                      }`}
+                    style={{ width: `${fillPercentage}%` }}
+                  />
+                </div>
               </div>
-              <div className="capacity-bar">
-                <div className="capacity-bar-fill" style={{ width: `${fillPercentage}%` }} />
-              </div>
-            </div>
+            )}
 
             {/* Inclusions */}
             {pkg.inclusions?.length > 0 && (
@@ -236,7 +255,7 @@ const PackageDetail = () => {
                 <p className="text-3xl font-bold text-secondary">{formatPrice(pkg.price)}</p>
               </div>
 
-              {pkg.available > 0 ? (
+              {available > 0 ? (
                 <Button
                   onClick={() => navigate(`/dashboard/book/${pkg.id}`)}
                   className="w-full gold-gradient text-secondary-foreground font-semibold py-6"
@@ -244,8 +263,8 @@ const PackageDetail = () => {
                   Book Now
                 </Button>
               ) : (
-                <Button disabled className="w-full" size="lg">
-                  Sold Out
+                <Button disabled className="w-full opacity-50 cursor-not-allowed" size="lg">
+                  <Lock className="h-4 w-4 mr-2" /> Sold Out
                 </Button>
               )}
 

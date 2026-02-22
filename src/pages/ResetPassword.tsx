@@ -67,7 +67,7 @@ const ResetPassword = () => {
                 <FormLabel>New Password</FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <Input type={showPassword ? "text" : "password"} placeholder="Create a new password" {...field} />
+                    <Input type={showPassword ? "text" : "password"} placeholder="Create a new password" required {...field} />
                     <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowPassword(!showPassword)}>
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -80,7 +80,7 @@ const ResetPassword = () => {
             <FormField control={form.control} name="confirmPassword" render={({ field }) => (
               <FormItem>
                 <FormLabel>Confirm Password</FormLabel>
-                <FormControl><Input type="password" placeholder="Confirm your new password" {...field} /></FormControl>
+                <FormControl><Input type="password" placeholder="Confirm your new password" required {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />

@@ -10,10 +10,11 @@ interface Props {
 }
 
 const ProtectedRoute = ({ children, requiredRole }: Props) => {
-  const { user, loading, hasRole } = useAuth();
+  const { user, loading, rolesLoaded, hasRole } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  // Wait for both auth AND roles to be resolved before making any decisions
+  if (loading || (user && requiredRole && !rolesLoaded)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

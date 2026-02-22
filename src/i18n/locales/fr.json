@@ -95,7 +95,8 @@
       "home": "Accueil",
       "packages": "Forfaits",
       "bookings": "Réservations",
-      "profile": "Profil"
+      "profile": "Profil",
+      "support": "Support"
     },
     "stats": {
       "activeBookings": "Réservations Actives",

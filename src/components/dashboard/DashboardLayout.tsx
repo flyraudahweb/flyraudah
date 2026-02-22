@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import DashboardSidebar from "./DashboardSidebar";
 import MobileBottomNav from "./MobileBottomNav";
@@ -11,19 +11,17 @@ const DashboardLayout = () => {
 
   const initials = profile?.full_name
     ? profile.full_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
     : "U";
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <div className="hidden md:block">
-          <DashboardSidebar />
-        </div>
+        <DashboardSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top bar */}
@@ -44,12 +42,14 @@ const DashboardLayout = () => {
 
             <div className="flex items-center gap-2">
               <NotificationBell />
-              <Avatar className="h-8 w-8 border border-border md:hidden">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <Link to="/dashboard/profile" title="My Profile">
+                <Avatar className="h-8 w-8 border border-border md:hidden cursor-pointer ring-offset-1 hover:ring-2 hover:ring-secondary/50 transition-all">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
             </div>
           </header>
 

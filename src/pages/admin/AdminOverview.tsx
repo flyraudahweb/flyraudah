@@ -167,16 +167,36 @@ const AdminOverview = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Overview of your Hajj & Umrah operations</p>
-      </div>
+      {/* Welcome Banner */}
+      <Card className="border-0 overflow-hidden relative">
+        <div className="absolute inset-0 emerald-gradient opacity-95" />
+        <div className="absolute inset-0 geometric-overlay opacity-20" />
+        <CardContent className="relative p-6 md:p-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <ShieldCheck className="h-5 w-5 text-white/80" />
+                <span className="text-xs text-white/60 font-medium uppercase tracking-wider">Admin Dashboard</span>
+              </div>
+              <h1 className="font-heading text-xl md:text-2xl font-bold text-white">
+                Welcome back! 👋
+              </h1>
+              <p className="text-sm text-white/70 mt-1">
+                Here's what's happening with your Hajj & Umrah operations today
+              </p>
+            </div>
+            <div className="hidden md:block text-right">
+              <p className="text-xs text-white/50">{format(new Date(), "EEEE")}</p>
+              <p className="text-sm font-semibold text-white/90">{format(new Date(), "MMMM d, yyyy")}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         {statCards.map((c) => (
-          <Card key={c.label} className="border-border relative overflow-hidden">
+          <Card key={c.label} className="glass-panel border-white/20 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-2">
                 <div className={`p-2 rounded-lg ${c.bg}`}>
@@ -202,7 +222,7 @@ const AdminOverview = () => {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Revenue Trend */}
-        <Card className="lg:col-span-2 border-border">
+        <Card className="lg:col-span-2 glass-panel border-white/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-heading">Revenue Trend</CardTitle>
           </CardHeader>
@@ -225,7 +245,7 @@ const AdminOverview = () => {
         </Card>
 
         {/* Booking Status Donut */}
-        <Card className="border-border">
+        <Card className="glass-panel border-white/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-heading">Booking Status</CardTitle>
           </CardHeader>
@@ -287,7 +307,7 @@ const AdminOverview = () => {
         </Card>
 
         {/* Quick Actions */}
-        <Card className="lg:col-span-2 border-border">
+        <Card className="lg:col-span-2 glass-panel border-white/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-heading">Quick Actions</CardTitle>
           </CardHeader>
@@ -311,7 +331,7 @@ const AdminOverview = () => {
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recent Bookings */}
-        <Card className="border-border">
+        <Card className="glass-panel border-white/20">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-heading">Recent Bookings</CardTitle>
             <Link to="/admin/pilgrims">
@@ -340,7 +360,7 @@ const AdminOverview = () => {
         </Card>
 
         {/* Recent Payments */}
-        <Card className="border-border">
+        <Card className="glass-panel border-white/20">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-heading">Recent Payments</CardTitle>
             <Link to="/admin/payments">

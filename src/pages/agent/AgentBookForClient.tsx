@@ -75,16 +75,37 @@ const AgentBookForClient = () => {
   const handleSubmit = async () => {
     if (!user || !agent || !selectedClient || !selectedDateId) return;
 
-    setIsSubmitting(true);
     try {
+      // CRITICAL SECURITY: Verify agent identity and client ownership server-side
+      const { data: verifiedAgent, error: agentVerifyError } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (agentVerifyError || !verifiedAgent) {
+        throw new Error("Unauthorized: Agent profile verification failed.");
+      }
+
+      const { data: verifiedClient, error: clientVerifyError } = await supabase
+        .from("agent_clients")
+        .select("id")
+        .eq("id", selectedClientId)
+        .eq("agent_id", verifiedAgent.id)
+        .single();
+
+      if (clientVerifyError || !verifiedClient) {
+        throw new Error("Unauthorized: Client does not belong to this agent.");
+      }
+
       const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
         .insert({
           user_id: user.id,
           package_id: pkg.id,
           package_date_id: selectedDateId,
-          agent_id: agent.id,
-          agent_client_id: selectedClientId,
+          agent_id: verifiedAgent.id,
+          agent_client_id: verifiedClient.id,
           full_name: selectedClient.full_name,
           passport_number: selectedClient.passport_number,
           passport_expiry: selectedClient.passport_expiry,

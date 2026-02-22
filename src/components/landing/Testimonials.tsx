@@ -50,7 +50,7 @@ const Testimonials = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.15 }}
-              className="relative bg-card border border-border rounded-xl p-8 hover:shadow-gold transition-shadow overflow-hidden"
+              className="relative glass-panel border-white/10 rounded-xl p-8 hover:shadow-gold transition-shadow overflow-hidden"
             >
               {/* Decorative quote mark */}
               <Quote className="absolute top-4 right-4 h-16 w-16 text-secondary/10 rotate-180" />

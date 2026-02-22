@@ -95,7 +95,8 @@
       "home": "الرئيسية",
       "packages": "الباقات",
       "bookings": "الحجوزات",
-      "profile": "الملف"
+      "profile": "الملف",
+      "support": "الدعم"
     },
     "stats": {
       "activeBookings": "الحجوزات النشطة",

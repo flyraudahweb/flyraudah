@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Archive, Eye } from "lucide-react";
+import { Plus, Edit, Archive, Eye, Info, AlertCircle, RotateCcw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatPrice } from "@/data/packages";
 import { toast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
@@ -76,15 +78,16 @@ const AdminPackages = () => {
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  const archiveMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("packages").update({ status: "archived" as const }).eq("id", id);
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: PackageRow["status"] }) => {
+      const { error } = await supabase.from("packages").update({ status }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-packages"] });
-      toast({ title: "Package archived" });
+      toast({ title: variables.status === "archived" ? "Package archived" : "Package restored" });
     },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const openEdit = (pkg: PackageRow) => {
@@ -192,14 +195,43 @@ const AdminPackages = () => {
                   <Input type="number" value={form.price || 0} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Capacity</Label>
-                  <Input type="number" value={form.capacity || 0} onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })} />
+                  <Label className="flex items-center gap-2">
+                    Capacity
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger>
+                        <TooltipContent>Total number of seats available for this package</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </Label>
+                  <Input type="number" min={0} value={form.capacity || 0} onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Available</Label>
-                  <Input type="number" value={form.available || 0} onChange={(e) => setForm({ ...form, available: Number(e.target.value) })} />
+                  <Label className="flex items-center gap-2">
+                    Available
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger>
+                        <TooltipContent>Remaining spots. Managed automatically by bookings, but can be manually adjusted.</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </Label>
+                  <Input type="number" min={0} value={form.available || 0} onChange={(e) => setForm({ ...form, available: Number(e.target.value) })} />
                 </div>
               </div>
+
+              <Alert className="bg-primary/5 border-primary/20 py-2">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertDescription className="text-xs text-primary/80">
+                  <strong>Inventory Note:</strong> Available spots are automatically decremented when a pilgrim books and incremented if a booking is cancelled.
+                </AlertDescription>
+              </Alert>
+
+              {(form.available || 0) > (form.capacity || 0) && (
+                <p className="text-xs text-destructive font-medium flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> Available spots should not exceed total capacity.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Duration</Label>
@@ -289,8 +321,14 @@ const AdminPackages = () => {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(pkg)}><Edit className="h-4 w-4" /></Button>
-                        {pkg.status !== "archived" && (
-                          <Button variant="ghost" size="icon" onClick={() => archiveMutation.mutate(pkg.id)}><Archive className="h-4 w-4" /></Button>
+                        {pkg.status !== "archived" ? (
+                          <Button variant="ghost" size="icon" onClick={() => statusMutation.mutate({ id: pkg.id, status: "archived" })} title="Archive">
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="icon" onClick={() => statusMutation.mutate({ id: pkg.id, status: "draft" })} title="Restore">
+                            <RotateCcw className="h-4 w-4 text-primary" />
+                          </Button>
                         )}
                       </div>
                     </TableCell>

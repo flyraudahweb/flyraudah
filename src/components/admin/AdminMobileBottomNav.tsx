@@ -1,0 +1,65 @@
+import { NavLink } from "@/components/NavLink";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+    LayoutDashboard,
+    Package,
+    CreditCard,
+    Users,
+    BarChart3,
+    Barcode,
+    UserPlus,
+
+    Building2,
+    History,
+    Headset,
+    LogOut,
+} from "lucide-react";
+
+const navItems = [
+    { title: "Overview", url: "/admin", icon: LayoutDashboard },
+    { title: "Packages", url: "/admin/packages", icon: Package },
+    { title: "Payments", url: "/admin/payments", icon: CreditCard },
+    { title: "Pilgrims", url: "/admin/pilgrims", icon: Users },
+    { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
+    { title: "ID Tags", url: "/admin/id-tags", icon: Barcode },
+    { title: "Agents", url: "/admin/agent-applications", icon: UserPlus },
+
+    { title: "Banks", url: "/admin/bank-accounts", icon: Building2 },
+    { title: "Activity", url: "/admin/activity", icon: History },
+    { title: "Support", url: "/admin/support", icon: Headset },
+];
+
+const AdminMobileBottomNav = () => {
+    const { signOut } = useAuth();
+
+    return (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden">
+            {/* Scrollable row */}
+            <div className="flex items-stretch overflow-x-auto scrollbar-none h-16">
+                {navItems.map((item) => (
+                    <NavLink
+                        key={item.url}
+                        to={item.url}
+                        end={item.url === "/admin"}
+                        className="flex flex-col items-center justify-center gap-1 px-4 py-2 text-muted-foreground transition-colors shrink-0 min-w-[64px]"
+                        activeClassName="text-secondary"
+                    >
+                        <item.icon className="h-5 w-5" />
+                        <span className="text-[9px] font-medium whitespace-nowrap">{item.title}</span>
+                    </NavLink>
+                ))}
+
+                {/* Logout — pinned at end */}
+                <button
+                    onClick={() => signOut()}
+                    className="flex flex-col items-center justify-center gap-1 px-4 py-2 text-destructive/70 hover:text-destructive transition-colors shrink-0 min-w-[64px]"
+                >
+                    <LogOut className="h-5 w-5" />
+                    <span className="text-[9px] font-medium whitespace-nowrap">Logout</span>
+                </button>
+            </div>
+        </nav>
+    );
+};
+
+export default AdminMobileBottomNav;

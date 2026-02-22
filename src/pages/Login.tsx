@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,15 +36,57 @@ const Login = () => {
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
-    await signOut();
+
+    // Do NOT manually signOut here; it causes extra auth churn.
+    // signInWithPassword naturally replaces the session.
+
     const { error, roles } = await signIn(values.email, values.password);
-    setSubmitting(false);
 
     if (error) {
+      setSubmitting(false);
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
-      const target = from || (roles.includes("admin") ? "/admin" : roles.includes("agent") ? "/agent" : "/dashboard");
-      navigate(target, { replace: true });
+
+      // Captured 'roles' from result closure safely
+      setTimeout(() => {
+        const isAdmin = roles.includes("admin");
+        const hasAgentRole = roles.includes("agent");
+
+        // Fire login notification for admins (fire-and-forget)
+        if (isAdmin) {
+          supabase.functions.invoke("send-login-notification", {
+            body: {
+              email: values.email,
+              timestamp: new Date().toISOString(),
+              userAgent: navigator.userAgent,
+            },
+          }).catch(() => {/* silent */ });
+        }
+
+        // 1. Establish the "Safe Default" based ON ROLES
+        let target = "/dashboard";
+        if (isAdmin) target = "/admin";
+        else if (hasAgentRole) target = "/agent";
+
+        // 2. Determine if the 'from' path is safe to use
+        // We only allow 'from' if it matches the user's role capability
+        if (from && from !== "/dashboard" && from !== "/login") {
+          const isTargetingAdminArea = from.startsWith("/admin");
+          const isTargetingAgentArea = from.startsWith("/agent");
+
+          if (isAdmin && isTargetingAdminArea) {
+            target = from; // Admin going to an admin page
+          } else if (hasAgentRole && isTargetingAgentArea) {
+            target = from; // Agent going to an agent page
+          } else if (!isAdmin && !hasAgentRole && !isTargetingAdminArea && !isTargetingAgentArea) {
+            target = from; // User going to a user page
+          } else {
+          }
+        }
+
+        setSubmitting(false);
+        navigate(target, { replace: true });
+      }, 100);
     }
   };
 
@@ -88,32 +131,6 @@ const Login = () => {
         <Link to="/register" className="text-secondary font-medium hover:underline">Sign Up</Link>
       </p>
 
-      {/* Demo Accounts */}
-      <div className="border-t border-border pt-4 mt-4">
-        <p className="text-xs text-muted-foreground text-center mb-3 uppercase tracking-wider font-semibold">Demo Accounts</p>
-        <div className="grid grid-cols-1 gap-2">
-          {[
-            { label: "Admin", email: "demo-admin@raudah.com", color: "bg-primary/10 border-primary/30 text-primary" },
-            { label: "Agent", email: "demo-agent@raudah.com", color: "bg-secondary/10 border-secondary/30 text-secondary" },
-            { label: "User", email: "demo-user1@raudah.com", color: "bg-muted border-border text-muted-foreground" },
-          ].map((demo) => (
-            <button
-              key={demo.email}
-              type="button"
-              onClick={() => {
-                form.setValue("email", demo.email);
-                form.setValue("password", "Demo1234!");
-                form.handleSubmit(onSubmit)();
-              }}
-              className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors hover:opacity-80 ${demo.color}`}
-            >
-              <span className="font-medium">{demo.label} Demo</span>
-              <span className="text-xs opacity-70">{demo.email}</span>
-            </button>
-          ))}
-        </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-2">Password: Demo1234!</p>
-      </div>
     </AuthLayout>
   );
 };

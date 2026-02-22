@@ -70,9 +70,21 @@ const BecomeAgentDialog = ({
     setSubmitting(false);
 
     if (error) {
+      let title = "Submission failed";
+      let description = error.message;
+
+      // Handle specific database errors for better UX
+      if (error.code === "23505") {
+        title = "Application pending";
+        description = "You already have a pending application with this email or phone number.";
+      } else if (error.message.includes("active agent account")) {
+        title = "Account exists";
+        description = "This email or phone is already registered to an active agent.";
+      }
+
       toast({
-        title: "Submission failed",
-        description: error.message,
+        title,
+        description,
         variant: "destructive",
       });
     } else {

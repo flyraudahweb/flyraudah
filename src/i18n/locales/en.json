@@ -95,7 +95,8 @@
       "home": "Home",
       "packages": "Packages",
       "bookings": "Bookings",
-      "profile": "Profile"
+      "profile": "Profile",
+      "support": "Support"
     },
     "stats": {
       "activeBookings": "Active Bookings",

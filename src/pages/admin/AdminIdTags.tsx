@@ -13,8 +13,8 @@ import { Progress } from "@/components/ui/progress";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { QRCodeSVG } from "qrcode.react";
-import { AlertCircle, Download, Printer, Search, Zap, FileCheck } from "lucide-react";
-import PilgrimIdCard, { type Booking } from "@/components/admin/PilgrimIdCard";
+import { AlertCircle, Download, Printer, Search, Zap, FileCheck, LayoutTemplate, Palette } from "lucide-react";
+import PilgrimIdCard, { type Booking, type CardOrientation, type CardTheme } from "@/components/admin/PilgrimIdCard";
 
 const LOGO_URL = "https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png";
 
@@ -26,6 +26,12 @@ export default function AdminIdTags() {
   const [progress, setProgress] = useState(0);
   const qrContainerRef = useRef<HTMLDivElement>(null);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const [orientation, setOrientation] = useState<CardOrientation>(() => {
+    return (localStorage.getItem("idcard-orientation") as CardOrientation) || "portrait";
+  });
+  const [theme, setTheme] = useState<CardTheme>(() => {
+    return (localStorage.getItem("idcard-theme") as CardTheme) || "classic";
+  });
 
   // Pre-load logo as data URL for PDF embedding
   useState(() => {
@@ -169,7 +175,7 @@ export default function AdminIdTags() {
       if (logoDataUrl) {
         try {
           pdf.addImage(logoDataUrl, "PNG", marginX + 4, y + 3, 10, 10);
-        } catch {}
+        } catch { }
       }
 
       // Header text
@@ -357,6 +363,55 @@ export default function AdminIdTags() {
         </CardContent>
       </Card>
 
+      {/* Card Customization */}
+      <Card className="border-border/60 bg-background/50 print:hidden">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Orientation */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <LayoutTemplate className="h-3 w-3" /> Orientation
+              </Label>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                {(["portrait", "landscape"] as const).map((o) => (
+                  <button
+                    key={o}
+                    onClick={() => { setOrientation(o); localStorage.setItem("idcard-orientation", o); }}
+                    className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${orientation === o
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                      }`}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Theme */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Palette className="h-3 w-3" /> Theme
+              </Label>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                {(["classic", "modern", "minimal"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => { setTheme(t); localStorage.setItem("idcard-theme", t); }}
+                    className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${theme === t
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                      }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Pilgrim List */}
       <Card className="border-border print:hidden">
         <CardHeader className="pb-2">
@@ -433,7 +488,7 @@ export default function AdminIdTags() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-1 print:gap-0">
             {selectedList.map((b) => (
               <div key={b.id} className="print:mb-4 print:break-inside-avoid">
-                <PilgrimIdCard booking={b} />
+                <PilgrimIdCard booking={b} orientation={orientation} theme={theme} />
               </div>
             ))}
           </div>

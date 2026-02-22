@@ -85,7 +85,7 @@ const Hero = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 * i, ease: "easeOut" }}
               className="inline-block mr-[0.3em] text-secondary"
-              style={{ textShadow: "0 4px 30px hsla(43, 56%, 52%, 0.3)" }}
+              style={{ textShadow: "0 4px 30px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.3)" }}
             >
               {word}
             </motion.span>
@@ -139,7 +139,7 @@ const Hero = () => {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.1 }}
-          className="mt-12 max-w-3xl mx-auto bg-background/95 backdrop-blur-xl rounded-2xl p-8 shadow-xl border border-secondary/20"
+          className="mt-12 max-w-3xl mx-auto glass-panel border-white/20 rounded-2xl p-8 shadow-2xl relative z-10"
           style={{ borderTop: "3px solid hsl(var(--gold))" }}
         >
           <p className="text-sm font-medium text-muted-foreground mb-5 flex items-center justify-center gap-2 tracking-widest uppercase">

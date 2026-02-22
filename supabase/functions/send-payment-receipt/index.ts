@@ -132,7 +132,7 @@ serve(async (req: Request) => {
       </p>
       
       <div style="text-align:center;margin:32px 0;">
-        <a href="https://raudahtravels.lovable.app/dashboard/bookings" style="background:linear-gradient(135deg,#c9a84c,#b8943f);color:#1a3c2a;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block;">View My Booking</a>
+        <a href="https://flyraudah.ng/dashboard/bookings" style="background:linear-gradient(135deg,#c9a84c,#b8943f);color:#1a3c2a;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block;">View My Booking</a>
       </div>
     </div>
     

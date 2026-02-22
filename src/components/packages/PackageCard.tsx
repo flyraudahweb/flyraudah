@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Plane, MapPin, Check, Star, ChevronDown, ChevronUp, Hotel } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatPrice } from "@/data/packages";
+import { useTrackActivity } from "@/hooks/useTrackActivity";
+import { Lock } from "lucide-react";
 
 export const tierConfig: Record<string, { border: string; badge: string; badgeLabel: string; glowClass: string }> = {
   premium: {
@@ -30,6 +32,7 @@ export const tierConfig: Record<string, { border: string; badge: string; badgeLa
 
 const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
   const { t } = useTranslation();
+  const { trackActivity } = useTrackActivity();
   const [expanded, setExpanded] = useState(false);
   const tier = tierConfig[pkg.category];
 
@@ -52,10 +55,15 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className={`group bg-card rounded-xl overflow-hidden transition-all duration-300 ${tier.border} ${tier.glowClass} hover:-translate-y-2 border border-border`}
+      className={`group rounded-3xl overflow-hidden transition-all duration-500
+        bg-white/5 backdrop-blur-xl
+        border border-slate-200/50 hover:border-slate-200/70
+        shadow-[0_8px_32px_0_rgba(0,0,0,0.28)] hover:shadow-[0_16px_48px_0_rgba(0,0,0,0.35)]
+        ${tier.border} ${tier.glowClass}
+        hover:-translate-y-2`}
     >
       {/* Card Header */}
-      <div className={`px-6 pt-6 pb-4 ${pkg.category === "premium" ? "bg-gradient-to-br from-primary/5 to-secondary/5" : ""}`}>
+      <div className={`px-6 pt-6 pb-4 glass-gradient ${pkg.category === "premium" ? "bg-gradient-to-br from-primary/10 to-secondary/10" : ""}`}>
         <div className="flex items-start justify-between mb-3">
           <Badge className={`${tier.badge} font-bold text-xs tracking-wider`}>
             {tier.badgeLabel}
@@ -118,15 +126,55 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
           ))}
         </div>
 
-        {/* Capacity bar */}
-        <div className="mb-4">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-            <span>45/200 booked</span>
-          </div>
-          <div className="capacity-bar">
-            <div className="capacity-bar-fill" style={{ width: "22.5%" }} />
-          </div>
-        </div>
+        {/* Capacity / Availability */}
+        {(() => {
+          const capacity = pkg.capacity || 0;
+          const available = pkg.available ?? capacity;
+          const booked = capacity - available;
+          const fillPct = capacity > 0 ? Math.round((booked / capacity) * 100) : 0;
+          const isFull = capacity > 0 && available <= 0;
+          const isAlmostFull = capacity > 0 && !isFull && fillPct >= 80;
+
+          if (capacity <= 0) return null;
+
+          const bgTint = isFull
+            ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+            : isAlmostFull
+              ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800"
+              : "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800";
+
+          const barColor = isFull ? "bg-red-500" : isAlmostFull ? "bg-amber-500" : "bg-emerald-500";
+
+          const statusEl = isFull ? (
+            <span className="flex items-center gap-1 text-red-600 font-bold text-sm">
+              <Lock className="h-4 w-4" /> SOLD OUT
+            </span>
+          ) : isAlmostFull ? (
+            <span className="text-amber-600 font-bold text-sm">⚡ Almost Full!</span>
+          ) : (
+            <span className="text-emerald-700 font-bold text-sm">🪑 {available} spots left</span>
+          );
+
+          return (
+            <div className={`mb-4 rounded-lg border p-3 ${bgTint}`}>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Availability
+                </span>
+                {statusEl}
+              </div>
+              <div className="h-3 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                  style={{ width: `${fillPct}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {booked} of {capacity} seats booked
+              </p>
+            </div>
+          );
+        })()}
 
         {/* Expandable details */}
         {expanded && (
@@ -206,18 +254,40 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
         </button>
 
         {/* Actions */}
-        <div className="flex gap-2">
-          <Link to={`/packages/${pkg.id}`} className="flex-1">
-            <Button variant="outline" className="w-full border-secondary/40 text-secondary hover:bg-secondary/10 font-medium">
-              {t("packages.viewDetails")}
-            </Button>
-          </Link>
-          <Link to={`/dashboard/book/${pkg.id}`} className="flex-1">
-            <Button className="w-full gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold">
-              {t("packages.bookNow")}
-            </Button>
-          </Link>
-        </div>
+        {(() => {
+          const capacity = pkg.capacity || 0;
+          const available = pkg.available ?? capacity;
+          const isFull = capacity > 0 && available <= 0;
+
+          return (
+            <div className="flex gap-2">
+              <Link
+                to={`/packages/${pkg.id}`}
+                className="flex-1"
+                onClick={() => trackActivity({ eventType: "package_view", packageId: pkg.id, metadata: { packageName: pkg.name } })}
+              >
+                <Button variant="outline" className="w-full border-secondary/40 text-secondary hover:bg-secondary/10 font-medium">
+                  {t("packages.viewDetails")}
+                </Button>
+              </Link>
+              {isFull ? (
+                <Button disabled className="flex-1 opacity-50 cursor-not-allowed font-semibold">
+                  <Lock className="h-4 w-4 mr-1.5" /> Sold Out
+                </Button>
+              ) : (
+                <Link
+                  to={`/dashboard/book/${pkg.id}`}
+                  className="flex-1"
+                  onClick={() => trackActivity({ eventType: "booking_start", packageId: pkg.id, metadata: { packageName: pkg.name } })}
+                >
+                  <Button className="w-full gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold">
+                    {t("packages.bookNow")}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </motion.div>
   );

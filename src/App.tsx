@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import OfflineBanner from "@/components/ui/OfflineBanner";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import Index from "./pages/Index";
 
@@ -38,6 +39,9 @@ const AdminAnalytics = lazyWithRetry(() => import("./pages/admin/AdminAnalytics"
 const AdminIdTags = lazyWithRetry(() => import("./pages/admin/AdminIdTags"));
 const AdminAgentApplications = lazyWithRetry(() => import("./pages/admin/AdminAgentApplications"));
 const AdminAiAssistant = lazyWithRetry(() => import("./pages/admin/AdminAiAssistant"));
+const AdminBankAccounts = lazyWithRetry(() => import("./pages/admin/AdminBankAccounts"));
+const AdminActivity = lazyWithRetry(() => import("./pages/admin/AdminActivity"));
+const AdminSupport = lazyWithRetry(() => import("./pages/admin/AdminSupport"));
 const AgentLayout = lazyWithRetry(() => import("./components/agent/AgentLayout"));
 const AgentOverview = lazyWithRetry(() => import("./pages/agent/AgentOverview"));
 const AgentClients = lazyWithRetry(() => import("./pages/agent/AgentClients"));
@@ -46,9 +50,36 @@ const AgentPackages = lazyWithRetry(() => import("./pages/agent/AgentPackages"))
 const AgentBookings = lazyWithRetry(() => import("./pages/agent/AgentBookings"));
 const AgentCommissions = lazyWithRetry(() => import("./pages/agent/AgentCommissions"));
 const Proposal = lazyWithRetry(() => import("./pages/Proposal"));
+const AboutUs = lazyWithRetry(() => import("./pages/AboutUs"));
+const Services = lazyWithRetry(() => import("./pages/Services"));
+const FAQ = lazyWithRetry(() => import("./pages/FAQ"));
+const TermsAndConditions = lazyWithRetry(() => import("./pages/TermsAndConditions"));
+const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
+const AdminSettings = lazyWithRetry(() => import("./pages/admin/AdminSettings"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Retry up to 2x on network failures, but NOT on 4xx (auth/not-found) errors
+      retry: (failureCount, error: any) => {
+        if (failureCount >= 2) return false;
+        // Don't retry client errors (401, 403, 404, etc)
+        const status = error?.status ?? error?.code;
+        if (status && status >= 400 && status < 500) return false;
+        return true;
+      },
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      staleTime: 30_000,        // data is fresh for 30s
+      gcTime: 5 * 60 * 1000,   // keep in cache for 5 min
+      refetchOnWindowFocus: false, // avoid thundering herd on tab switch
+    },
+    mutations: {
+      // Surface network errors but don't crash
+      retry: false,
+    },
+  },
+});
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -63,72 +94,82 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <OfflineBanner />
           <BrowserRouter>
             <AuthProvider>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/packages" element={<Packages />} />
-                <Route path="/packages/:id" element={<PackageDetail />} />
-                <Route path="/payment/callback" element={<PaymentCallback />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/install" element={<Install />} />
-                <Route path="/proposal" element={<Proposal />} />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<DashboardOverview />} />
-                  <Route path="bookings" element={<DashboardBookings />} />
-                  <Route path="packages" element={<DashboardPackages />} />
-                  <Route path="payments" element={<DashboardPayments />} />
-                  <Route path="documents" element={<DashboardDocuments />} />
-                  <Route path="profile" element={<DashboardProfile />} />
-                  <Route path="support" element={<DashboardSupport />} />
-                  <Route path="book/:id" element={<BookingWizard />} />
-                </Route>
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <AdminLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<AdminOverview />} />
-                  <Route path="packages" element={<AdminPackages />} />
-                  <Route path="payments" element={<AdminPayments />} />
-                  <Route path="pilgrims" element={<AdminPilgrims />} />
-                  <Route path="analytics" element={<AdminAnalytics />} />
-                  <Route path="id-tags" element={<AdminIdTags />} />
-                  <Route path="agent-applications" element={<AdminAgentApplications />} />
-                  <Route path="ai-assistant" element={<AdminAiAssistant />} />
-                </Route>
-                <Route
-                  path="/agent"
-                  element={
-                    <ProtectedRoute requiredRole="agent">
-                      <AgentLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<AgentOverview />} />
-                  <Route path="clients" element={<AgentClients />} />
-                  <Route path="packages" element={<AgentPackages />} />
-                  <Route path="book/:id" element={<AgentBookForClient />} />
-                  <Route path="bookings" element={<AgentBookings />} />
-                  <Route path="commissions" element={<AgentCommissions />} />
-                </Route>
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/packages" element={<Packages />} />
+                  <Route path="/packages/:id" element={<PackageDetail />} />
+                  <Route path="/payment/callback" element={<PaymentCallback />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/install" element={<Install />} />
+                  <Route path="/proposal" element={<Proposal />} />
+                  <Route path="/about" element={<AboutUs />} />
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/faq" element={<FAQ />} />
+                  <Route path="/terms" element={<TermsAndConditions />} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <DashboardLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<DashboardOverview />} />
+                    <Route path="bookings" element={<DashboardBookings />} />
+                    <Route path="packages" element={<DashboardPackages />} />
+                    <Route path="payments" element={<DashboardPayments />} />
+                    <Route path="documents" element={<DashboardDocuments />} />
+                    <Route path="profile" element={<DashboardProfile />} />
+                    <Route path="support" element={<DashboardSupport />} />
+                    <Route path="book/:id" element={<BookingWizard />} />
+                  </Route>
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<AdminOverview />} />
+                    <Route path="packages" element={<AdminPackages />} />
+                    <Route path="payments" element={<AdminPayments />} />
+                    <Route path="pilgrims" element={<AdminPilgrims />} />
+                    <Route path="analytics" element={<AdminAnalytics />} />
+                    <Route path="id-tags" element={<AdminIdTags />} />
+                    <Route path="agent-applications" element={<AdminAgentApplications />} />
+                    <Route path="ai-assistant" element={<AdminAiAssistant />} />
+                    <Route path="bank-accounts" element={<AdminBankAccounts />} />
+                    <Route path="activity" element={<AdminActivity />} />
+                    <Route path="support" element={<AdminSupport />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                  </Route>
+                  <Route
+                    path="/agent"
+                    element={
+                      <ProtectedRoute requiredRole="agent">
+                        <AgentLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<AgentOverview />} />
+                    <Route path="clients" element={<AgentClients />} />
+                    <Route path="packages" element={<AgentPackages />} />
+                    <Route path="book/:id" element={<AgentBookForClient />} />
+                    <Route path="bookings" element={<AgentBookings />} />
+                    <Route path="commissions" element={<AgentCommissions />} />
+                  </Route>
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
               </Suspense>
             </AuthProvider>
           </BrowserRouter>

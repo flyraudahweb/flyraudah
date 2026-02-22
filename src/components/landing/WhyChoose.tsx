@@ -1,12 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { Shield, Gem, Users, CreditCard } from "lucide-react";
+import { Shield, Gem, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
 const features = [
   { icon: Shield, titleKey: "why.licensed", descKey: "why.licensedDesc", stat: "15+", statLabel: "Years" },
   { icon: Gem, titleKey: "why.luxury", descKey: "why.luxuryDesc", stat: "5000+", statLabel: "Pilgrims" },
   { icon: Users, titleKey: "why.guides", descKey: "why.guidesDesc", stat: "24/7", statLabel: "Support" },
-  { icon: CreditCard, titleKey: "why.payment", descKey: "why.paymentDesc", stat: "0%", statLabel: "Interest" },
 ];
 
 const WhyChoose = () => {
@@ -25,7 +24,7 @@ const WhyChoose = () => {
           <p className="text-muted-foreground tracking-wide">{t("why.subtitle")}</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-8">
           {features.map((f, i) => (
             <motion.div
               key={f.titleKey}
@@ -33,7 +32,7 @@ const WhyChoose = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="bg-card border border-border rounded-xl p-8 text-center hover:shadow-gold hover:-translate-y-2 transition-all duration-300 group"
+              className="glass-panel border-white/10 rounded-xl p-8 text-center hover:shadow-gold hover:-translate-y-2 transition-all duration-300 group relative overflow-hidden"
             >
               {/* Stat counter */}
               <p className="font-heading text-3xl font-bold text-secondary mb-1">{f.stat}</p>

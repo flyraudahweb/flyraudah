@@ -1,12 +1,15 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, MessageCircle, Facebook, Instagram, Twitter, ArrowUp } from "lucide-react";
+import { useContactInfo } from "@/hooks/useContactInfo";
 
 const Footer = () => {
   const { t } = useTranslation();
+  const contact = useContactInfo();
 
   const handleWhatsApp = () => {
     const msg = encodeURIComponent("Hello Raudah Travels, I need assistance.");
-    window.open(`https://wa.me/2348035378973?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${contact.whatsapp}?text=${msg}`, "_blank");
   };
 
   const scrollToTop = () => {
@@ -41,11 +44,11 @@ const Footer = () => {
               {t("footer.quickLinks")}
             </h4>
             <ul className="space-y-3 text-sm text-primary-foreground/80">
-              <li><a href="#about" className="hover:text-secondary transition-colors">{t("footer.about")}</a></li>
-              <li><a href="#" className="hover:text-secondary transition-colors">{t("footer.services")}</a></li>
-              <li><a href="#" className="hover:text-secondary transition-colors">{t("footer.faq")}</a></li>
-              <li><a href="#" className="hover:text-secondary transition-colors">{t("footer.terms")}</a></li>
-              <li><a href="#" className="hover:text-secondary transition-colors">{t("footer.privacy")}</a></li>
+              <li><Link to="/about" className="hover:text-secondary transition-colors">{t("footer.about")}</Link></li>
+              <li><Link to="/services" className="hover:text-secondary transition-colors">{t("footer.services")}</Link></li>
+              <li><Link to="/faq" className="hover:text-secondary transition-colors">{t("footer.faq")}</Link></li>
+              <li><Link to="/terms" className="hover:text-secondary transition-colors">{t("footer.terms")}</Link></li>
+              <li><Link to="/privacy" className="hover:text-secondary transition-colors">{t("footer.privacy")}</Link></li>
             </ul>
           </div>
 
@@ -55,9 +58,9 @@ const Footer = () => {
               {t("footer.packages")}
             </h4>
             <ul className="space-y-3 text-sm text-primary-foreground/80">
-              <li><a href="#packages" className="hover:text-secondary transition-colors">Hajj 2026</a></li>
-              <li><a href="#packages" className="hover:text-secondary transition-colors">Ramadan Umrah</a></li>
-              <li><a href="#packages" className="hover:text-secondary transition-colors">Sha'ban Umrah</a></li>
+              <li><Link to="/#packages" className="hover:text-secondary transition-colors">Hajj 2026</Link></li>
+              <li><Link to="/#packages" className="hover:text-secondary transition-colors">Ramadan Umrah</Link></li>
+              <li><Link to="/#packages" className="hover:text-secondary transition-colors">Sha'ban Umrah</Link></li>
             </ul>
           </div>
 
@@ -69,15 +72,15 @@ const Footer = () => {
             <ul className="space-y-3 text-sm text-primary-foreground/80">
               <li className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-secondary" />
-                <span>Kano, Nigeria</span>
+                <span>{contact.address}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-secondary" />
-                <a href="tel:+2348035378973" className="hover:text-secondary transition-colors">+234 803 537 8973</a>
+                <a href={`tel:${(contact.phone || "").replace(/\s/g, "")}`} className="hover:text-secondary transition-colors">{contact.phone}</a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-secondary" />
-                <a href="mailto:flyraudah@gmail.com" className="hover:text-secondary transition-colors">flyraudah@gmail.com</a>
+                <a href={`mailto:${contact.email}`} className="hover:text-secondary transition-colors">{contact.email}</a>
               </li>
             </ul>
           </div>
@@ -95,25 +98,13 @@ const Footer = () => {
               >
                 <MessageCircle className="h-5 w-5" />
               </button>
-              <a
-                href="#"
-                className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors"
-                aria-label="Facebook"
-              >
+              <a href="#" className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors" aria-label="Facebook">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a
-                href="#"
-                className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors"
-                aria-label="Instagram"
-              >
+              <a href="#" className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors" aria-label="Instagram">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a
-                href="#"
-                className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors"
-                aria-label="Twitter"
-              >
+              <a href="#" className="w-10 h-10 rounded-full bg-primary-foreground/10 hover:bg-secondary/20 flex items-center justify-center transition-colors" aria-label="Twitter">
                 <Twitter className="h-5 w-5" />
               </a>
             </div>

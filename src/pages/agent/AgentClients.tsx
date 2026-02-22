@@ -2,14 +2,17 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgentProfile } from "@/hooks/useAgentProfile";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  AlertCircle, Trash2, Search, Users, UserPlus, Mail, Phone,
+  BookOpen, Shield, User
+} from "lucide-react";
 import { toast } from "sonner";
 import AddClientDialog from "@/components/agent/AddClientDialog";
 
@@ -33,6 +36,18 @@ const AgentClients = () => {
   });
 
   const handleDelete = async (id: string) => {
+    const { data: verifiedClient } = await supabase
+      .from("agent_clients")
+      .select("id")
+      .eq("id", id)
+      .eq("agent_id", agent!.id)
+      .maybeSingle();
+
+    if (!verifiedClient) {
+      toast.error("Client not found or unauthorized");
+      return;
+    }
+
     const { error } = await supabase.from("agent_clients").delete().eq("id", id);
     if (error) {
       toast.error("Failed to delete client");
@@ -44,13 +59,18 @@ const AgentClients = () => {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["agent-clients"] });
 
-  const filtered = clients.filter((c: any) =>
-    c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm) ||
-    (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filtered = clients.filter(
+    (c: any) =>
+      c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.phone.includes(searchTerm) ||
+      (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  if (agentLoading) return <Skeleton className="h-64" />;
+  const withPassport = clients.filter((c: any) => c.passport_number).length;
+  const maleCount = clients.filter((c: any) => c.gender === "male").length;
+  const femaleCount = clients.filter((c: any) => c.gender === "female").length;
+
+  if (agentLoading) return <Skeleton className="h-64 rounded-2xl" />;
 
   if (!agent) {
     return (
@@ -63,85 +83,146 @@ const AgentClients = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">My Clients</h1>
-          <p className="text-muted-foreground mt-1">Manage your client roster and book on their behalf</p>
+          <h1 className="font-heading text-2xl font-bold text-foreground">My Clients</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your client roster and book on their behalf
+          </p>
         </div>
         <AddClientDialog agentId={agent.id} onSuccess={refresh} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Client Directory</CardTitle>
-          <CardDescription>{filtered.length} client{filtered.length !== 1 ? "s" : ""} registered</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
-            placeholder="Search clients by name, email, or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {/* Stats */}
+      {!isLoading && clients.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Total Clients", value: clients.length, icon: Users, color: "text-primary", bg: "bg-primary/10" },
+            { label: "With Passport", value: withPassport, icon: Shield, color: "text-emerald-600", bg: "bg-emerald-500/10" },
+            { label: "Male", value: maleCount, icon: User, color: "text-sky-600", bg: "bg-sky-500/10" },
+            { label: "Female", value: femaleCount, icon: User, color: "text-pink-600", bg: "bg-pink-500/10" },
+          ].map((s) => (
+            <div key={s.label} className={`rounded-xl ${s.bg} px-3 py-2.5 flex items-center gap-2.5`}>
+              <s.icon className={`h-4 w-4 ${s.color} shrink-0`} />
+              <div>
+                <p className={`text-base font-heading font-bold ${s.color}`}>{s.value}</p>
+                <p className="text-[11px] text-muted-foreground">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-          {isLoading ? (
-            <Skeleton className="h-40" />
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, email, or phone..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Client Cards */}
+      {isLoading ? (
+        <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+      ) : filtered.length === 0 ? (
+        <Card className="border-border/60 bg-background/50">
+          <CardContent className="py-14 text-center flex flex-col items-center">
+            <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center mb-3">
+              <Users className="h-7 w-7 text-primary/40" />
+            </div>
+            <p className="font-medium text-sm">
+              {clients.length === 0 ? "No clients yet" : "No clients match your search"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 mb-4">
               {clients.length === 0
-                ? "No clients registered yet. Use the \"Add Client\" button to get started."
-                : "No clients match your search."}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Passport</TableHead>
-                    <TableHead>Gender</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((client: any) => (
-                    <TableRow key={client.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{client.full_name}</p>
-                          {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">{client.phone}</TableCell>
-                      <TableCell>
-                        {client.passport_number ? (
-                          <Badge variant="outline" className="font-mono text-xs">{client.passport_number}</Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm capitalize">{client.gender || "—"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <AddClientDialog agentId={agent.id} onSuccess={refresh} editClient={client} />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(client.id)}
+                ? "Add your first client to get started"
+                : "Try a different search term"}
+            </p>
+            {clients.length === 0 && (
+              <AddClientDialog agentId={agent.id} onSuccess={refresh} />
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((client: any) => {
+            const initials = client.full_name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2);
+
+            return (
+              <Card key={client.id} className="border-border/60 bg-background/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    {/* Avatar */}
+                    <Avatar className="h-10 w-10 border border-border shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-heading font-bold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">{client.full_name}</p>
+                        {client.gender && (
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-2 py-0 border capitalize ${client.gender === "male"
+                                ? "bg-sky-500/10 text-sky-600 border-sky-500/20"
+                                : "bg-pink-500/10 text-pink-600 border-pink-500/20"
+                              }`}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                            {client.gender}
+                          </Badge>
+                        )}
+                        {client.passport_number && (
+                          <Badge variant="outline" className="text-[10px] px-2 py-0 font-mono text-muted-foreground hidden sm:flex">
+                            {client.passport_number}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                        {client.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {client.phone}
+                          </span>
+                        )}
+                        {client.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {client.email}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <AddClientDialog agentId={agent.id} onSuccess={refresh} editClient={client} />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDelete(client.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

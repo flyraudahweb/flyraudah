@@ -92,7 +92,7 @@ export const raudahTemplate: ProposalData = {
   clientTitle: "Prepared For:",
   clientLocation: "Kano, Nigeria",
   date: "February 2026",
-  demoUrl: "raudahtravels.lovable.app",
+  demoUrl: "flyraudah.ng",
 
   executiveSummary: [
     "FADAK MEDIA HUB is pleased to present this proposal for <strong>Raudah Travels & Tour LTD</strong>, combining cutting-edge technology solutions with strategic media and branding services to transform your operations and market presence.",

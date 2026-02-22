@@ -127,28 +127,28 @@ const Packages = () => {
       <Header />
 
       {/* Compact Hero */}
-      <section className="relative pt-24 pb-12 emerald-gradient geometric-overlay">
+      <section className="relative pt-28 pb-12 bg-muted/20 border-b border-border/50">
         <div className="container mx-auto px-4 sm:px-8 lg:px-12 relative z-10">
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-1.5 text-sm text-primary-foreground/70 mb-4">
-            <Link to="/" className="hover:text-primary-foreground transition-colors flex items-center gap-1">
+          <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+            <Link to="/" className="hover:text-primary transition-colors flex items-center gap-1">
               <Home className="h-3.5 w-3.5" /> Home
             </Link>
             <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-primary-foreground font-medium">Packages</span>
+            <span className="text-foreground font-medium">Packages</span>
           </nav>
-          <h1 className="font-heading text-3xl md:text-4xl font-bold text-primary-foreground">
+          <h1 className="font-heading text-3xl md:text-4xl font-bold text-foreground">
             All Packages
           </h1>
-          <div className="ornament-divider mt-3 mb-0 [&::before]:bg-gradient-to-r [&::before]:from-transparent [&::before]:via-primary-foreground/50 [&::before]:to-transparent [&::after]:bg-gradient-to-r [&::after]:from-transparent [&::after]:via-primary-foreground/50 [&::after]:to-transparent">
-            <div className="diamond !bg-primary-foreground/60" />
+          <div className="ornament-divider mt-3 mb-0 [&::before]:bg-gradient-to-r [&::before]:from-transparent [&::before]:via-border [&::before]:to-transparent [&::after]:bg-gradient-to-r [&::after]:from-transparent [&::after]:via-border [&::after]:to-transparent">
+            <div className="diamond !bg-secondary/40" />
           </div>
         </div>
       </section>
 
       {/* Filter Bar */}
       <section className="container mx-auto px-4 sm:px-8 lg:px-12 -mt-6 relative z-20">
-        <div className="bg-card border border-border rounded-xl shadow-lg p-6">
+        <div className="glass-panel border-white/10 rounded-2xl shadow-2xl p-6 backdrop-blur-2xl">
           <div className="flex items-center gap-2 mb-5">
             <SlidersHorizontal className="h-4 w-4 text-secondary" />
             <span className="text-sm font-semibold text-foreground uppercase tracking-wider">Filters</span>
@@ -165,11 +165,10 @@ const Packages = () => {
                   <button
                     key={type}
                     onClick={() => setSelectedType(type as any)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                      selectedType === type
-                        ? "bg-secondary text-secondary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${selectedType === type
+                      ? "bg-secondary text-secondary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
                   >
                     {type === "all" ? "All Types" : type.charAt(0).toUpperCase() + type.slice(1)}
                   </button>
@@ -187,11 +186,10 @@ const Packages = () => {
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat as any)}
-                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                      selectedCategory === cat
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${selectedCategory === cat
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
                   >
                     {cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}
                   </button>
