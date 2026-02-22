@@ -7,10 +7,11 @@ type AppRole = Database["public"]["Enums"]["app_role"];
 interface Props {
   children: React.ReactNode;
   requiredRole?: AppRole;
+  requiredPermission?: string;
 }
 
-const ProtectedRoute = ({ children, requiredRole }: Props) => {
-  const { user, loading, rolesLoaded, hasRole } = useAuth();
+const ProtectedRoute = ({ children, requiredRole, requiredPermission }: Props) => {
+  const { user, loading, rolesLoaded, hasRole, hasPermission } = useAuth();
   const location = useLocation();
 
   // Wait for both auth AND roles to be resolved before making any decisions
@@ -31,6 +32,10 @@ const ProtectedRoute = ({ children, requiredRole }: Props) => {
 
   if (requiredRole && !hasRole(requiredRole)) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return <Navigate to="/admin" replace />;
   }
 
   return <>{children}</>;

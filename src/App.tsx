@@ -43,6 +43,7 @@ const AdminBankAccounts = lazyWithRetry(() => import("./pages/admin/AdminBankAcc
 const AdminActivity = lazyWithRetry(() => import("./pages/admin/AdminActivity"));
 const AdminAmendmentRequests = lazyWithRetry(() => import("./pages/admin/AdminAmendmentRequests"));
 const AdminSupport = lazyWithRetry(() => import("./pages/admin/AdminSupport"));
+const AdminStaffManagement = lazyWithRetry(() => import("./pages/admin/AdminStaffManagement"));
 const AgentLayout = lazyWithRetry(() => import("./components/agent/AgentLayout"));
 const AgentOverview = lazyWithRetry(() => import("./pages/agent/AgentOverview"));
 const AgentClients = lazyWithRetry(() => import("./pages/agent/AgentClients"));
@@ -135,24 +136,52 @@ const App = () => (
                   <Route
                     path="/admin"
                     element={
-                      <ProtectedRoute requiredRole="admin">
+                      // staff role check: super_admin → admin → staff, all pass via hierarchy
+                      <ProtectedRoute requiredRole="staff">
                         <AdminLayout />
                       </ProtectedRoute>
                     }
                   >
-                    <Route index element={<AdminOverview />} />
-                    <Route path="packages" element={<AdminPackages />} />
-                    <Route path="payments" element={<AdminPayments />} />
-                    <Route path="pilgrims" element={<AdminPilgrims />} />
-                    <Route path="analytics" element={<AdminAnalytics />} />
-                    <Route path="id-tags" element={<AdminIdTags />} />
-                    <Route path="agent-applications" element={<AdminAgentApplications />} />
+                    <Route index element={
+                      <ProtectedRoute requiredPermission="overview"><AdminOverview /></ProtectedRoute>
+                    } />
+                    <Route path="packages" element={
+                      <ProtectedRoute requiredPermission="packages"><AdminPackages /></ProtectedRoute>
+                    } />
+                    <Route path="payments" element={
+                      <ProtectedRoute requiredPermission="payments"><AdminPayments /></ProtectedRoute>
+                    } />
+                    <Route path="pilgrims" element={
+                      <ProtectedRoute requiredPermission="pilgrims"><AdminPilgrims /></ProtectedRoute>
+                    } />
+                    <Route path="analytics" element={
+                      <ProtectedRoute requiredPermission="analytics"><AdminAnalytics /></ProtectedRoute>
+                    } />
+                    <Route path="id-tags" element={
+                      <ProtectedRoute requiredPermission="id_tags"><AdminIdTags /></ProtectedRoute>
+                    } />
+                    <Route path="agent-applications" element={
+                      <ProtectedRoute requiredPermission="agents"><AdminAgentApplications /></ProtectedRoute>
+                    } />
                     <Route path="ai-assistant" element={<AdminAiAssistant />} />
-                    <Route path="bank-accounts" element={<AdminBankAccounts />} />
-                    <Route path="activity" element={<AdminActivity />} />
-                    <Route path="amendments" element={<AdminAmendmentRequests />} />
-                    <Route path="support" element={<AdminSupport />} />
-                    <Route path="settings" element={<AdminSettings />} />
+                    <Route path="bank-accounts" element={
+                      <ProtectedRoute requiredPermission="bank_accounts"><AdminBankAccounts /></ProtectedRoute>
+                    } />
+                    <Route path="activity" element={
+                      <ProtectedRoute requiredPermission="activity"><AdminActivity /></ProtectedRoute>
+                    } />
+                    <Route path="amendments" element={
+                      <ProtectedRoute requiredPermission="amendments"><AdminAmendmentRequests /></ProtectedRoute>
+                    } />
+                    <Route path="support" element={
+                      <ProtectedRoute requiredPermission="support"><AdminSupport /></ProtectedRoute>
+                    } />
+                    <Route path="settings" element={
+                      <ProtectedRoute requiredPermission="settings"><AdminSettings /></ProtectedRoute>
+                    } />
+                    <Route path="staff" element={
+                      <ProtectedRoute requiredPermission="staff_management"><AdminStaffManagement /></ProtectedRoute>
+                    } />
                   </Route>
                   <Route
                     path="/agent"

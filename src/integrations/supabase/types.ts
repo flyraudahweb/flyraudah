@@ -225,6 +225,38 @@ export type Database = {
           },
         ]
       }
+      staff_permissions: {
+        Row: {
+          created_at: string | null
+          granted_by: string | null
+          id: string
+          permission: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          permission: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          granted_by?: string | null
+          id?: string
+          permission?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           address: string | null
@@ -856,10 +888,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_permission: {
+        Args: {
+          _user_id: string
+          _permission: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       agent_status: "active" | "suspended" | "pending"
-      app_role: "admin" | "moderator" | "agent" | "user"
+      app_role: "super_admin" | "admin" | "staff" | "moderator" | "agent" | "user"
       booking_status: "pending" | "confirmed" | "cancelled" | "completed"
       document_type:
       | "passport"
@@ -1005,7 +1044,7 @@ export const Constants = {
   public: {
     Enums: {
       agent_status: ["active", "suspended", "pending"],
-      app_role: ["admin", "moderator", "agent", "user"],
+      app_role: ["super_admin", "admin", "staff", "moderator", "agent", "user"],
       booking_status: ["pending", "confirmed", "cancelled", "completed"],
       document_type: [
         "passport",

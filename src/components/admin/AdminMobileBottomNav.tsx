@@ -13,25 +13,28 @@ import {
     Headset,
     LogOut,
     Pencil,
+    ShieldCheck,
 } from "lucide-react";
 
-const navItems = [
-    { title: "Overview", url: "/admin", icon: LayoutDashboard },
-    { title: "Packages", url: "/admin/packages", icon: Package },
-    { title: "Payments", url: "/admin/payments", icon: CreditCard },
-    { title: "Pilgrims", url: "/admin/pilgrims", icon: Users },
-    { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
-    { title: "ID Tags", url: "/admin/id-tags", icon: Barcode },
-    { title: "Agents", url: "/admin/agent-applications", icon: UserPlus },
-
-    { title: "Banks", url: "/admin/bank-accounts", icon: Building2 },
-    { title: "Activity", url: "/admin/activity", icon: History },
-    { title: "Amendments", url: "/admin/amendments", icon: Pencil },
-    { title: "Support", url: "/admin/support", icon: Headset },
+const ALL_NAV_ITEMS = [
+    { title: "Overview", url: "/admin", icon: LayoutDashboard, permission: "overview" },
+    { title: "Packages", url: "/admin/packages", icon: Package, permission: "packages" },
+    { title: "Payments", url: "/admin/payments", icon: CreditCard, permission: "payments" },
+    { title: "Pilgrims", url: "/admin/pilgrims", icon: Users, permission: "pilgrims" },
+    { title: "Analytics", url: "/admin/analytics", icon: BarChart3, permission: "analytics" },
+    { title: "ID Tags", url: "/admin/id-tags", icon: Barcode, permission: "id_tags" },
+    { title: "Agents", url: "/admin/agent-applications", icon: UserPlus, permission: "agents" },
+    { title: "Banks", url: "/admin/bank-accounts", icon: Building2, permission: "bank_accounts" },
+    { title: "Activity", url: "/admin/activity", icon: History, permission: "activity" },
+    { title: "Amendments", url: "/admin/amendments", icon: Pencil, permission: "amendments" },
+    { title: "Support", url: "/admin/support", icon: Headset, permission: "support" },
+    { title: "Staff", url: "/admin/staff", icon: ShieldCheck, permission: "staff_management" },
 ];
 
 const AdminMobileBottomNav = () => {
-    const { signOut } = useAuth();
+    const { signOut, hasPermission } = useAuth();
+
+    const navItems = ALL_NAV_ITEMS.filter((item) => hasPermission(item.permission));
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden">

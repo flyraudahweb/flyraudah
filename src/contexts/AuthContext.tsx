@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   profile: { full_name: string | null; phone: string | null; avatar_url: string | null } | null;
   roles: AppRole[];
+  permissions: string[];
   loading: boolean;
   rolesLoaded: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: Error | null }>;
@@ -18,6 +19,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (password: string) => Promise<{ error: Error | null }>;
   hasRole: (role: AppRole) => boolean;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,20 +35,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [rolesLoaded, setRolesLoaded] = useState(false);
   const signInRolesSetRef = useRef(false);
   const loadingForRef = useRef<string | null>(null);
 
-  /** Fetch profile + roles — silently no-ops on network failure */
+  /** Fetch profile + roles + permissions — silently no-ops on network failure */
   const fetchUserData = async (userId: string) => {
     try {
-      const [profileRes, rolesRes] = await Promise.all([
+      const [profileRes, rolesRes, permsRes] = await Promise.all([
         supabase.from("profiles").select("full_name, phone, avatar_url").eq("id", userId).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", userId),
+        supabase.from("staff_permissions").select("permission").eq("user_id", userId),
       ]);
       if (profileRes.data) setProfile(profileRes.data);
       if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role));
+      if (permsRes.data) setPermissions(permsRes.data.map((p) => p.permission));
     } catch {
       // Network failure — keep whatever state we had; will retry on next mount/focus
     }
@@ -87,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           loadingForRef.current = null;
           setProfile(null);
           setRoles([]);
+          setPermissions([]);
           setRolesLoaded(false);
         }
       }
@@ -150,16 +156,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Micro-delay to ensure the primary client session state has propagated
           await new Promise((resolve) => setTimeout(resolve, 0));
 
-          const [profileRes, rolesRes] = await Promise.all([
+          const [profileRes, rolesRes, permsRes] = await Promise.all([
             supabase.from("profiles").select("full_name, phone, avatar_url").eq("id", data.user.id).maybeSingle(),
             supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+            supabase.from("staff_permissions").select("permission").eq("user_id", data.user.id),
           ]);
 
           if (profileRes.data) setProfile(profileRes.data);
           const fetchedRoles = rolesRes.data?.map((r) => r.role as AppRole) ?? [];
+          const fetchedPerms = permsRes.data?.map((p) => p.permission) ?? [];
 
           loadingForRef.current = data.user.id;
           setRoles(fetchedRoles);
+          setPermissions(fetchedPerms);
           setRolesLoaded(true);
 
           return { error: null, roles: fetchedRoles };
@@ -197,6 +206,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setProfile(null);
       setRoles([]);
+      setPermissions([]);
       setRolesLoaded(false);
       // Ensure UI is unblocked after state is cleared
       setTimeout(() => setLoading(false), 100);
@@ -223,10 +233,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const hasRole = (role: AppRole) => roles.includes(role);
+  // Hierarchical role check: super_admin inherits admin; admin/super_admin inherit staff
+  const hasRole = (role: AppRole) => {
+    if (roles.includes(role)) return true;
+    if (role === 'admin' && roles.includes('super_admin' as AppRole)) return true;
+    if (role === 'staff' && (roles.includes('admin') || roles.includes('super_admin' as AppRole))) return true;
+    return false;
+  };
+
+  // Permission check: super_admin and admin have all permissions; staff only has explicit ones
+  const hasPermission = (permission: string) => {
+    if (roles.includes('super_admin' as AppRole) || roles.includes('admin')) return true;
+    return permissions.includes(permission);
+  };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, roles, loading, rolesLoaded, signUp, signIn, signOut, resetPassword, updatePassword, hasRole }}>
+    <AuthContext.Provider value={{ session, user, profile, roles, permissions, loading, rolesLoaded, signUp, signIn, signOut, resetPassword, updatePassword, hasRole, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

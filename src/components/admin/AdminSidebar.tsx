@@ -14,6 +14,7 @@ import {
   History,
   Headset,
   Pencil,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,29 +32,39 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const menuItems = [
-  { title: "Overview", url: "/admin", icon: LayoutDashboard },
-  { title: "Packages", url: "/admin/packages", icon: Package },
-  { title: "Payments", url: "/admin/payments", icon: CreditCard },
-  { title: "Pilgrims", url: "/admin/pilgrims", icon: Users },
-  { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
-  { title: "ID Tags", url: "/admin/id-tags", icon: Barcode },
-  { title: "Agent Applications", url: "/admin/agent-applications", icon: UserPlus },
-  { title: "Bank Accounts", url: "/admin/bank-accounts", icon: Building2 },
-  { title: "Activity", url: "/admin/activity", icon: History },
-  { title: "Amendments", url: "/admin/amendments", icon: Pencil },
-  { title: "Support Tickets", url: "/admin/support", icon: Headset },
-  { title: "Settings", url: "/admin/settings", icon: Settings },
+const ALL_MENU_ITEMS = [
+  { title: "Overview", url: "/admin", icon: LayoutDashboard, permission: "overview" },
+  { title: "Packages", url: "/admin/packages", icon: Package, permission: "packages" },
+  { title: "Payments", url: "/admin/payments", icon: CreditCard, permission: "payments" },
+  { title: "Pilgrims", url: "/admin/pilgrims", icon: Users, permission: "pilgrims" },
+  { title: "Analytics", url: "/admin/analytics", icon: BarChart3, permission: "analytics" },
+  { title: "ID Tags", url: "/admin/id-tags", icon: Barcode, permission: "id_tags" },
+  { title: "Agent Applications", url: "/admin/agent-applications", icon: UserPlus, permission: "agents" },
+  { title: "Bank Accounts", url: "/admin/bank-accounts", icon: Building2, permission: "bank_accounts" },
+  { title: "Activity", url: "/admin/activity", icon: History, permission: "activity" },
+  { title: "Amendments", url: "/admin/amendments", icon: Pencil, permission: "amendments" },
+  { title: "Support Tickets", url: "/admin/support", icon: Headset, permission: "support" },
+  { title: "Settings", url: "/admin/settings", icon: Settings, permission: "settings" },
+  { title: "Staff Management", url: "/admin/staff", icon: ShieldCheck, permission: "staff_management" },
 ];
 
 const AdminSidebar = () => {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, hasPermission, roles } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+
+  const isSuperAdmin = roles.includes("super_admin" as never);
+  const isAdmin = roles.includes("admin");
+
+  // Show role badge
+  const roleBadge = isSuperAdmin ? "Super Admin" : isAdmin ? "Administrator" : "Staff";
 
   const initials = profile?.full_name
     ? profile.full_name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "A";
+
+  // Filter visible menu items based on permissions
+  const menuItems = ALL_MENU_ITEMS.filter((item) => hasPermission(item.permission));
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -116,7 +127,7 @@ const AdminSidebar = () => {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{profile?.full_name || "Admin"}</p>
-                <p className="text-xs text-sidebar-foreground/50">Administrator</p>
+                <p className="text-xs text-sidebar-foreground/50">{roleBadge}</p>
               </div>
             )}
           </div>
