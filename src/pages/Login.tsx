@@ -49,7 +49,7 @@ const Login = () => {
 
       // Captured 'roles' from result closure safely
       setTimeout(() => {
-        const isAdmin = roles.includes("admin");
+        const isAdmin = roles.includes("admin") || roles.includes("super_admin");
         const hasAgentRole = roles.includes("agent");
 
         // Fire login notification for admins (fire-and-forget)
