@@ -25,12 +25,17 @@ const schema = z.object({
 });
 
 const ResetPassword = () => {
-  const { updatePassword } = useAuth();
+  const { updatePassword, hasRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Detect if this is a staff account setup from an invite link
+  // (URL will contain a Supabase token hash when arriving from the invite email)
+  const isStaffSetup = window.location.hash.includes("type=recovery") ||
+    window.location.search.includes("type=recovery");
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -46,18 +51,41 @@ const ResetPassword = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       setDone(true);
-      setTimeout(() => navigate("/dashboard"), 2000);
+      // Redirect based on role: staff/admin → admin dashboard, others → customer dashboard
+      setTimeout(() => {
+        if (hasRole("staff") || hasRole("admin") || hasRole("super_admin" as any)) {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
+      }, 2000);
     }
   };
 
+  const pageTitle = done
+    ? "Password Set!"
+    : isStaffSetup
+      ? "Welcome to the Team!"
+      : "Set New Password";
+
+  const pageSubtitle = done
+    ? undefined
+    : isStaffSetup
+      ? "Create a secure password to access your Raudah Travels staff dashboard"
+      : "Create a strong password for your account";
+
+  const doneMessage = hasRole("staff") || hasRole("admin") || hasRole("super_admin" as any)
+    ? "Your password has been set. Redirecting you to the admin dashboard..."
+    : "Your password has been updated. Redirecting you to the dashboard...";
+
   return (
-    <AuthLayout title={done ? "Password Updated!" : "Set New Password"} subtitle={done ? undefined : "Create a strong password for your account"}>
+    <AuthLayout title={pageTitle} subtitle={pageSubtitle}>
       {done ? (
         <div className="text-center space-y-6">
           <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
             <CheckCircle className="h-8 w-8 text-primary" />
           </div>
-          <p className="text-muted-foreground">Your password has been updated. Redirecting you to the dashboard...</p>
+          <p className="text-muted-foreground">{doneMessage}</p>
         </div>
       ) : (
         <Form {...form}>
@@ -86,7 +114,7 @@ const ResetPassword = () => {
             )} />
 
             <Button type="submit" disabled={submitting} className="w-full gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg hover:-translate-y-0.5 transition-all">
-              {submitting ? "Updating..." : "Update Password"}
+              {submitting ? "Setting up..." : isStaffSetup ? "Activate My Account" : "Update Password"}
             </Button>
           </form>
         </Form>
