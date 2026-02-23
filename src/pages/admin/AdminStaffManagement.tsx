@@ -112,13 +112,21 @@ export default function AdminStaffManagement() {
 
     const { data: staff = [], isLoading } = useStaffList();
 
-    // ── Invite dialog state
+    // ── Create staff dialog state
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState("");
     const [inviteFullName, setInviteFullName] = useState("");
     const [inviteRole, setInviteRole] = useState<"admin" | "staff">("staff");
     const [invitePerms, setInvitePerms] = useState<string[]>(["overview"]);
+    const [inviteTempPassword, setInviteTempPassword] = useState("");
+    const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
     const [inviting, setInviting] = useState(false);
+
+    const generateTempPassword = () => {
+        const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
+        const pw = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+        setInviteTempPassword(pw);
+    };
 
     // ── Edit permissions dialog state
     const [editTarget, setEditTarget] = useState<StaffMember | null>(null);
@@ -164,18 +172,15 @@ export default function AdminStaffManagement() {
         onError: (e: Error) => toast.error(e.message),
     });
 
-    /* ── Invite staff handler */
+    /* ── Create staff handler */
     const handleInvite = async () => {
         if (!inviteEmail.trim()) return toast.error("Email is required");
+        if (!inviteTempPassword.trim()) return toast.error("Temporary password is required");
         setInviting(true);
         try {
-            // Explicitly get the current session token — needed with the publishable key client
             const { data: sessionData } = await supabase.auth.getSession();
             const token = sessionData?.session?.access_token;
-            if (!token) {
-                toast.error("You must be logged in to invite staff");
-                return;
-            }
+            if (!token) { toast.error("You must be logged in"); return; }
 
             const { data, error } = await supabase.functions.invoke("invite-staff", {
                 body: {
@@ -183,33 +188,31 @@ export default function AdminStaffManagement() {
                     full_name: inviteFullName.trim() || undefined,
                     role: inviteRole,
                     permissions: inviteRole === "staff" ? invitePerms : [],
+                    temp_password: inviteTempPassword,
                 },
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
 
-            if (error) {
-                toast.error(error.message ?? "Failed to send invitation");
-                return;
-            }
+            if (error) { toast.error(error.message ?? "Failed to create staff account"); return; }
+            if (data?.error) { toast.error(data.error); return; }
 
-            if (data?.error) {
-                toast.error(data.error);
-                return;
-            }
-
-            toast.success(`Invitation sent to ${inviteEmail}`);
+            // Show credentials so admin can share them manually
+            setCreatedCredentials({ email: inviteEmail.trim(), password: inviteTempPassword });
             qc.invalidateQueries({ queryKey: ["staff-list"] });
-            setInviteOpen(false);
-            setInviteEmail("");
-            setInviteFullName("");
-            setInvitePerms(["overview"]);
         } catch (e: any) {
             toast.error(e.message ?? "Something went wrong");
         } finally {
             setInviting(false);
         }
+    };
+
+    const closeInviteDialog = () => {
+        setInviteOpen(false);
+        setInviteEmail("");
+        setInviteFullName("");
+        setInviteTempPassword("");
+        setInvitePerms(["overview"]);
+        setCreatedCredentials(null);
     };
 
     /* ── Toggle a permission in a list */
@@ -242,75 +245,121 @@ export default function AdminStaffManagement() {
                             Invite Staff
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-lg">
+                    <DialogContent className="max-w-lg" onInteractOutside={(e) => { if (createdCredentials) e.preventDefault(); }}>
                         <DialogHeader>
-                            <DialogTitle>Invite a Team Member</DialogTitle>
+                            <DialogTitle>{createdCredentials ? "✅ Staff Account Created" : "Add Staff Member"}</DialogTitle>
                             <DialogDescription>
-                                They will receive an email invitation to set up their account.
+                                {createdCredentials
+                                    ? "Share these login credentials with the staff member. They can change their password after logging in."
+                                    : "Create a login for a team member. You'll share the temporary password with them directly — no email will be sent."
+                                }
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-2">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label>Full Name</Label>
-                                    <Input
-                                        placeholder="Amina Sani"
-                                        value={inviteFullName}
-                                        onChange={(e) => setInviteFullName(e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label>Email</Label>
-                                    <Input
-                                        type="email"
-                                        placeholder="amina@raudah.ng"
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                    />
-                                </div>
-                            </div>
 
-                            <div className="space-y-1.5">
-                                <Label>Role</Label>
-                                <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "staff")}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {isSuperAdmin && <SelectItem value="admin">Admin (full access)</SelectItem>}
-                                        <SelectItem value="staff">Staff (limited access)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {inviteRole === "staff" && (
-                                <div className="space-y-2">
-                                    <Label>Permissions</Label>
-                                    <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
-                                        {ALL_PERMISSIONS.map((p) => (
-                                            <label key={p.key} className="flex items-start gap-2 cursor-pointer rounded-md border p-2 hover:bg-muted/40 transition-colors">
-                                                <Checkbox
-                                                    checked={invitePerms.includes(p.key)}
-                                                    onCheckedChange={() => setInvitePerms((prev) => togglePerm(prev, p.key))}
-                                                    className="mt-0.5"
-                                                />
-                                                <div>
-                                                    <p className="text-sm font-medium leading-none">{p.label}</p>
-                                                    <p className="text-xs text-muted-foreground">{p.description}</p>
-                                                </div>
-                                            </label>
-                                        ))}
+                        {/* ── Success: show credentials ── */}
+                        {createdCredentials ? (
+                            <div className="space-y-4 py-2">
+                                <div className="rounded-lg bg-muted p-4 space-y-3 font-mono text-sm border">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground font-sans mb-1">Email / Username</p>
+                                        <p className="font-semibold select-all">{createdCredentials.email}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground font-sans mb-1">Temporary Password</p>
+                                        <p className="font-semibold select-all">{createdCredentials.password}</p>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-                            <Button onClick={handleInvite} disabled={inviting} className="gap-2">
-                                {inviting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                Send Invitation
-                            </Button>
-                        </DialogFooter>
+                                <p className="text-xs text-muted-foreground">⚠️ Copy these credentials now — the password won't be shown again after you close this dialog.</p>
+                                <Button className="w-full" onClick={closeInviteDialog}>Done</Button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-4 py-2">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <Label>Full Name</Label>
+                                            <Input
+                                                placeholder="Amina Sani"
+                                                value={inviteFullName}
+                                                onChange={(e) => setInviteFullName(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label>Email <span className="text-destructive">*</span></Label>
+                                            <Input
+                                                type="email"
+                                                placeholder="amina@raudah.ng"
+                                                value={inviteEmail}
+                                                onChange={(e) => setInviteEmail(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label>Role</Label>
+                                        <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "staff")}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {isSuperAdmin && <SelectItem value="admin">Admin (full access)</SelectItem>}
+                                                <SelectItem value="staff">Staff (limited access)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {inviteRole === "staff" && (
+                                        <div className="space-y-2">
+                                            <Label>Permissions</Label>
+                                            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                                                {ALL_PERMISSIONS.map((p) => (
+                                                    <label key={p.key} className="flex items-start gap-2 cursor-pointer rounded-md border p-2 hover:bg-muted/40 transition-colors">
+                                                        <Checkbox
+                                                            checked={invitePerms.includes(p.key)}
+                                                            onCheckedChange={() => setInvitePerms((prev) => togglePerm(prev, p.key))}
+                                                            className="mt-0.5"
+                                                        />
+                                                        <div>
+                                                            <p className="text-sm font-medium leading-none">{p.label}</p>
+                                                            <p className="text-xs text-muted-foreground">{p.description}</p>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Temp password */}
+                                    <div className="space-y-1.5">
+                                        <Label>Temporary Password <span className="text-destructive">*</span></Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                type="text"
+                                                placeholder="Set a temporary password"
+                                                value={inviteTempPassword}
+                                                onChange={(e) => setInviteTempPassword(e.target.value)}
+                                                className="font-mono"
+                                            />
+                                            <Button type="button" variant="outline" size="sm" onClick={generateTempPassword} className="shrink-0">
+                                                Generate
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Share this with the staff member. They'll be prompted to change it after first login.</p>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={closeInviteDialog}>Cancel</Button>
+                                    <Button
+                                        onClick={handleInvite}
+                                        disabled={inviting || !inviteTempPassword.trim() || !inviteEmail.trim()}
+                                        className="gap-2"
+                                    >
+                                        {inviting && <Loader2 className="h-4 w-4 animate-spin" />}
+                                        Create Account
+                                    </Button>
+                                </DialogFooter>
+                            </>
+                        )}
                     </DialogContent>
                 </Dialog>
             </div>

@@ -23,6 +23,7 @@ import { toast } from "sonner";
 interface EditBookingModalProps {
     booking: any;
     onClose: () => void;
+    adminMode?: boolean;
 }
 
 type TabKey = "personal" | "passport" | "emergency" | "mahram" | "special";
@@ -42,15 +43,15 @@ const CONFIRMED_EDITABLE = new Set([
     "special_requests",
 ]);
 
-const EditBookingModal = ({ booking, onClose }: EditBookingModalProps) => {
+const EditBookingModal = ({ booking, onClose, adminMode = false }: EditBookingModalProps) => {
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<TabKey>("personal");
     const [saved, setSaved] = useState(false);
 
-    const isPending = booking.status === "pending";
-    const isConfirmed = booking.status === "confirmed";
-    const isEditable = isPending || isConfirmed;
+    const isPending = adminMode || booking.status === "pending";
+    const isConfirmed = !adminMode && booking.status === "confirmed";
+    const isEditable = adminMode || booking.status === "pending" || booking.status === "confirmed";
 
     const { register, handleSubmit, watch, setValue, formState: { isDirty, dirtyFields } } = useForm({
         defaultValues: {
@@ -97,12 +98,24 @@ const EditBookingModal = ({ booking, onClose }: EditBookingModalProps) => {
     const { mutate: saveChanges, isPending: isSaving } = useMutation({
         mutationFn: async (formData: any) => {
             if (isPending) {
-                // Direct update for pending bookings
-                const { error } = await supabase
+                // Sanitize before PATCH: Postgres rejects "" for integer/boolean columns
+                const payload: Record<string, any> = {};
+                for (const [key, val] of Object.entries(formData)) {
+                    if (key === "previous_umrah_year") {
+                        payload[key] = val !== "" && val != null ? Number(val) : null;
+                    } else if (key === "previous_umrah") {
+                        payload[key] = val === "true";
+                    } else {
+                        payload[key] = val === "" ? null : val;
+                    }
+                }
+                // Admin can update any booking; user can only update their own
+                let query = supabase
                     .from("bookings")
-                    .update({ ...formData, updated_at: new Date().toISOString() })
-                    .eq("id", booking.id)
-                    .eq("user_id", user!.id);
+                    .update({ ...payload, updated_at: new Date().toISOString() })
+                    .eq("id", booking.id);
+                if (!adminMode) query = query.eq("user_id", user!.id);
+                const { error } = await query;
                 if (error) throw error;
             } else if (isConfirmed) {
                 // Amendment request for confirmed bookings
@@ -127,6 +140,7 @@ const EditBookingModal = ({ booking, onClose }: EditBookingModalProps) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["user-bookings-full"] });
+            queryClient.invalidateQueries({ queryKey: ["admin-all-bookings"] });
             setSaved(true);
             if (isPending) {
                 toast.success("Booking updated successfully!");
@@ -189,8 +203,8 @@ const EditBookingModal = ({ booking, onClose }: EditBookingModalProps) => {
                                 key={key}
                                 onClick={() => setActiveTab(key)}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${activeTab === key
-                                        ? "bg-secondary/20 text-secondary border border-secondary/30"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                                    ? "bg-secondary/20 text-secondary border border-secondary/30"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                                     }`}
                             >
                                 <Icon className="h-3 w-3" />

@@ -14,6 +14,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { ArrowLeft, CheckCircle, Percent } from "lucide-react";
+import { useBookingFormFields, useSystemFieldConfig } from "@/hooks/useBookingFormFields";
+import CustomFieldsSection from "@/components/bookings/CustomFieldsSection";
 
 const AgentBookForClient = () => {
   const { id: packageId } = useParams<{ id: string }>();
@@ -32,6 +34,13 @@ const AgentBookForClient = () => {
   const [emergencyRelation, setEmergencyRelation] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
+
+  // ── Custom dynamic form fields ────────────────────────────────────────────
+  const { data: customFields = [] } = useBookingFormFields("agent");
+  const { get: sysField } = useSystemFieldConfig();
+  const [customData, setCustomData] = useState<Record<string, string>>({});
+  const [customUploading, setCustomUploading] = useState<Record<string, boolean>>();
+  const handleCustomChange = (key: string, value: string) => setCustomData((p) => ({ ...p, [key]: value }));
 
   const { data: pkg, isLoading: pkgLoading } = useQuery({
     queryKey: ["package", packageId],
@@ -65,8 +74,13 @@ const AgentBookForClient = () => {
   if (!pkg) return <div className="text-center py-12">Package not found</div>;
 
   const selectedClient = clients.find((c: any) => c.id === selectedClientId);
-  const wholesalePrice = pkg.price - (pkg.price * (agent?.commission_rate || pkg.agent_discount) / 100);
+  const commissionType: "percentage" | "fixed" = (agent as any)?.commission_type ?? "percentage";
+  const commissionRate = agent?.commission_rate ?? 0;
+  const wholesalePrice = commissionType === "fixed"
+    ? Math.max(0, pkg.price - commissionRate)
+    : pkg.price - (pkg.price * (commissionRate || pkg.agent_discount) / 100);
   const savings = pkg.price - wholesalePrice;
+
 
   const roomTypes = [
     ...(pkg.package_accommodations?.flatMap((a: any) => a.room_types || []) || []),
@@ -118,6 +132,7 @@ const AgentBookForClient = () => {
           emergency_contact_phone: emergencyPhone,
           emergency_contact_relationship: emergencyRelation,
           status: "pending",
+          custom_data: Object.keys(customData).length > 0 ? customData : null,
         })
         .select()
         .single();
@@ -172,7 +187,9 @@ const AgentBookForClient = () => {
                 </div>
                 <div className="flex items-center gap-1 text-xs text-chart-2 mt-1">
                   <Percent className="h-3 w-3" />
-                  You save ₦{savings.toLocaleString()}
+                  {commissionType === "fixed"
+                    ? `Fixed commission: ₦${savings.toLocaleString()}`
+                    : `You save ₦${savings.toLocaleString()} (${commissionRate}%)`}
                 </div>
               </div>
 
@@ -241,23 +258,25 @@ const AgentBookForClient = () => {
                 </Select>
               </div>
 
-              <div>
-                <Label>Departure City</Label>
-                <Select value={departureCity} onValueChange={setDepartureCity}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select city..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pkg.departure_cities?.map((city: string) => (
-                      <SelectItem key={city} value={city}>{city}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {roomTypes.length > 0 && (
+              {sysField('departure_city', 'Departure City').enabled && (
                 <div>
-                  <Label>Room Preference</Label>
+                  <Label>{sysField('departure_city', 'Departure City').label}</Label>
+                  <Select value={departureCity} onValueChange={setDepartureCity}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select city..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pkg.departure_cities?.map((city: string) => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {roomTypes.length > 0 && sysField('room_preference', 'Room Preference').enabled && (
+                <div>
+                  <Label>{sysField('room_preference', 'Room Preference').label}</Label>
                   <Select value={roomPreference} onValueChange={setRoomPreference}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select room..." />
@@ -271,16 +290,34 @@ const AgentBookForClient = () => {
                 </div>
               )}
 
-              <div>
-                <Label>Special Requests</Label>
-                <textarea
-                  value={specialRequests}
-                  onChange={(e) => setSpecialRequests(e.target.value)}
-                  placeholder="Any medical needs or special requirements..."
-                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                  rows={2}
-                />
-              </div>
+              {sysField('special_requests', 'Special Requests').enabled && (
+                <div>
+                  <Label>{sysField('special_requests', 'Special Requests').label}</Label>
+                  <textarea
+                    value={specialRequests}
+                    onChange={(e) => setSpecialRequests(e.target.value)}
+                    placeholder={sysField('special_requests', '', 'Any medical needs or special requirements...').placeholder ?? 'Any medical needs or special requirements...'}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                    rows={2}
+                  />
+                </div>
+              )}
+
+              {/* ── Admin-defined custom fields ── */}
+              {customFields.length > 0 && (
+                <div className="space-y-3 pt-1">
+                  <p className="text-sm font-medium text-muted-foreground">Additional Information</p>
+                  <CustomFieldsSection
+                    fields={customFields}
+                    values={customData}
+                    onChange={handleCustomChange}
+                    uploading={customUploading ?? {}}
+                    onUploadingChange={(key, val) =>
+                      setCustomUploading((p) => ({ ...(p ?? {}), [key]: val }))
+                    }
+                  />
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Back</Button>

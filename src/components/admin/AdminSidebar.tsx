@@ -15,6 +15,7 @@ import {
   Headset,
   Pencil,
   ShieldCheck,
+  FormInput,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,7 @@ const ALL_MENU_ITEMS = [
   { title: "Amendments", url: "/admin/amendments", icon: Pencil, permission: "amendments" },
   { title: "Support Tickets", url: "/admin/support", icon: Headset, permission: "support" },
   { title: "Staff Management", url: "/admin/staff", icon: ShieldCheck, permission: "staff_management" },
+  { title: "Booking Form", url: "/admin/booking-form", icon: FormInput, permission: "settings" },
   { title: "Settings", url: "/admin/settings", icon: Settings, permission: "settings" },
 ];
 

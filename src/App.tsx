@@ -58,6 +58,7 @@ const FAQ = lazyWithRetry(() => import("./pages/FAQ"));
 const TermsAndConditions = lazyWithRetry(() => import("./pages/TermsAndConditions"));
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
 const AdminSettings = lazyWithRetry(() => import("./pages/admin/AdminSettings"));
+const AdminBookingForm = lazyWithRetry(() => import("./pages/admin/AdminBookingForm"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -178,6 +179,9 @@ const App = () => (
                     } />
                     <Route path="settings" element={
                       <ProtectedRoute requiredPermission="settings"><AdminSettings /></ProtectedRoute>
+                    } />
+                    <Route path="booking-form" element={
+                      <ProtectedRoute requiredPermission="settings"><AdminBookingForm /></ProtectedRoute>
                     } />
                     <Route path="staff" element={
                       <ProtectedRoute requiredPermission="staff_management"><AdminStaffManagement /></ProtectedRoute>

@@ -119,6 +119,7 @@ interface CreateAgentDialogProps {
     phone: string;
     temp_password: string;
     commission_rate: number;
+    commission_type: "percentage" | "fixed";
   }) => void;
   isPending: boolean;
 }
@@ -126,7 +127,7 @@ interface CreateAgentDialogProps {
 const CreateAgentDialog = ({ open, onClose, onConfirm, isPending }: CreateAgentDialogProps) => {
   const [form, setForm] = useState({
     full_name: "", business_name: "", email: "", phone: "",
-    temp_password: "", commission_rate: "0",
+    temp_password: "", commission_rate: "0", commission_type: "percentage" as "percentage" | "fixed",
   });
   const [showPw, setShowPw] = useState(false);
 
@@ -149,11 +150,12 @@ const CreateAgentDialog = ({ open, onClose, onConfirm, isPending }: CreateAgentD
       phone: form.phone.trim(),
       temp_password: form.temp_password.trim(),
       commission_rate: parseFloat(form.commission_rate) || 0,
+      commission_type: form.commission_type,
     });
   };
 
   const handleClose = () => {
-    setForm({ full_name: "", business_name: "", email: "", phone: "", temp_password: "", commission_rate: "0" });
+    setForm({ full_name: "", business_name: "", email: "", phone: "", temp_password: "", commission_rate: "0", commission_type: "percentage" });
     onClose();
   };
 
@@ -191,38 +193,55 @@ const CreateAgentDialog = ({ open, onClose, onConfirm, isPending }: CreateAgentD
               <Input placeholder="+234 000 000 0000" value={form.phone} onChange={set("phone")} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Temporary Password *</Label>
-              <div className="relative">
-                <Input
-                  type={showPw ? "text" : "password"}
-                  placeholder="Min. 8 characters"
-                  value={form.temp_password}
-                  onChange={set("temp_password")}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  onClick={() => setShowPw((v) => !v)}
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Commission Rate (%)</Label>
+          <div className="space-y-1.5">
+            <Label>Temporary Password *</Label>
+            <div className="relative">
               <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
-                placeholder="0"
-                value={form.commission_rate}
-                onChange={set("commission_rate")}
+                type={showPw ? "text" : "password"}
+                placeholder="Min. 8 characters"
+                value={form.temp_password}
+                onChange={set("temp_password")}
+                className="pr-10"
               />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                onClick={() => setShowPw((v) => !v)}
+              >
+                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Commission Type</Label>
+            <div className="flex rounded-md border overflow-hidden">
+              {(["percentage", "fixed"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, commission_type: t }))}
+                  className={`flex-1 py-2 text-sm font-medium transition-colors ${form.commission_type === t
+                    ? "bg-secondary text-white"
+                    : "text-muted-foreground hover:bg-muted"
+                    }`}
+                >
+                  {t === "percentage" ? "% Rate" : "₦ Fixed"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>
+              {form.commission_type === "percentage" ? "Commission Rate (%)" : "Fixed Commission (₦)"}
+            </Label>
+            <Input
+              type="number"
+              min="0"
+              step={form.commission_type === "percentage" ? "0.5" : "1000"}
+              placeholder={form.commission_type === "percentage" ? "e.g. 5" : "e.g. 60000"}
+              value={form.commission_rate}
+              onChange={set("commission_rate")}
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             The agent will log in with these credentials. Remind them to update their password immediately.
@@ -257,6 +276,7 @@ interface EditAgentDialogProps {
     email: string;
     phone: string;
     commission_rate: number;
+    commission_type: "percentage" | "fixed";
     status: string;
   }) => void;
   isPending: boolean;
@@ -269,21 +289,8 @@ const EditAgentDialog = ({ open, agent, onClose, onConfirm, isPending }: EditAge
     email: agent?.email || "",
     phone: agent?.phone || "",
     commission_rate: String(agent?.commission_rate ?? "0"),
+    commission_type: (agent?.commission_type ?? "percentage") as "percentage" | "fixed",
     status: agent?.status || "active",
-  });
-
-  // Update form when agent changes
-  useState(() => {
-    if (agent) {
-      setForm({
-        business_name: agent.business_name || "",
-        contact_person: agent.contact_person || "",
-        email: agent.email || "",
-        phone: agent.phone || "",
-        commission_rate: String(agent.commission_rate ?? "0"),
-        status: agent.status || "active",
-      });
-    }
   });
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -300,7 +307,7 @@ const EditAgentDialog = ({ open, agent, onClose, onConfirm, isPending }: EditAge
             Edit Agent
           </DialogTitle>
           <DialogDescription>
-            Update agent details and commission rate.
+            Update agent details and commission settings.
           </DialogDescription>
         </DialogHeader>
 
@@ -325,14 +332,36 @@ const EditAgentDialog = ({ open, agent, onClose, onConfirm, isPending }: EditAge
               <Input value={form.phone} onChange={set("phone")} />
             </div>
           </div>
+
+          {/* Commission type toggle */}
+          <div className="space-y-1.5">
+            <Label>Commission Type</Label>
+            <div className="flex rounded-md border overflow-hidden">
+              {(["percentage", "fixed"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, commission_type: t }))}
+                  className={`flex-1 py-2 text-sm font-medium transition-colors ${form.commission_type === t
+                    ? "bg-secondary text-white"
+                    : "text-muted-foreground hover:bg-muted"
+                    }`}
+                >
+                  {t === "percentage" ? "% Rate" : "₦ Fixed"}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Commission Rate (%)</Label>
+              <Label>
+                {form.commission_type === "percentage" ? "Commission Rate (%)" : "Fixed Commission (₦)"}
+              </Label>
               <Input
                 type="number"
                 min="0"
-                max="100"
-                step="0.5"
+                step={form.commission_type === "percentage" ? "0.5" : "1000"}
+                placeholder={form.commission_type === "percentage" ? "e.g. 5" : "e.g. 60000"}
                 value={form.commission_rate}
                 onChange={set("commission_rate")}
               />
@@ -363,6 +392,7 @@ const EditAgentDialog = ({ open, agent, onClose, onConfirm, isPending }: EditAge
                 email: form.email.trim(),
                 phone: form.phone.trim(),
                 commission_rate: parseFloat(form.commission_rate) || 0,
+                commission_type: form.commission_type,
                 status: form.status,
               });
             }}
@@ -376,6 +406,9 @@ const EditAgentDialog = ({ open, agent, onClose, onConfirm, isPending }: EditAge
     </Dialog>
   );
 };
+
+
+
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -466,9 +499,13 @@ const AdminAgentApplications = () => {
     mutationFn: async (payload: {
       full_name: string; business_name: string; email: string;
       phone: string; temp_password: string; commission_rate: number;
+      commission_type: "percentage" | "fixed";
     }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
       const res = await supabase.functions.invoke("create-agent-direct", {
         body: payload,
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
@@ -590,7 +627,7 @@ const AdminAgentApplications = () => {
                         <TableHead>Code</TableHead>
                         <TableHead>Business / Contact</TableHead>
                         <TableHead>Email / Phone</TableHead>
-                        <TableHead>Comm. %</TableHead>
+                        <TableHead>Commission</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -629,7 +666,12 @@ const AdminAgentApplications = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="font-mono">{agent.commission_rate}%</Badge>
+                            <Badge variant="outline" className="font-mono">
+                              {(agent as any).commission_type === "fixed"
+                                ? `₦${Number(agent.commission_rate).toLocaleString()}`
+                                : `${agent.commission_rate}%`}
+                            </Badge>
+
                           </TableCell>
                           <TableCell>
                             <Badge className="bg-green-100 text-green-800 border-green-200 capitalize">

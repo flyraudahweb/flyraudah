@@ -20,6 +20,8 @@ import { AlertCircle, User, Plane, CreditCard, CheckCircle } from "lucide-react"
 import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { usePaystackEnabled } from "@/hooks/usePaystackEnabled";
 import SuccessAnimation from "@/components/animations/SuccessAnimation";
+import { useBookingFormFields, useSystemFieldConfig } from "@/hooks/useBookingFormFields";
+import CustomFieldsSection from "@/components/bookings/CustomFieldsSection";
 
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -105,6 +107,14 @@ const BookingWizard = () => {
   const [bookingReference, setBookingReference] = useState("");
   const [hasPreviousUmrah, setHasPreviousUmrah] = useState(false);
   const [isFemale, setIsFemale] = useState(false);
+
+  // ── Custom dynamic form fields ────────────────────────────────────────────
+  const { data: customFields = [] } = useBookingFormFields("user");
+  const [customData, setCustomData] = useState<Record<string, string>>({});
+  const [customUploading, setCustomUploading] = useState<Record<string, boolean>>({});
+  const handleCustomChange = (key: string, value: string) => setCustomData((p) => ({ ...p, [key]: value }));
+  // ── System field config (admin-editable labels, enabled toggles) ────────────
+  const { get: sysField } = useSystemFieldConfig();
 
   const pilgrimForm = useForm<PilgrimForm>({
     resolver: zodResolver(pilgrimSchema),
@@ -297,6 +307,7 @@ const BookingWizard = () => {
           emergency_contact_phone: tData.emergencyContactPhone,
           emergency_contact_relationship: tData.emergencyContactRelationship,
           status: "pending",
+          custom_data: Object.keys(customData).length > 0 ? customData : null,
         } as any)
         .select()
         .single();
@@ -535,63 +546,85 @@ const BookingWizard = () => {
 
                 {/* Personal */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <Label>Full Name (as on passport) *</Label>
-                    <Input {...pilgrimForm.register("fullName")} placeholder="e.g. Fatima Abubakar Musa" />
-                    {pilgrimForm.formState.errors.fullName && <p className="text-xs text-destructive mt-1">{pilgrimForm.formState.errors.fullName.message}</p>}
-                  </div>
-                  <div>
-                    <Label>Date of Birth *</Label>
-                    <Input type="date" {...pilgrimForm.register("dateOfBirth")} />
-                  </div>
-                  <div>
-                    <Label>Gender *</Label>
-                    <select
-                      {...pilgrimForm.register("gender")}
-                      onChange={(e) => { pilgrimForm.setValue("gender", e.target.value as "male" | "female"); setIsFemale(e.target.value === "female"); }}
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                    >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label>Marital Status *</Label>
-                    <select {...pilgrimForm.register("maritalStatus")} className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm">
-                      <option value="single">Single</option>
-                      <option value="married">Married</option>
-                      <option value="widowed">Widowed</option>
-                      <option value="divorced">Divorced</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label>Nationality *</Label>
-                    <Input {...pilgrimForm.register("nationality")} placeholder="e.g. Nigerian" />
-                  </div>
-                  <div>
-                    <Label>Place of Birth *</Label>
-                    <Input {...pilgrimForm.register("placeOfBirth")} placeholder="City, Country" />
-                  </div>
-                  <div>
-                    <Label>Occupation *</Label>
-                    <Input {...pilgrimForm.register("occupation")} placeholder="e.g. Teacher, Engineer" />
-                  </div>
-                  <div>
-                    <Label>Phone Number *</Label>
-                    <Input {...pilgrimForm.register("phone")} placeholder="+234 800 000 0000" />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Label>Home Address *</Label>
-                    <Input {...pilgrimForm.register("address")} placeholder="No. 12, Street Name, City, State" />
-                  </div>
-                  <div>
-                    <Label>Father's Full Name *</Label>
-                    <Input {...pilgrimForm.register("fathersName")} placeholder="Father's full name" />
-                  </div>
-                  <div>
-                    <Label>Mother's Full Name *</Label>
-                    <Input {...pilgrimForm.register("mothersName")} placeholder="Mother's full name" />
-                  </div>
+                  {sysField('full_name', 'Full Name (as on passport)').enabled && (
+                    <div className="sm:col-span-2">
+                      <Label>{sysField('full_name', 'Full Name (as on passport)').label} *</Label>
+                      <Input {...pilgrimForm.register("fullName")} placeholder={sysField('full_name', '', 'e.g. Fatima Abubakar Musa').placeholder ?? 'e.g. Fatima Abubakar Musa'} />
+                      {pilgrimForm.formState.errors.fullName && <p className="text-xs text-destructive mt-1">{pilgrimForm.formState.errors.fullName.message}</p>}
+                    </div>
+                  )}
+                  {sysField('date_of_birth', 'Date of Birth').enabled && (
+                    <div>
+                      <Label>{sysField('date_of_birth', 'Date of Birth').label} *</Label>
+                      <Input type="date" {...pilgrimForm.register("dateOfBirth")} />
+                    </div>
+                  )}
+                  {sysField('gender', 'Gender').enabled && (
+                    <div>
+                      <Label>{sysField('gender', 'Gender').label} *</Label>
+                      <select
+                        {...pilgrimForm.register("gender")}
+                        onChange={(e) => { pilgrimForm.setValue("gender", e.target.value as "male" | "female"); setIsFemale(e.target.value === "female"); }}
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                      </select>
+                    </div>
+                  )}
+                  {sysField('marital_status', 'Marital Status').enabled && (
+                    <div>
+                      <Label>{sysField('marital_status', 'Marital Status').label} *</Label>
+                      <select {...pilgrimForm.register("maritalStatus")} className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm">
+                        <option value="single">Single</option>
+                        <option value="married">Married</option>
+                        <option value="widowed">Widowed</option>
+                        <option value="divorced">Divorced</option>
+                      </select>
+                    </div>
+                  )}
+                  {sysField('nationality', 'Nationality').enabled && (
+                    <div>
+                      <Label>{sysField('nationality', 'Nationality').label} *</Label>
+                      <Input {...pilgrimForm.register("nationality")} placeholder={sysField('nationality', '', 'e.g. Nigerian').placeholder ?? 'e.g. Nigerian'} />
+                    </div>
+                  )}
+                  {sysField('place_of_birth', 'Place of Birth').enabled && (
+                    <div>
+                      <Label>{sysField('place_of_birth', 'Place of Birth').label} *</Label>
+                      <Input {...pilgrimForm.register("placeOfBirth")} placeholder={sysField('place_of_birth', '', 'City, Country').placeholder ?? 'City, Country'} />
+                    </div>
+                  )}
+                  {sysField('occupation', 'Occupation').enabled && (
+                    <div>
+                      <Label>{sysField('occupation', 'Occupation').label} *</Label>
+                      <Input {...pilgrimForm.register("occupation")} placeholder={sysField('occupation', '', 'e.g. Teacher, Engineer').placeholder ?? 'e.g. Teacher, Engineer'} />
+                    </div>
+                  )}
+                  {sysField('phone', 'Phone Number').enabled && (
+                    <div>
+                      <Label>{sysField('phone', 'Phone Number').label} *</Label>
+                      <Input {...pilgrimForm.register("phone")} placeholder={sysField('phone', '', '+234 800 000 0000').placeholder ?? '+234 800 000 0000'} />
+                    </div>
+                  )}
+                  {sysField('address', 'Home Address').enabled && (
+                    <div className="sm:col-span-2">
+                      <Label>{sysField('address', 'Home Address').label} *</Label>
+                      <Input {...pilgrimForm.register("address")} placeholder={sysField('address', '', 'No. 12, Street Name, City, State').placeholder ?? 'No. 12, Street Name, City, State'} />
+                    </div>
+                  )}
+                  {sysField('fathers_name', "Father's Name").enabled && (
+                    <div>
+                      <Label>{sysField('fathers_name', "Father's Name").label} *</Label>
+                      <Input {...pilgrimForm.register("fathersName")} placeholder="Father's full name" />
+                    </div>
+                  )}
+                  {sysField('mothers_name', "Mother's Name").enabled && (
+                    <div>
+                      <Label>{sysField('mothers_name', "Mother's Name").label} *</Label>
+                      <Input {...pilgrimForm.register("mothersName")} placeholder="Mother's full name" />
+                    </div>
+                  )}
                 </div>
 
                 <Separator />
@@ -654,11 +687,13 @@ const BookingWizard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Meningitis Vaccine Date</Label>
-                    <Input type="date" {...pilgrimForm.register("meningitisVaccineDate")} />
-                    <p className="text-xs text-muted-foreground mt-1">Date of Meningitis ACWY vaccination</p>
-                  </div>
+                  {sysField('meningitis_vaccine_date', 'Meningitis Vaccine Date').enabled && (
+                    <div>
+                      <Label>{sysField('meningitis_vaccine_date', 'Meningitis Vaccine Date').label}</Label>
+                      <Input type="date" {...pilgrimForm.register("meningitisVaccineDate")} />
+                      <p className="text-xs text-muted-foreground mt-1">Date of Meningitis ACWY vaccination</p>
+                    </div>
+                  )}
                   <div>
                     <Label>Vaccine Certificate (PDF/Image)</Label>
                     <input
@@ -673,34 +708,36 @@ const BookingWizard = () => {
 
                 {/* Previous Umrah */}
                 <Separator />
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold">Umrah History</h3>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="prev-umrah"
-                      checked={hasPreviousUmrah}
-                      onChange={(e) => {
-                        setHasPreviousUmrah(e.target.checked);
-                        pilgrimForm.setValue("previousUmrah", e.target.checked);
-                      }}
-                      className="h-4 w-4 accent-secondary"
-                    />
-                    <Label htmlFor="prev-umrah">I have performed Umrah before</Label>
-                  </div>
-                  {hasPreviousUmrah && (
-                    <div>
-                      <Label>Year of Last Umrah</Label>
-                      <Input
-                        type="number"
-                        min={2000}
-                        max={new Date().getFullYear()}
-                        placeholder="e.g. 2022"
-                        {...pilgrimForm.register("previousUmrahYear")}
+                {sysField('previous_umrah', 'Umrah History').enabled && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">{sysField('previous_umrah', 'Umrah History').label}</h3>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="prev-umrah"
+                        checked={hasPreviousUmrah}
+                        onChange={(e) => {
+                          setHasPreviousUmrah(e.target.checked);
+                          pilgrimForm.setValue("previousUmrah", e.target.checked);
+                        }}
+                        className="h-4 w-4 accent-secondary"
                       />
+                      <Label htmlFor="prev-umrah">I have performed Umrah before</Label>
                     </div>
-                  )}
-                </div>
+                    {hasPreviousUmrah && sysField('previous_umrah_year', 'Year of Last Umrah').enabled && (
+                      <div>
+                        <Label>{sysField('previous_umrah_year', 'Year of Last Umrah').label}</Label>
+                        <Input
+                          type="number"
+                          min={2000}
+                          max={new Date().getFullYear()}
+                          placeholder="e.g. 2022"
+                          {...pilgrimForm.register("previousUmrahYear")}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Mahram (female pilgrims) */}
                 {isFemale && (
@@ -714,25 +751,31 @@ const BookingWizard = () => {
                         </p>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Mahram Full Name</Label>
-                          <Input {...pilgrimForm.register("mahramName")} placeholder="Mahram's full name" />
-                        </div>
-                        <div>
-                          <Label>Relationship</Label>
-                          <select {...pilgrimForm.register("mahramRelationship")} className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm">
-                            <option value="">Select relationship</option>
-                            <option value="husband">Husband</option>
-                            <option value="father">Father</option>
-                            <option value="brother">Brother</option>
-                            <option value="son">Son</option>
-                            <option value="uncle">Uncle</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label>Mahram Passport Number</Label>
-                          <Input {...pilgrimForm.register("mahramPassport")} placeholder="Mahram's passport number" />
-                        </div>
+                        {sysField('mahram_name', 'Mahram Full Name').enabled && (
+                          <div>
+                            <Label>{sysField('mahram_name', 'Mahram Full Name').label}</Label>
+                            <Input {...pilgrimForm.register("mahramName")} placeholder="Mahram's full name" />
+                          </div>
+                        )}
+                        {sysField('mahram_relationship', 'Mahram Relationship').enabled && (
+                          <div>
+                            <Label>{sysField('mahram_relationship', 'Mahram Relationship').label}</Label>
+                            <select {...pilgrimForm.register("mahramRelationship")} className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm">
+                              <option value="">Select relationship</option>
+                              <option value="husband">Husband</option>
+                              <option value="father">Father</option>
+                              <option value="brother">Brother</option>
+                              <option value="son">Son</option>
+                              <option value="uncle">Uncle</option>
+                            </select>
+                          </div>
+                        )}
+                        {sysField('mahram_passport', 'Mahram Passport Number').enabled && (
+                          <div>
+                            <Label>{sysField('mahram_passport', 'Mahram Passport Number').label}</Label>
+                            <Input {...pilgrimForm.register("mahramPassport")} placeholder="Mahram's passport number" />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </>
@@ -776,33 +819,57 @@ const BookingWizard = () => {
                   </select>
                 </div>
 
-                <div>
-                  <Label>Special Requests / Medical Needs</Label>
-                  <textarea
-                    {...travelForm.register("specialRequests")}
-                    placeholder="Wheelchair assistance, dietary needs, medical conditions, etc."
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                    rows={3}
-                  />
-                </div>
+                {sysField('special_requests', 'Special Requests / Medical Needs').enabled && (
+                  <div>
+                    <Label>{sysField('special_requests', 'Special Requests / Medical Needs').label}</Label>
+                    <textarea
+                      {...travelForm.register("specialRequests")}
+                      placeholder={sysField('special_requests', '', 'Wheelchair assistance, dietary needs, medical conditions, etc.').placeholder ?? 'Wheelchair assistance, dietary needs, medical conditions, etc.'}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      rows={3}
+                    />
+                  </div>
+                )}
 
                 <div className="bg-muted/50 p-4 rounded-lg space-y-3">
                   <h4 className="font-medium text-sm">Emergency Contact *</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label>Contact Name</Label>
-                      <Input {...travelForm.register("emergencyContactName")} placeholder="Full name" />
-                    </div>
-                    <div>
-                      <Label>Contact Phone</Label>
-                      <Input {...travelForm.register("emergencyContactPhone")} placeholder="+234 800 000 0000" />
-                    </div>
-                    <div>
-                      <Label>Relationship</Label>
-                      <Input {...travelForm.register("emergencyContactRelationship")} placeholder="Spouse, Parent, etc." />
-                    </div>
+                    {sysField('emergency_contact_name', 'Emergency Contact Name').enabled && (
+                      <div>
+                        <Label>{sysField('emergency_contact_name', 'Emergency Contact Name').label}</Label>
+                        <Input {...travelForm.register("emergencyContactName")} placeholder="Full name" />
+                      </div>
+                    )}
+                    {sysField('emergency_contact_phone', 'Emergency Contact Phone').enabled && (
+                      <div>
+                        <Label>{sysField('emergency_contact_phone', 'Emergency Contact Phone').label}</Label>
+                        <Input {...travelForm.register("emergencyContactPhone")} placeholder="+234 800 000 0000" />
+                      </div>
+                    )}
+                    {sysField('emergency_contact_relationship', 'Emergency Contact Relationship').enabled && (
+                      <div>
+                        <Label>{sysField('emergency_contact_relationship', 'Emergency Contact Relationship').label}</Label>
+                        <Input {...travelForm.register("emergencyContactRelationship")} placeholder="Spouse, Parent, etc." />
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* ── Admin-defined custom fields ── */}
+                {customFields.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <p className="text-sm font-medium text-muted-foreground">Additional Information</p>
+                    <CustomFieldsSection
+                      fields={customFields}
+                      values={customData}
+                      onChange={handleCustomChange}
+                      uploading={customUploading}
+                      onUploadingChange={(key, val) =>
+                        setCustomUploading((p) => ({ ...p, [key]: val }))
+                      }
+                    />
+                  </div>
+                )}
 
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" onClick={() => setStep(3)} className="flex-1">Back</Button>

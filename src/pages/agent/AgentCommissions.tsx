@@ -25,6 +25,11 @@ const AgentCommissions = () => {
   });
 
   const commissionRate = agent?.commission_rate || 0;
+  const commissionType: "percentage" | "fixed" = (agent as any)?.commission_type ?? "percentage";
+
+  // Helper: compute commission per payment amount
+  const calcCommission = (amount: number) =>
+    commissionType === "fixed" ? commissionRate : amount * (commissionRate / 100);
 
   // Get all agent bookings with package prices
   const { data: bookings = [], isLoading: loadingBookings } = useQuery({
@@ -58,12 +63,22 @@ const AgentCommissions = () => {
   const verifiedPayments = payments.filter((p) => p.status === "verified");
   const pendingPayments = payments.filter((p) => p.status === "pending");
 
-  const totalEarned = verifiedPayments.reduce((sum, p) => sum + Number(p.amount) * (commissionRate / 100), 0);
-  const pendingPayout = pendingPayments.reduce((sum, p) => sum + Number(p.amount) * (commissionRate / 100), 0);
+  const totalEarned = commissionType === "fixed"
+    ? verifiedPayments.length * commissionRate
+    : verifiedPayments.reduce((sum, p) => sum + Number(p.amount) * (commissionRate / 100), 0);
+
+  const pendingPayout = commissionType === "fixed"
+    ? pendingPayments.length * commissionRate
+    : pendingPayments.reduce((sum, p) => sum + Number(p.amount) * (commissionRate / 100), 0);
+
   const totalRevenue = verifiedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
+  const rateLabel = commissionType === "fixed"
+    ? formatPrice(commissionRate)
+    : `${commissionRate}%`;
+
   const summaryCards = [
-    { title: "Commission Rate", value: `${commissionRate}%`, sub: "Per booking", icon: PiggyBank, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
+    { title: "Commission Rate", value: rateLabel, sub: commissionType === "fixed" ? "Fixed per booking" : "% of booking", icon: PiggyBank, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
     { title: "Total Earned", value: formatPrice(totalEarned), sub: `From ${verifiedPayments.length} verified payments`, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
     { title: "Pending Payout", value: formatPrice(pendingPayout), sub: "Awaiting verification", icon: Clock, color: "text-amber-600", bg: "bg-amber-500/10", border: "border-amber-500/20" },
     { title: "Client Revenue", value: formatPrice(totalRevenue), sub: "Total client payments", icon: Wallet, color: "text-sky-600", bg: "bg-sky-500/10", border: "border-sky-500/20" },
@@ -78,8 +93,15 @@ const AgentCommissions = () => {
     const pendingAmount = bookingPayments
       .filter((p) => p.status === "pending")
       .reduce((sum, p) => sum + Number(p.amount), 0);
-    const commission = paidAmount * (commissionRate / 100);
-    const pendingCommission = pendingAmount * (commissionRate / 100);
+
+    const commission = commissionType === "fixed"
+      ? (bookingPayments.filter(p => p.status === "verified").length > 0 ? commissionRate : 0)
+      : paidAmount * (commissionRate / 100);
+
+    const pendingCommission = commissionType === "fixed"
+      ? (bookingPayments.filter(p => p.status === "pending").length > 0 ? commissionRate : 0)
+      : pendingAmount * (commissionRate / 100);
+
     return { ...booking, paidAmount, pendingAmount, commission, pendingCommission };
   }).filter((b) => b.paidAmount > 0 || b.pendingAmount > 0);
 
@@ -164,7 +186,11 @@ const AgentCommissions = () => {
                         <span className="text-sm font-medium text-amber-600">{formatPrice(row.pendingCommission)} pending</span>
                       </div>
                     )}
-                    <p className="text-[10px] text-muted-foreground">{commissionRate}% of {formatPrice(row.paidAmount + row.pendingAmount)}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {commissionType === "fixed"
+                        ? `Fixed: ${rateLabel}`
+                        : `${commissionRate}% of ${formatPrice(row.paidAmount + row.pendingAmount)}`}
+                    </p>
                   </div>
                 </div>
               ))}

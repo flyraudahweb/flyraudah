@@ -6,13 +6,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, Printer, Search, Calendar, Plane, Phone, AlertCircle } from "lucide-react";
+import { Users, Eye, Printer, Search, Calendar, Plane, Phone, AlertCircle, Pencil } from "lucide-react";
 import { useState, useRef } from "react";
 import { format } from "date-fns";
+import EditBookingModal from "@/components/bookings/EditBookingModal";
 
 const AdminPilgrims = () => {
   const [search, setSearch] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [editingBooking, setEditingBooking] = useState<any>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   const { data: bookings = [], isLoading } = useQuery({
@@ -264,9 +266,14 @@ const AdminPilgrims = () => {
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="font-heading text-xl">Pilgrim Details</DialogTitle>
-              <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
-                <Printer className="h-4 w-4" /> Print
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setEditingBooking(selectedBooking); setSelectedBooking(null); }} className="gap-2">
+                  <Pencil className="h-4 w-4" /> Edit
+                </Button>
+                <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
+                  <Printer className="h-4 w-4" /> Print
+                </Button>
+              </div>
             </div>
           </DialogHeader>
 
@@ -358,6 +365,15 @@ const AdminPilgrims = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Admin Edit Modal */}
+      {editingBooking && (
+        <EditBookingModal
+          booking={editingBooking}
+          adminMode
+          onClose={() => setEditingBooking(null)}
+        />
+      )}
     </div>
   );
 };

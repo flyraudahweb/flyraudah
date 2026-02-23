@@ -53,7 +53,7 @@ serve(async (req: Request) => {
     // 2. Fetch booking and check status
     const { data: booking, error: bookingErr } = await supabase
       .from("bookings")
-      .select("id, status, package_id")
+      .select("id, status, package_id, agent_id")
       .eq("id", bookingId)
       .single();
 
@@ -80,8 +80,26 @@ serve(async (req: Request) => {
       throw new Error("Package not found");
     }
 
-    // 4. CRITICAL: Reject if paid amount is less than expected (allow 1% rounding tolerance)
-    const expectedNaira = Number(pkg.price);
+    // 4. Calculate authoritative expected price (same logic as the DB trigger)
+    let expectedNaira = Number(pkg.price);
+    if (booking.agent_id) {
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("commission_rate, commission_type")
+        .eq("id", booking.agent_id)
+        .single();
+
+      if (agent) {
+        const rate = Number(agent.commission_rate ?? 0);
+        if (agent.commission_type === "fixed") {
+          expectedNaira = Math.max(0, expectedNaira - rate);
+        } else {
+          expectedNaira = expectedNaira * (1 - rate / 100);
+        }
+      }
+    }
+
+    // 5. CRITICAL: Reject if paid amount is less than expected (allow 1% rounding tolerance)
     const tolerance = expectedNaira * 0.01;
     if (paystackNaira < expectedNaira - tolerance) {
       console.error(
@@ -92,6 +110,7 @@ serve(async (req: Request) => {
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
 
     // 5. Mark payment as verified
     const { error: updateError } = await supabase

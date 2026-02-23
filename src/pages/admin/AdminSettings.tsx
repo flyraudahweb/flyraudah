@@ -9,10 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
     Settings, CreditCard, Share2, ShieldCheck, Clock, Save,
-    Facebook, Instagram, Twitter, MessageCircle, Globe, Phone, Mail, MapPin
+    Facebook, Instagram, Twitter, MessageCircle, Globe, Phone, Mail, MapPin,
+    Sparkles, AlertTriangle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,6 +58,24 @@ const AdminSettings = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["setting", "paystack_enabled"] });
             toast({ title: `Paystack ${!paystackEnabled ? "enabled" : "disabled"}` });
+        },
+    });
+
+    // ── Email provider toggle ─────────────────────────────────────────────────────
+    const { data: emailProviderRow } = useQuery({
+        queryKey: ["setting", "email_provider"],
+        queryFn: () => fetchSetting("email_provider"),
+    });
+
+    const rawEmailProvider = emailProviderRow?.value;
+    const emailProvider: "supabase" | "resend" =
+        rawEmailProvider === "resend" || rawEmailProvider === '"resend"' ? "resend" : "supabase";
+
+    const toggleEmailProvider = useMutation({
+        mutationFn: (provider: "supabase" | "resend") => upsertSetting("email_provider", provider),
+        onSuccess: (_d, provider) => {
+            queryClient.invalidateQueries({ queryKey: ["setting", "email_provider"] });
+            toast({ title: `Email provider switched to ${provider === "resend" ? "Resend (Branded)" : "Supabase (Default)"}` });
         },
     });
 
@@ -206,6 +229,65 @@ const AdminSettings = () => {
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Email Provider card */}
+                <Card className="border-border">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <Mail className="h-5 w-5 text-secondary" />
+                            Staff Invitation Emails
+                        </CardTitle>
+                        <CardDescription>Choose how invitation emails are sent to new staff</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* Supabase option */}
+                        <div
+                            onClick={() => toggleEmailProvider.mutate("supabase")}
+                            className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${emailProvider === "supabase"
+                                ? "border-secondary bg-secondary/5 ring-1 ring-secondary/30"
+                                : "border-border bg-muted/30 hover:bg-muted/50"
+                                }`}
+                        >
+                            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                                <Globe className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-medium text-foreground text-sm">Supabase Default</p>
+                                <p className="text-xs text-muted-foreground">Works immediately, no setup required</p>
+                            </div>
+                            {emailProvider === "supabase" && (
+                                <Badge variant="default" className="text-xs bg-secondary text-secondary-foreground">Active</Badge>
+                            )}
+                        </div>
+
+                        {/* Resend option */}
+                        <div
+                            onClick={() => toggleEmailProvider.mutate("resend")}
+                            className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${emailProvider === "resend"
+                                ? "border-secondary bg-secondary/5 ring-1 ring-secondary/30"
+                                : "border-border bg-muted/30 hover:bg-muted/50"
+                                }`}
+                        >
+                            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                                <Sparkles className="h-5 w-5 text-amber-600" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-medium text-foreground text-sm">Resend (Branded)</p>
+                                <p className="text-xs text-muted-foreground">Beautiful custom template via team@flyraudah.com.ng</p>
+                            </div>
+                            {emailProvider === "resend" && (
+                                <Badge variant="outline" className="text-xs border-amber-400 text-amber-600">Active</Badge>
+                            )}
+                        </div>
+
+                        {emailProvider === "resend" && (
+                            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs">Requires <strong>flyraudah.com.ng</strong> to be verified on Resend. If not verified, invitations will fail.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
                 {/* Security card */}
                 <Card className="border-border">
                     <CardHeader className="pb-3">

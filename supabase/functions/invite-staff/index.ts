@@ -1,24 +1,24 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const ROLE_LABELS: Record<string, string> = {
-    staff: "Staff Member",
-    admin: "Administrator",
-    super_admin: "Super Administrator",
+  staff: "Staff Member",
+  admin: "Administrator",
+  super_admin: "Super Administrator",
 };
 
 function buildInviteEmail(opts: {
-    fullName: string;
-    role: string;
-    setupUrl: string;
-    inviterName: string;
+  fullName: string;
+  role: string;
+  setupUrl: string;
+  inviterName: string;
 }): string {
-    const roleLabel = ROLE_LABELS[opts.role] ?? opts.role;
-    return `<!DOCTYPE html>
+  const roleLabel = ROLE_LABELS[opts.role] ?? opts.role;
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -51,13 +51,10 @@ function buildInviteEmail(opts: {
 <body>
 <div class="wrapper">
   <div class="container">
-    <!-- Header -->
     <div class="header">
       <img src="https://i.postimg.cc/2S5XkGW1/log.png" alt="Raudah Travels" class="logo">
       <div class="badge">Staff Invitation</div>
     </div>
-
-    <!-- Content -->
     <div class="content">
       <div class="greeting">Assalamu Alaikum!</div>
       <h1>You're joining the<br>Raudah Travels team</h1>
@@ -65,35 +62,17 @@ function buildInviteEmail(opts: {
         <strong>${opts.inviterName}</strong> has invited you to join the Raudah Travels admin dashboard.
         Set up your account below to get started.
       </p>
-
-      <div class="role-chip">Your Role: ${roleLabel}</div>
-
+      <div class="role-chip">Your Role: ${roleLabel}</div><br>
       <a href="${opts.setupUrl}" class="button">Set Up My Account &rarr;</a>
-
       <hr class="divider">
-
       <div class="detail-box">
-        <div class="detail-row">
-          <span class="detail-label">Name</span>
-          <span class="detail-value">${opts.fullName || "—"}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Role</span>
-          <span class="detail-value">${roleLabel}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Platform</span>
-          <span class="detail-value">Raudah Travels Admin</span>
-        </div>
+        <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${opts.fullName || "—"}</span></div>
+        <div class="detail-row"><span class="detail-label">Role</span><span class="detail-value">${roleLabel}</span></div>
+        <div class="detail-row"><span class="detail-label">Platform</span><span class="detail-value">Raudah Travels Admin</span></div>
       </div>
-
-      <p class="expiry-note">
-        This invitation link will expire in <strong>24 hours</strong>. If the button above doesn't work, copy and paste this link into your browser:
-      </p>
+      <p class="expiry-note">This link expires in <strong>24 hours</strong>. If the button doesn't work, paste this URL:</p>
       <p class="expiry-url">${opts.setupUrl}</p>
     </div>
-
-    <!-- Footer -->
     <div class="footer">
       <p style="margin:0 0 4px;">&copy; 2026 <span class="gold-text">Raudah Travels &amp; Tours</span>. All rights reserved.</p>
       <p style="margin:0;">Nigeria's Trusted Hajj &amp; Umrah Partner &bull; <a href="https://flyraudah.com.ng" style="color:#064e3b;">flyraudah.com.ng</a></p>
@@ -105,127 +84,141 @@ function buildInviteEmail(opts: {
 }
 
 Deno.serve(async (req: Request) => {
-    if (req.method === "OPTIONS") {
-        return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const json = (body: object, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const resendKey = Deno.env.get("RESEND_API_KEY") ?? "";
+    const siteUrl = Deno.env.get("SITE_URL") ?? "https://flyraudah.netlify.app";
+
+    const adminClient = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // ── 1. Verify caller ────────────────────────────────────────────────────────
+    const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
+    const { data: { user: caller }, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !caller) return json({ error: "Unauthorized" }, 401);
+
+    // ── 2. Role check ───────────────────────────────────────────────────────────
+    const { data: callerRoles } = await adminClient
+      .from("user_roles").select("role").eq("user_id", caller.id);
+    const roles = (callerRoles ?? []).map(r => r.role as string);
+    const isSuperAdmin = roles.includes("super_admin");
+    const isAdmin = roles.includes("admin") || isSuperAdmin;
+    if (!isAdmin) return json({ error: "Forbidden: admin access required" }, 403);
+
+    // ── 3. Parse body ───────────────────────────────────────────────────────────
+    const { email, full_name, role, permissions } = await req.json();
+    if (!email || !role) return json({ error: "email and role are required" }, 400);
+    if (!["admin", "staff"].includes(role)) return json({ error: "Invalid role" }, 400);
+    if (role === "admin" && !isSuperAdmin)
+      return json({ error: "Only super admins can create admins" }, 403);
+
+    // ── 4. Read email_provider from site_settings ───────────────────────────────
+    const { data: settingRow } = await adminClient
+      .from("site_settings" as any)
+      .select("value")
+      .eq("key", "email_provider")
+      .maybeSingle();
+    let rawValue = settingRow?.value ?? "supabase";
+    if (typeof rawValue === "string" && rawValue.startsWith('"')) {
+      try { rawValue = JSON.parse(rawValue); } catch { /* keep as-is */ }
+    }
+    const useResend = rawValue === "resend" && resendKey.length > 0;
+
+    // ── 5. Helper: assign role+permissions ──────────────────────────────────────
+    const assignRole = async (uid: string) => {
+      await adminClient.from("user_roles").delete().eq("user_id", uid);
+      const { error: roleErr } = await adminClient.from("user_roles").insert({ user_id: uid, role });
+      if (roleErr) throw new Error("Role assignment failed: " + roleErr.message);
+    };
+    const assignPerms = async (uid: string) => {
+      if (role === "staff" && Array.isArray(permissions) && permissions.length > 0) {
+        await adminClient.from("staff_permissions").delete().eq("user_id", uid);
+        const { error: permErr } = await adminClient.from("staff_permissions").insert(
+          permissions.map((p: string) => ({ user_id: uid, permission: p, granted_by: caller.id }))
+        );
+        if (permErr) throw new Error("Permission assignment failed: " + permErr.message);
+      }
+    };
+
+    // ── 6A. SUPABASE flow (default) ─────────────────────────────────────────────
+    if (!useResend) {
+      const { data: inviteData, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(email, {
+        data: { full_name: full_name ?? "" },
+        redirectTo: `${siteUrl}/reset-password`,
+      });
+      if (inviteErr) return json({ error: inviteErr.message }, 400);
+      await assignRole(inviteData.user.id);
+      await assignPerms(inviteData.user.id);
+      return json({ success: true, provider: "supabase", message: `Invite sent to ${email}` });
     }
 
-    const json = (body: object, status = 200) =>
-        new Response(JSON.stringify(body), {
-            status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    // ── 6B. RESEND flow ─────────────────────────────────────────────────────────
+    const { data: allUsers } = await adminClient.auth.admin.listUsers();
+    const existing = allUsers?.users?.find(u => u.email === email);
+    let userId: string;
 
-    try {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const resendKey = Deno.env.get("RESEND_API_KEY")!;
-        const siteUrl = Deno.env.get("SITE_URL") ?? "https://flyraudah.netlify.app";
-
-        const adminClient = createClient(supabaseUrl, serviceKey, {
-            auth: { autoRefreshToken: false, persistSession: false },
-        });
-
-        // ── 1. Auth: verify caller ──────────────────────────────────────────────
-        const authHeader = req.headers.get("Authorization") ?? "";
-        const token = authHeader.replace("Bearer ", "");
-
-        const { data: { user: caller }, error: authError } = await adminClient.auth.getUser(token);
-        if (authError || !caller) return json({ error: "Unauthorized" }, 401);
-
-        // ── 2. Role check: caller must be admin / super_admin ─────────────────
-        const { data: callerRoles } = await adminClient
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", caller.id);
-
-        const roles = (callerRoles ?? []).map(r => r.role as string);
-        const isSuperAdmin = roles.includes("super_admin");
-        const isAdmin = roles.includes("admin") || isSuperAdmin;
-        if (!isAdmin) return json({ error: "Forbidden: admin access required" }, 403);
-
-        // ── 3. Parse request body ───────────────────────────────────────────────
-        const { email, full_name, role, permissions } = await req.json();
-        if (!email || !role) return json({ error: "email and role are required" }, 400);
-        if (!["admin", "staff"].includes(role)) return json({ error: "Invalid role" }, 400);
-        if (role === "admin" && !isSuperAdmin)
-            return json({ error: "Only super admins can create admins" }, 403);
-
-        // ── 4. Create/confirm the user account ────────────────────────────────
-        const { data: existingUsers } = await adminClient.auth.admin.listUsers();
-        const existing = existingUsers?.users?.find(u => u.email === email);
-
-        let userId: string;
-
-        if (existing) {
-            userId = existing.id;
-        } else {
-            const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
-                email,
-                email_confirm: false,
-                user_metadata: { full_name: full_name ?? "" },
-            });
-            if (createErr) return json({ error: "Could not create user: " + createErr.message }, 400);
-            userId = created.user.id;
-        }
-
-        // ── 5. Assign role (delete existing, insert fresh) ────────────────────
-        await adminClient.from("user_roles").delete().eq("user_id", userId);
-        const { error: roleErr } = await adminClient
-            .from("user_roles")
-            .insert({ user_id: userId, role });
-        if (roleErr) throw new Error("Role assignment failed: " + roleErr.message);
-
-        // ── 6. Assign granular permissions (staff only) ────────────────────────
-        if (role === "staff" && Array.isArray(permissions) && permissions.length > 0) {
-            await adminClient.from("staff_permissions").delete().eq("user_id", userId);
-            const { error: permErr } = await adminClient.from("staff_permissions").insert(
-                permissions.map((p: string) => ({ user_id: userId, permission: p, granted_by: caller.id }))
-            );
-            if (permErr) throw new Error("Permission assignment failed: " + permErr.message);
-        }
-
-        // ── 7. Generate secure password-reset (account setup) link ────────────
-        const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
-            type: "recovery",
-            email,
-            options: { redirectTo: `${siteUrl}/reset-password` },
-        });
-        if (linkErr) throw new Error("Could not generate setup link: " + linkErr.message);
-
-        const setupUrl = linkData.properties.action_link;
-
-        // ── 8. Send branded invitation email via Resend ───────────────────────
-        const inviterName =
-            (caller.user_metadata as any)?.full_name ??
-            (caller.user_metadata as any)?.name ??
-            caller.email ??
-            "The Raudah Travels Team";
-
-        const html = buildInviteEmail({ fullName: full_name ?? "", role, setupUrl, inviterName });
-
-        const resendRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${resendKey}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                from: "Raudah Travels <onboarding@resend.dev>",
-                to: [email],
-                subject: `You're invited to join the Raudah Travels team!`,
-                html,
-            }),
-        });
-
-        if (!resendRes.ok) {
-            const resendErr = await resendRes.text();
-            throw new Error("Resend error: " + resendErr);
-        }
-
-        return json({ success: true, message: `Invitation sent to ${email}`, user_id: userId });
-
-    } catch (err: any) {
-        console.error("[invite-staff] ERROR:", err.message);
-        return json({ error: err.message ?? "Internal Server Error" }, 500);
+    if (existing) {
+      userId = existing.id;
+    } else {
+      const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
+        email,
+        email_confirm: false,
+        user_metadata: { full_name: full_name ?? "" },
+      });
+      if (createErr) return json({ error: "Could not create user: " + createErr.message }, 400);
+      userId = created.user.id;
     }
+
+    await assignRole(userId);
+    await assignPerms(userId);
+
+    const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo: `${siteUrl}/reset-password` },
+    });
+    if (linkErr) throw new Error("Could not generate setup link: " + linkErr.message);
+
+    const setupUrl = linkData.properties.action_link;
+    const inviterName =
+      (caller.user_metadata as any)?.full_name ??
+      (caller.user_metadata as any)?.name ??
+      caller.email ?? "The Raudah Travels Team";
+
+    const html = buildInviteEmail({ fullName: full_name ?? "", role, setupUrl, inviterName });
+
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "Raudah Travels <team@flyraudah.com.ng>",
+        to: [email],
+        subject: `You're invited to join the Raudah Travels team!`,
+        html,
+      }),
+    });
+
+    if (!resendRes.ok) {
+      const err = await resendRes.text();
+      throw new Error("Resend error: " + err);
+    }
+
+    return json({ success: true, provider: "resend", message: `Branded invitation sent to ${email}` });
+
+  } catch (err: any) {
+    console.error("[invite-staff] ERROR:", err.message);
+    return json({ error: err.message ?? "Internal Server Error" }, 500);
+  }
 });
