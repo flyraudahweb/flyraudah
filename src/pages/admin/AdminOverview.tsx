@@ -151,7 +151,6 @@ const AdminOverview = () => {
     { label: "Manage Packages", icon: Package, href: "/admin/packages", color: "bg-primary/10 text-primary" },
     { label: "Verify Payments", icon: CheckCircle2, href: "/admin/payments", color: "bg-destructive/10 text-destructive" },
     { label: "View Pilgrims", icon: Eye, href: "/admin/pilgrims", color: "bg-secondary/10 text-secondary" },
-    { label: "AI Assistant", icon: Bot, href: "/admin/ai-assistant", color: "bg-primary/10 text-primary" },
   ];
 
   const statusBadgeVariant = (status: string) => {

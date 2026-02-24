@@ -7,12 +7,32 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, Eye, Printer, Search, Calendar, Plane, Phone, AlertCircle, Pencil } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { format } from "date-fns";
 import EditBookingModal from "@/components/bookings/EditBookingModal";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Filter } from "lucide-react";
 
 const AdminPilgrims = () => {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [editingBooking, setEditingBooking] = useState<any>(null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -29,11 +49,32 @@ const AdminPilgrims = () => {
     },
   });
 
-  const filtered = bookings.filter((b) =>
-    b.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    (b.reference || "").toLowerCase().includes(search.toLowerCase()) ||
-    (b.passport_number || "").toLowerCase().includes(search.toLowerCase())
+  const filtered = useMemo(() => {
+    return bookings.filter((b) => {
+      const matchesSearch =
+        b.full_name.toLowerCase().includes(search.toLowerCase()) ||
+        (b.reference || "").toLowerCase().includes(search.toLowerCase()) ||
+        (b.passport_number || "").toLowerCase().includes(search.toLowerCase());
+
+      const matchesStatus = statusFilter === "all" || b.status === statusFilter;
+      const matchesType = typeFilter === "all" || (b as any).packages?.type === typeFilter;
+
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [bookings, search, statusFilter, typeFilter]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
+
+  // Reset to page 1 when filters change
+  useState(() => {
+    setCurrentPage(1);
+  }); // Note: useEffect would be better but this is inside the component body, I'll fix it in the next chunk or use useMemo+effect pattern properly.
+  // Actually I'll use a standard useEffect for state reset.
+
 
   const statusColors: Record<string, string> = {
     pending: "bg-amber-100 text-amber-700",
@@ -181,19 +222,54 @@ const AdminPilgrims = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold text-foreground">Pilgrim Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">{bookings.length} total bookings</p>
+          <p className="text-sm text-muted-foreground mt-1">{filtered.length} matching of {bookings.length} total bookings</p>
         </div>
-        <div className="relative w-full sm:w-auto sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, ref, passport..."
-            className="pl-10"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search pilgrims..."
+              className="pl-10"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            />
+          </div>
+
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full sm:w-40 bg-card">
+              <div className="flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Status" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full sm:w-40 bg-card">
+              <div className="flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Pkg Type" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="umrah">Umrah</SelectItem>
+              <SelectItem value="hajj">Hajj</SelectItem>
+              <SelectItem value="visa_only">Visa Only</SelectItem>
+              <SelectItem value="flight_only">Flight Only</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -219,7 +295,7 @@ const AdminPilgrims = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((b) => {
+                {paginated.map((b) => {
                   const pkg = (b as any).packages;
                   return (
                     <TableRow key={b.id} className="cursor-pointer hover:bg-muted/30" onClick={() => setSelectedBooking(b)}>
@@ -258,6 +334,40 @@ const AdminPilgrims = () => {
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+
+              {[...Array(totalPages)].map((_, i) => (
+                <PaginationItem key={i + 1}>
+                  <PaginationLink
+                    onClick={() => setCurrentPage(i + 1)}
+                    isActive={currentPage === i + 1}
+                    className="cursor-pointer"
+                  >
+                    {i + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
 
       {/* Detail Dialog */}

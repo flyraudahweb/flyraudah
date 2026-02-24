@@ -16,12 +16,28 @@ import {
 import {
   Check, X, Eye, CreditCard, Search, DollarSign,
   Clock, CheckCircle2, XCircle, RefreshCw, TrendingUp,
-  User, Calendar, Package, Hash, Building2, Image,
+  User, Calendar, Package, Hash, Building2, Image, Phone, Mail,
 } from "lucide-react";
 import { formatPrice } from "@/data/packages";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Filter } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; className: string; bg: string }> = {
   pending: { label: "Pending", icon: Clock, className: "bg-amber-500/10 text-amber-600 border-amber-500/20", bg: "bg-amber-500/10" },
@@ -38,6 +54,9 @@ const AdminPayments = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [methodFilter, setMethodFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
 
   const { data: payments = [], isLoading } = useQuery({
@@ -45,10 +64,25 @@ const AdminPayments = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payments")
-        .select("*, bookings(reference, full_name, packages(name), agents(business_name, agent_code))")
+        .select("*, bookings(reference, full_name, phone, user_id, packages(name), agents(business_name, agent_code))")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      // Fetch profile emails for all unique user_ids
+      const userIds = [...new Set((data || []).map((p: any) => p.bookings?.user_id).filter(Boolean))];
+      let emailMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, email")
+          .in("id", userIds);
+        emailMap = Object.fromEntries((profiles || []).map((pr: any) => [pr.id, pr.email]));
+      }
+      // Attach email to each payment's booking
+      return (data || []).map((p: any) => ({
+        ...p,
+        _pilgrimEmail: p.bookings?.user_id ? emailMap[p.bookings.user_id] : null,
+      }));
     },
   });
 
@@ -88,18 +122,30 @@ const AdminPayments = () => {
   // Filtered payments
   const filterPayments = (list: typeof payments) =>
     list.filter(p => {
-      if (!searchTerm) return true;
       const term = searchTerm.toLowerCase();
       const booking = (p as any).bookings;
-      return (
+      const matchesSearch = !searchTerm ||
         booking?.full_name?.toLowerCase().includes(term) ||
         booking?.reference?.toLowerCase().includes(term) ||
-        p.method?.toLowerCase().includes(term)
-      );
+        p.method?.toLowerCase().includes(term);
+
+      const matchesMethod = methodFilter === "all" || p.method === methodFilter;
+
+      return matchesSearch && matchesMethod;
     });
 
   const pendingPayments = filterPayments(payments.filter(p => p.status === "pending"));
   const processedPayments = filterPayments(payments.filter(p => p.status !== "pending"));
+
+  // Calculate paginated list based on active tab
+  // (Handling this inside the return for simplicity or creating separate states for pages)
+  // Let's use a helper.
+  const paginate = (list: any[]) => {
+    const totalPages = Math.ceil(list.length / itemsPerPage);
+    const paginated = list.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    return { paginated, totalPages };
+  };
+
 
   const DetailRow = ({ icon: Icon, label, value, className = "" }: { icon: any; label: string; value: string | null | undefined; className?: string }) => (
     <div className="flex items-start gap-3 py-2.5">
@@ -155,6 +201,21 @@ const AdminPayments = () => {
                   <span className="text-[10px] text-muted-foreground font-mono">({agent.agent_code})</span>
                 </div>
               )}
+              {/* Contact Info */}
+              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                {booking?.phone && (
+                  <a href={`tel:${booking.phone}`} className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                    <Phone className="h-3 w-3" />
+                    {booking.phone}
+                  </a>
+                )}
+                {payment._pilgrimEmail && (
+                  <a href={`mailto:${payment._pilgrimEmail}`} className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                    <Mail className="h-3 w-3" />
+                    {payment._pilgrimEmail}
+                  </a>
+                )}
+              </div>
             </div>
 
             <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
@@ -179,6 +240,40 @@ const AdminPayments = () => {
       </Card>
     );
   };
+
+  const PaginationControls = ({ totalPages }: { totalPages: number }) => (
+    <div className="flex justify-center mt-6">
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            />
+          </PaginationItem>
+
+          {[...Array(totalPages)].map((_, i) => (
+            <PaginationItem key={i + 1}>
+              <PaginationLink
+                onClick={() => setCurrentPage(i + 1)}
+                isActive={currentPage === i + 1}
+                className="cursor-pointer"
+              >
+                {i + 1}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -237,15 +332,32 @@ const AdminPayments = () => {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, reference, or method..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
-        />
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, reference, or method..."
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            className="pl-9"
+          />
+        </div>
+        <Select value={methodFilter} onValueChange={(v) => { setMethodFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full sm:w-[200px] bg-card">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="All Methods" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Methods</SelectItem>
+            <SelectItem value="paystack">Paystack</SelectItem>
+            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+            <SelectItem value="cash">Cash</SelectItem>
+            <SelectItem value="card">Card</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Tabs */}
@@ -254,7 +366,7 @@ const AdminPayments = () => {
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
         </div>
       ) : (
-        <Tabs defaultValue="pending">
+        <Tabs defaultValue="pending" onValueChange={() => setCurrentPage(1)}>
           <TabsList>
             <TabsTrigger value="pending">
               Pending
@@ -264,28 +376,50 @@ const AdminPayments = () => {
             </TabsTrigger>
             <TabsTrigger value="processed">Processed ({processedPayments.length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="pending" className="space-y-2 mt-3">
-            {pendingPayments.length === 0 ? (
-              <Card className="border-border/60">
-                <CardContent className="py-10 text-center">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-500/50 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No pending payments to review</p>
-                </CardContent>
-              </Card>
-            ) : (
-              pendingPayments.map((p) => <PaymentCard key={p.id} payment={p} />)
-            )}
+
+          <TabsContent value="pending" className="space-y-4 mt-3">
+            {(() => {
+              const { paginated, totalPages } = paginate(pendingPayments);
+              return (
+                <>
+                  <div className="space-y-2">
+                    {paginated.length === 0 ? (
+                      <Card className="border-border/60">
+                        <CardContent className="py-10 text-center">
+                          <CheckCircle2 className="h-8 w-8 text-emerald-500/50 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">No pending payments to review</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      paginated.map((p) => <PaymentCard key={p.id} payment={p} />)
+                    )}
+                  </div>
+                  {totalPages > 1 && <PaginationControls totalPages={totalPages} />}
+                </>
+              );
+            })()}
           </TabsContent>
-          <TabsContent value="processed" className="space-y-2 mt-3">
-            {processedPayments.length === 0 ? (
-              <Card className="border-border/60">
-                <CardContent className="py-10 text-center">
-                  <p className="text-sm text-muted-foreground">No processed payments found</p>
-                </CardContent>
-              </Card>
-            ) : (
-              processedPayments.map((p) => <PaymentCard key={p.id} payment={p} />)
-            )}
+
+          <TabsContent value="processed" className="space-y-4 mt-3">
+            {(() => {
+              const { paginated, totalPages } = paginate(processedPayments);
+              return (
+                <>
+                  <div className="space-y-2">
+                    {paginated.length === 0 ? (
+                      <Card className="border-border/60">
+                        <CardContent className="py-10 text-center">
+                          <p className="text-sm text-muted-foreground">No processed payments found</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      paginated.map((p) => <PaymentCard key={p.id} payment={p} />)
+                    )}
+                  </div>
+                  {totalPages > 1 && <PaginationControls totalPages={totalPages} />}
+                </>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       )}
@@ -331,6 +465,28 @@ const AdminPayments = () => {
                   {selectedPayment.paystack_reference && (
                     <DetailRow icon={Hash} label="Paystack Ref" value={selectedPayment.paystack_reference} className="font-mono text-xs" />
                   )}
+                </div>
+
+                {/* Pilgrim Contact Info */}
+                <div className="p-3 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30 space-y-1.5">
+                  <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Contact Pilgrim</p>
+                  <div className="flex flex-wrap gap-3">
+                    {booking?.phone && (
+                      <a href={`tel:${booking.phone}`} className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline font-medium">
+                        <Phone className="h-3.5 w-3.5" />
+                        {booking.phone}
+                      </a>
+                    )}
+                    {selectedPayment._pilgrimEmail && (
+                      <a href={`mailto:${selectedPayment._pilgrimEmail}`} className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline font-medium">
+                        <Mail className="h-3.5 w-3.5" />
+                        {selectedPayment._pilgrimEmail}
+                      </a>
+                    )}
+                    {!booking?.phone && !selectedPayment._pilgrimEmail && (
+                      <p className="text-sm text-muted-foreground">No contact info available</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Agent Info */}

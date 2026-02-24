@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 const schema = z.object({
   fullName: z.string().trim().min(2, "Full name is required").max(100),
   email: z.string().trim().email("Enter a valid email").max(255),
-  phone: z.string().trim().regex(/^\+234\d{10}$/, "Enter a valid Nigerian phone number (+234XXXXXXXXXX)"),
+  phone: z.string().trim().min(5, "Phone number is required").regex(/^\+234\d{10}$/, "Enter a valid Nigerian phone number (+234XXXXXXXXXX)"),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")

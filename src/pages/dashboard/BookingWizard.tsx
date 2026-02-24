@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
-import { AlertCircle, User, Plane, CreditCard, CheckCircle } from "lucide-react";
+import { AlertCircle, User, Plane, CreditCard, CheckCircle, Upload, CheckCircle2, Loader2 } from "lucide-react";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { usePaystackEnabled } from "@/hooks/usePaystackEnabled";
 import SuccessAnimation from "@/components/animations/SuccessAnimation";
@@ -24,22 +24,26 @@ import { useBookingFormFields, useSystemFieldConfig } from "@/hooks/useBookingFo
 import CustomFieldsSection from "@/components/bookings/CustomFieldsSection";
 
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
+// NOTE: All sysField-controlled fields are .optional() so the admin's
+// "required" toggle is the single source of truth. Hard validation is applied
+// in the Continue button handlers based on sysField config.
+// Only passport number format and expiry are always enforced (Saudi legal requirement).
 
 const pilgrimSchema = z.object({
-  // Personal
-  fullName: z.string().min(2, "Full name required (as on passport)"),
-  dateOfBirth: z.string().min(1, "Date of birth required"),
-  gender: z.enum(["male", "female"]),
-  maritalStatus: z.enum(["single", "married", "widowed", "divorced"]),
-  nationality: z.string().min(2, "Nationality required"),
-  placeOfBirth: z.string().min(2, "Place of birth required"),
-  occupation: z.string().min(2, "Occupation required"),
-  phone: z.string().min(7, "Phone number required"),
-  address: z.string().min(5, "Home address required"),
-  // Parents
-  fathersName: z.string().min(2, "Father's name required"),
-  mothersName: z.string().min(2, "Mother's name required"),
-  // Passport
+  // Personal (all configurable by admin)
+  fullName: z.string().optional().default(""),
+  dateOfBirth: z.string().optional().default(""),
+  gender: z.enum(["male", "female"]).default("male"),
+  maritalStatus: z.enum(["single", "married", "widowed", "divorced"]).default("single"),
+  nationality: z.string().optional().default(""),
+  placeOfBirth: z.string().optional().default(""),
+  occupation: z.string().optional().default(""),
+  phone: z.string().optional().default(""),
+  address: z.string().optional().default(""),
+  // Parents — optional (admin can disable)
+  fathersName: z.string().optional().default(""),
+  mothersName: z.string().optional().default(""),
+  // Passport — always required (Saudi Umrah visa legal requirement)
   passportNumber: z.string().regex(/^[A-Z0-9]{6,9}$/, "Invalid passport number (e.g. A12345678)"),
   passportExpiry: z.string().refine((d) => new Date(d) > new Date(), "Passport must be valid for at least 6 months"),
   // Mahram (Saudi Arabia requires mahram for women under 45 without a group)
@@ -53,12 +57,13 @@ const pilgrimSchema = z.object({
 });
 
 const travelSchema = z.object({
-  departureCity: z.string().min(1, "Select departure city"),
+  departureCity: z.string().optional().default(""),
   roomPreference: z.string().optional(),
   specialRequests: z.string().optional(),
-  emergencyContactName: z.string().min(2, "Emergency contact name required"),
-  emergencyContactPhone: z.string().min(7, "Emergency contact phone required"),
-  emergencyContactRelationship: z.string().min(2, "Relationship required"),
+  // Emergency contact — all optional (admin can disable individual fields)
+  emergencyContactName: z.string().optional().default(""),
+  emergencyContactPhone: z.string().optional().default(""),
+  emergencyContactRelationship: z.string().optional().default(""),
 });
 
 type PilgrimForm = z.infer<typeof pilgrimSchema>;
@@ -105,8 +110,33 @@ const BookingWizard = () => {
   const [vaccineFile, setVaccineFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingReference, setBookingReference] = useState("");
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(() => draft?.pendingBookingId ?? null);
+  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(() => draft?.pendingPaymentId ?? null);
   const [hasPreviousUmrah, setHasPreviousUmrah] = useState(false);
   const [isFemale, setIsFemale] = useState(false);
+  const [transferProofUrl, setTransferProofUrl] = useState("");
+  const [proofUploading, setProofUploading] = useState(false);
+
+  const handleProofUpload = async (file: File) => {
+    setProofUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `user-proofs/${user?.id ?? "anon"}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("booking-attachments")
+        .upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage
+        .from("booking-attachments")
+        .getPublicUrl(path);
+      setTransferProofUrl(urlData.publicUrl);
+      toast.success("Proof of payment uploaded!");
+    } catch (err: any) {
+      toast.error("Upload failed: " + err.message);
+    } finally {
+      setProofUploading(false);
+    }
+  };
 
   // ── Custom dynamic form fields ────────────────────────────────────────────
   const { data: customFields = [] } = useBookingFormFields("user");
@@ -230,18 +260,20 @@ const BookingWizard = () => {
             selectedDate,
             pilgrim: pilgrimValues,
             travel: travelValues,
+            pendingBookingId,
+            pendingPaymentId,
           })
         );
       } catch { }
     }, 800); // debounce 800 ms
     return () => clearTimeout(handler);
-  }, [draftKey, step, selectedDate, pilgrimValues, travelValues]);
+  }, [draftKey, step, selectedDate, pilgrimValues, travelValues, pendingBookingId, pendingPaymentId]);
 
 
   // ── Submit handler ────────────────────────────────────────────────────────
 
   const onSubmitBooking = async () => {
-    if (!user || !pkg || !selectedDate) return;
+    if (!user || !pkg || !selectedDate || isSubmitting) return;
     setIsSubmitting(true);
 
     try {
@@ -269,10 +301,11 @@ const BookingWizard = () => {
         if (!vErr) vaccineUrl = vUp.path;
       }
 
-      // Create booking with all visa fields
+      // Create/Update booking with all visa fields
       const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
-        .insert({
+        .upsert({
+          id: pendingBookingId || undefined,
           user_id: user.id,
           package_id: pkg.id,
           package_date_id: selectedDate,
@@ -312,6 +345,7 @@ const BookingWizard = () => {
         .select()
         .single();
       if (bookingError) throw bookingError;
+      setPendingBookingId(bookingData.id);
 
       // Save uploaded document records
       if (passportUrl) {
@@ -327,21 +361,16 @@ const BookingWizard = () => {
         });
       }
 
-      // CRITICAL SECURITY: Re-verify package price from server before payment record creation
-      const { data: verifiedPkg, error: pkgVerifyError } = await supabase
-        .from("packages")
-        .select("price, minimum_deposit, deposit_allowed")
-        .eq("id", pkg.id)
-        .single();
+      // Use the already-loaded pkg (from useQuery) — the DB trigger validates the
+      // amount server-side anyway, so no need for a redundant re-fetch.
+      // Always Number()-cast: Supabase returns numeric columns as strings in JS.
+      const safePrice = Number(pkg.price) || 0;
+      const safeDeposit = Number(pkg.minimum_deposit) || 0;
+      const depositEnabled = pkg.deposit_allowed === true && safeDeposit > 0;
 
-      if (pkgVerifyError || !verifiedPkg) {
-        throw new Error("Unauthorized: Package verification failed.");
-      }
-
-      // Calculate payment amount based on verified server data
       const paymentAmount = paymentMethod === "card"
-        ? Number(verifiedPkg.price)
-        : (verifiedPkg.minimum_deposit || Number(verifiedPkg.price));
+        ? safePrice
+        : (depositEnabled ? safeDeposit : safePrice);
 
       // Track payment attempt
       await trackActivity({
@@ -351,17 +380,27 @@ const BookingWizard = () => {
         metadata: { method: paymentMethod, amount: paymentAmount }
       });
 
-      const { error: paymentError } = await supabase.from("payments").insert({
-        booking_id: bookingData.id,
-        amount: paymentAmount,
-        method: paymentMethod === "card" ? "paystack" : "bank_transfer",
-        status: "pending",
-      });
+      const { data: paymentData, error: paymentError } = await supabase
+        .from("payments")
+        .upsert({
+          id: pendingPaymentId || undefined,
+          booking_id: bookingData.id,
+          amount: paymentAmount,
+          method: paymentMethod === "card" ? "paystack" : "bank_transfer",
+          status: "pending",
+          proof_of_payment_url: paymentMethod === "bank" && transferProofUrl ? transferProofUrl : null,
+        })
+        .select()
+        .single();
       if (paymentError) throw paymentError;
+      if (paymentData) setPendingPaymentId(paymentData.id);
 
       // Card → Paystack Inline Popup
       // NOTE: amount is NOT sent from client — the edge function fetches it from the DB.
       if (paymentMethod === "card") {
+        // Refresh the session first so the Supabase client always sends
+        // a valid, non-expired JWT to the edge function (verify_jwt: true).
+        await supabase.auth.refreshSession();
         const { data: paystackData, error: paystackError } = await supabase.functions.invoke(
           "create-paystack-checkout",
           { body: { email: user.email, bookingId: bookingData.id } }
@@ -548,20 +587,20 @@ const BookingWizard = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {sysField('full_name', 'Full Name (as on passport)').enabled && (
                     <div className="sm:col-span-2">
-                      <Label>{sysField('full_name', 'Full Name (as on passport)').label} *</Label>
+                      <Label>{sysField('full_name', 'Full Name (as on passport)').label}{sysField('full_name', 'Full Name (as on passport)').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input {...pilgrimForm.register("fullName")} placeholder={sysField('full_name', '', 'e.g. Fatima Abubakar Musa').placeholder ?? 'e.g. Fatima Abubakar Musa'} />
                       {pilgrimForm.formState.errors.fullName && <p className="text-xs text-destructive mt-1">{pilgrimForm.formState.errors.fullName.message}</p>}
                     </div>
                   )}
                   {sysField('date_of_birth', 'Date of Birth').enabled && (
                     <div>
-                      <Label>{sysField('date_of_birth', 'Date of Birth').label} *</Label>
+                      <Label>{sysField('date_of_birth', 'Date of Birth').label}{sysField('date_of_birth', 'Date of Birth').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input type="date" {...pilgrimForm.register("dateOfBirth")} />
                     </div>
                   )}
                   {sysField('gender', 'Gender').enabled && (
                     <div>
-                      <Label>{sysField('gender', 'Gender').label} *</Label>
+                      <Label>{sysField('gender', 'Gender').label}{sysField('gender', 'Gender').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <select
                         {...pilgrimForm.register("gender")}
                         onChange={(e) => { pilgrimForm.setValue("gender", e.target.value as "male" | "female"); setIsFemale(e.target.value === "female"); }}
@@ -574,7 +613,7 @@ const BookingWizard = () => {
                   )}
                   {sysField('marital_status', 'Marital Status').enabled && (
                     <div>
-                      <Label>{sysField('marital_status', 'Marital Status').label} *</Label>
+                      <Label>{sysField('marital_status', 'Marital Status').label}{sysField('marital_status', 'Marital Status').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <select {...pilgrimForm.register("maritalStatus")} className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm">
                         <option value="single">Single</option>
                         <option value="married">Married</option>
@@ -585,43 +624,43 @@ const BookingWizard = () => {
                   )}
                   {sysField('nationality', 'Nationality').enabled && (
                     <div>
-                      <Label>{sysField('nationality', 'Nationality').label} *</Label>
+                      <Label>{sysField('nationality', 'Nationality').label}{sysField('nationality', 'Nationality').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input {...pilgrimForm.register("nationality")} placeholder={sysField('nationality', '', 'e.g. Nigerian').placeholder ?? 'e.g. Nigerian'} />
                     </div>
                   )}
                   {sysField('place_of_birth', 'Place of Birth').enabled && (
                     <div>
-                      <Label>{sysField('place_of_birth', 'Place of Birth').label} *</Label>
+                      <Label>{sysField('place_of_birth', 'Place of Birth').label}{sysField('place_of_birth', 'Place of Birth').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input {...pilgrimForm.register("placeOfBirth")} placeholder={sysField('place_of_birth', '', 'City, Country').placeholder ?? 'City, Country'} />
                     </div>
                   )}
                   {sysField('occupation', 'Occupation').enabled && (
                     <div>
-                      <Label>{sysField('occupation', 'Occupation').label} *</Label>
+                      <Label>{sysField('occupation', 'Occupation').label}{sysField('occupation', 'Occupation').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input {...pilgrimForm.register("occupation")} placeholder={sysField('occupation', '', 'e.g. Teacher, Engineer').placeholder ?? 'e.g. Teacher, Engineer'} />
                     </div>
                   )}
                   {sysField('phone', 'Phone Number').enabled && (
                     <div>
-                      <Label>{sysField('phone', 'Phone Number').label} *</Label>
+                      <Label>{sysField('phone', 'Phone Number').label}{sysField('phone', 'Phone Number').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input {...pilgrimForm.register("phone")} placeholder={sysField('phone', '', '+234 800 000 0000').placeholder ?? '+234 800 000 0000'} />
                     </div>
                   )}
                   {sysField('address', 'Home Address').enabled && (
                     <div className="sm:col-span-2">
-                      <Label>{sysField('address', 'Home Address').label} *</Label>
+                      <Label>{sysField('address', 'Home Address').label}{sysField('address', 'Home Address').required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input {...pilgrimForm.register("address")} placeholder={sysField('address', '', 'No. 12, Street Name, City, State').placeholder ?? 'No. 12, Street Name, City, State'} />
                     </div>
                   )}
                   {sysField('fathers_name', "Father's Name").enabled && (
                     <div>
-                      <Label>{sysField('fathers_name', "Father's Name").label} *</Label>
+                      <Label>{sysField('fathers_name', "Father's Name").label}{sysField('fathers_name', "Father's Name").required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input {...pilgrimForm.register("fathersName")} placeholder="Father's full name" />
                     </div>
                   )}
                   {sysField('mothers_name', "Mother's Name").enabled && (
                     <div>
-                      <Label>{sysField('mothers_name', "Mother's Name").label} *</Label>
+                      <Label>{sysField('mothers_name', "Mother's Name").label}{sysField('mothers_name', "Mother's Name").required && <span className="text-destructive ml-1">*</span>}</Label>
                       <Input {...pilgrimForm.register("mothersName")} placeholder="Mother's full name" />
                     </div>
                   )}
@@ -656,12 +695,33 @@ const BookingWizard = () => {
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Back</Button>
                   <Button onClick={async () => {
-                    const valid = await pilgrimForm.trigger([
-                      "fullName", "dateOfBirth", "gender", "maritalStatus", "nationality",
-                      "placeOfBirth", "occupation", "phone", "address",
-                      "fathersName", "mothersName", "passportNumber", "passportExpiry"
-                    ]);
-                    if (valid) setStep(3);
+                    // Always validate passport (absolute requirement)
+                    const valid = await pilgrimForm.trigger(["passportNumber", "passportExpiry"]);
+                    // Validate sysField-controlled fields only when they are enabled AND required
+                    const sysRequiredFields: Array<keyof PilgrimForm> = [];
+                    const sysFieldMap: Array<{ key: string; field: keyof PilgrimForm; min?: number }> = [
+                      { key: "full_name", field: "fullName", min: 2 },
+                      { key: "date_of_birth", field: "dateOfBirth", min: 1 },
+                      { key: "nationality", field: "nationality", min: 2 },
+                      { key: "place_of_birth", field: "placeOfBirth", min: 2 },
+                      { key: "occupation", field: "occupation", min: 2 },
+                      { key: "phone", field: "phone", min: 7 },
+                      { key: "address", field: "address", min: 5 },
+                      { key: "fathers_name", field: "fathersName", min: 2 },
+                      { key: "mothers_name", field: "mothersName", min: 2 },
+                    ];
+                    let missingRequired = false;
+                    for (const { key, field, min } of sysFieldMap) {
+                      const cfg = sysField(key, "");
+                      if (cfg.enabled && cfg.required) {
+                        const val = pilgrimForm.getValues(field as any) ?? "";
+                        if (typeof val === "string" && val.length < (min ?? 1)) {
+                          pilgrimForm.setError(field as any, { message: `${cfg.label} is required` });
+                          missingRequired = true;
+                        }
+                      }
+                    }
+                    if (valid && !missingRequired) setStep(3);
                     else toast.error("Please fill in all required fields");
                   }} className="flex-1">
                     Continue
@@ -943,15 +1003,47 @@ const BookingWizard = () => {
                         ))
                       )}
                       <p className="text-xs text-muted-foreground">
-                        Use your booking reference as the payment description. Upload proof of payment in your dashboard after transfer.
+                        Use your booking reference as the payment description.
                       </p>
+
+                      {/* Proof of payment upload */}
+                      <div className="rounded-xl border border-dashed border-amber-400 bg-amber-50 dark:bg-amber-900/10 p-4 space-y-3 mt-2">
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                          ⚠ Upload your proof of payment before confirming
+                        </p>
+                        {transferProofUrl ? (
+                          <div className="flex items-center gap-2 text-xs text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <a href={transferProofUrl} target="_blank" rel="noopener noreferrer" className="underline truncate max-w-[220px]">
+                              Proof uploaded ✓
+                            </a>
+                          </div>
+                        ) : (
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              onChange={(e) => e.target.files?.[0] && handleProofUpload(e.target.files[0])}
+                            />
+                            <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-md border border-input bg-background text-xs hover:bg-muted transition-colors ${proofUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                              {proofUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                              {proofUploading ? "Uploading…" : "Choose Receipt / Teller"}
+                            </span>
+                          </label>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
 
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setStep(4)} className="flex-1">Back</Button>
-                  <Button onClick={onSubmitBooking} disabled={isSubmitting} className="flex-1">
+                  <Button
+                    onClick={onSubmitBooking}
+                    disabled={isSubmitting || (paymentMethod === "bank" && !transferProofUrl)}
+                    className="flex-1"
+                  >
                     {isSubmitting ? "Processing…" : paymentMethod === "card" ? "Pay with Paystack" : "Confirm Booking"}
                   </Button>
                 </div>

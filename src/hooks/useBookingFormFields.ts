@@ -22,11 +22,12 @@ export interface BookingFormField {
 
 export interface SystemFieldConfig {
     enabled: boolean;
+    required: boolean;
     label: string;
     placeholder: string | null;
 }
 
-const DEFAULT_CONFIG: SystemFieldConfig = { enabled: true, label: "", placeholder: null };
+const DEFAULT_CONFIG: SystemFieldConfig = { enabled: true, required: true, label: "", placeholder: null };
 
 /**
  * Returns a getter function `get(fieldName)` that resolves the admin-editable
@@ -52,6 +53,7 @@ export function useSystemFieldConfig() {
         if (r.field_name) {
             map.set(r.field_name, {
                 enabled: r.enabled,
+                required: r.required,
                 label: r.label,
                 placeholder: r.placeholder,
             });
@@ -59,7 +61,7 @@ export function useSystemFieldConfig() {
     });
 
     const get = (fieldName: string, defaultLabel: string, defaultPlaceholder?: string): SystemFieldConfig => {
-        return map.get(fieldName) ?? { enabled: true, label: defaultLabel, placeholder: defaultPlaceholder ?? null };
+        return map.get(fieldName) ?? { enabled: true, required: true, label: defaultLabel, placeholder: defaultPlaceholder ?? null };
     };
 
     return { get, isLoading };

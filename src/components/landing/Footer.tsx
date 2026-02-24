@@ -25,7 +25,7 @@ const Footer = () => {
         {/* Logo wordmark */}
         <div className="text-center mb-12">
           <img
-            src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+            src="/logo.png"
             alt="Raudah Travels & Tours - Nigeria's premier Hajj and Umrah travel agency"
             className="h-14 md:h-16 w-auto object-contain mx-auto brightness-0 invert"
             loading="lazy"

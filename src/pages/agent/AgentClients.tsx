@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  AlertCircle, Trash2, Search, Users, UserPlus, Mail, Phone,
+  AlertCircle, Search, Users, UserPlus, Mail, Phone,
   BookOpen, Shield, User
 } from "lucide-react";
 import { toast } from "sonner";
@@ -35,27 +35,7 @@ const AgentClients = () => {
     enabled: !!agent?.id,
   });
 
-  const handleDelete = async (id: string) => {
-    const { data: verifiedClient } = await supabase
-      .from("agent_clients")
-      .select("id")
-      .eq("id", id)
-      .eq("agent_id", agent!.id)
-      .maybeSingle();
 
-    if (!verifiedClient) {
-      toast.error("Client not found or unauthorized");
-      return;
-    }
-
-    const { error } = await supabase.from("agent_clients").delete().eq("id", id);
-    if (error) {
-      toast.error("Failed to delete client");
-    } else {
-      toast.success("Client removed");
-      queryClient.invalidateQueries({ queryKey: ["agent-clients"] });
-    }
-  };
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["agent-clients"] });
 
@@ -175,8 +155,8 @@ const AgentClients = () => {
                           <Badge
                             variant="outline"
                             className={`text-[10px] px-2 py-0 border capitalize ${client.gender === "male"
-                                ? "bg-sky-500/10 text-sky-600 border-sky-500/20"
-                                : "bg-pink-500/10 text-pink-600 border-pink-500/20"
+                              ? "bg-sky-500/10 text-sky-600 border-sky-500/20"
+                              : "bg-pink-500/10 text-pink-600 border-pink-500/20"
                               }`}
                           >
                             {client.gender}
@@ -207,14 +187,6 @@ const AgentClients = () => {
                     {/* Actions */}
                     <div className="flex items-center gap-1 shrink-0">
                       <AddClientDialog agentId={agent.id} onSuccess={refresh} editClient={client} />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(client.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
                     </div>
                   </div>
                 </CardContent>

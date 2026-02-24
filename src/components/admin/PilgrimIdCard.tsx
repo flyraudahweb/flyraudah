@@ -86,7 +86,7 @@ const PilgrimIdCard = ({ booking, orientation = "portrait", theme = "classic" }:
             style={{ background: ts.headerBg }}
           >
             <div className="text-center">
-              <img src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png" alt="Logo" className={`h-5 w-auto mx-auto mb-1 ${isMinimal ? "" : "brightness-0 invert"}`} />
+              <img src="/logo.png" alt="Logo" className={`h-5 w-auto mx-auto mb-1 ${isMinimal ? "" : "brightness-0 invert"}`} />
               <p className="text-[9px] font-body font-semibold" style={{ color: isMinimal ? "#334155" : "rgba(255,255,255,0.9)" }}>PILGRIM ID</p>
             </div>
 
@@ -162,7 +162,7 @@ const PilgrimIdCard = ({ booking, orientation = "portrait", theme = "classic" }:
       {/* Header */}
       <div className="px-5 py-3 flex items-center justify-between relative" style={{ background: ts.headerBg }}>
         <div className="flex items-center gap-2">
-          <img src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png" alt="Raudah Logo" className={`h-5 w-auto ${isMinimal ? "" : "brightness-0 invert"}`} />
+          <img src="/logo.png" alt="Raudah Logo" className={`h-5 w-auto ${isMinimal ? "" : "brightness-0 invert"}`} />
           <div>
             <h3 className="font-heading text-sm font-bold tracking-wide" style={{ color: ts.headerText }}>
               PILGRIM ID CARD

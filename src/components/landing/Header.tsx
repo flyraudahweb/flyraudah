@@ -59,7 +59,7 @@ const Header = ({ forceDark = false }: { forceDark?: boolean }) => {
         {/* Logo */}
         <Link to="/#home" className="flex items-center">
           <img
-            src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+            src="/logo.png"
             alt="Raudah Travels & Tours"
             className={cn(
               "h-10 md:h-12 w-auto object-contain transition-all",

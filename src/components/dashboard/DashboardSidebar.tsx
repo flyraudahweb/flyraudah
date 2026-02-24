@@ -53,7 +53,7 @@ const DashboardSidebar = () => {
         {/* Header */}
         <div className="p-4 border-b border-sidebar-border flex items-center gap-3 overflow-hidden">
           <img
-            src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+            src="/logo.png"
             alt="Raudah Travels"
             className="h-8 w-auto brightness-0 invert shrink-0"
           />

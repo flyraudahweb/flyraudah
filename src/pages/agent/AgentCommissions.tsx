@@ -79,8 +79,8 @@ const AgentCommissions = () => {
 
   const summaryCards = [
     { title: "Commission Rate", value: rateLabel, sub: commissionType === "fixed" ? "Fixed per booking" : "% of booking", icon: PiggyBank, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
-    { title: "Total Earned", value: formatPrice(totalEarned), sub: `From ${verifiedPayments.length} verified payments`, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-    { title: "Pending Payout", value: formatPrice(pendingPayout), sub: "Awaiting verification", icon: Clock, color: "text-amber-600", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    { title: "Commission Earned (Total)", value: formatPrice(totalEarned), sub: `From ${verifiedPayments.length} verified bookings`, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    { title: "Tracked Potential Earnings", value: formatPrice(pendingPayout), sub: "Calculated from pending bookings", icon: Clock, color: "text-amber-600", bg: "bg-amber-500/10", border: "border-amber-500/20" },
     { title: "Client Revenue", value: formatPrice(totalRevenue), sub: "Total client payments", icon: Wallet, color: "text-sky-600", bg: "bg-sky-500/10", border: "border-sky-500/20" },
   ];
 
@@ -118,8 +118,25 @@ const AgentCommissions = () => {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-bold text-foreground">Commissions</h1>
-        <p className="text-sm text-muted-foreground mt-1">Track your earnings and commission payouts</p>
+        <p className="text-sm text-muted-foreground mt-1">Track your earnings and commission history</p>
       </div>
+
+      {/* Info Banner */}
+      <Card className="border-blue-200/50 bg-blue-50/30 dark:bg-blue-950/20 dark:border-blue-800/20">
+        <CardContent className="p-4 flex items-start gap-4">
+          <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/40 shrink-0">
+            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">How Commissions Work</h3>
+            <p className="text-xs text-blue-800/80 dark:text-blue-300/80 mt-1 leading-relaxed">
+              Commissions are automatically applied as an **upfront discount** on your bookings.
+              Instead of receiving a separate payment, you pay the discounted wholesale price.
+              The figures below help you track how much you've earned through these discounts.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">

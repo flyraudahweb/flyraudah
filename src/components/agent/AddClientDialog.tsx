@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,15 +39,15 @@ const AddClientDialog = ({ agentId, onSuccess, editClient }: AddClientDialogProp
     resolver: zodResolver(clientSchema),
     defaultValues: editClient
       ? {
-          full_name: editClient.full_name,
-          phone: editClient.phone,
-          email: editClient.email || "",
-          passport_number: editClient.passport_number || "",
-          passport_expiry: editClient.passport_expiry || "",
-          date_of_birth: editClient.date_of_birth || "",
-          gender: editClient.gender || "",
-          notes: editClient.notes || "",
-        }
+        full_name: editClient.full_name,
+        phone: editClient.phone,
+        email: editClient.email || "",
+        passport_number: editClient.passport_number || "",
+        passport_expiry: editClient.passport_expiry || "",
+        date_of_birth: editClient.date_of_birth || "",
+        gender: editClient.gender || "",
+        notes: editClient.notes || "",
+      }
       : { gender: "" },
   });
 
@@ -101,6 +101,9 @@ const AddClientDialog = ({ agentId, onSuccess, editClient }: AddClientDialogProp
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Client" : "Add New Client"}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? "Update client profile information below." : "Enter the client's details to register them for bookings."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div>

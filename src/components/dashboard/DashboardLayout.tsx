@@ -30,7 +30,7 @@ const DashboardLayout = () => {
               <SidebarTrigger className="hidden md:flex" />
               <div className="md:hidden flex items-center gap-2">
                 <img
-                  src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+                  src="/logo.png"
                   alt="Raudah"
                   className="h-7 w-auto"
                 />

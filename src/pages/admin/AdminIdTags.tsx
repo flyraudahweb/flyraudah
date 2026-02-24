@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { AlertCircle, Download, Printer, Search, Zap, FileCheck, LayoutTemplate, Palette } from "lucide-react";
 import PilgrimIdCard, { type Booking, type CardOrientation, type CardTheme } from "@/components/admin/PilgrimIdCard";
 
-const LOGO_URL = "https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png";
+const LOGO_URL = "/logo.png";
 
 export default function AdminIdTags() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,10 +34,12 @@ export default function AdminIdTags() {
   });
 
   // Pre-load logo as data URL for PDF embedding
-  useState(() => {
+  useEffect(() => {
+    let isMounted = true;
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
+      if (!isMounted) return;
       const canvas = document.createElement("canvas");
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
@@ -48,7 +50,8 @@ export default function AdminIdTags() {
       }
     };
     img.src = LOGO_URL;
-  });
+    return () => { isMounted = false; };
+  }, []);
 
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["admin-id-bookings"],
@@ -378,8 +381,8 @@ export default function AdminIdTags() {
                     key={o}
                     onClick={() => { setOrientation(o); localStorage.setItem("idcard-orientation", o); }}
                     className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${orientation === o
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground hover:bg-muted"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-muted"
                       }`}
                   >
                     {o}
@@ -399,8 +402,8 @@ export default function AdminIdTags() {
                     key={t}
                     onClick={() => { setTheme(t); localStorage.setItem("idcard-theme", t); }}
                     className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${theme === t
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground hover:bg-muted"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-muted"
                       }`}
                   >
                     {t}

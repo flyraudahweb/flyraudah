@@ -61,6 +61,9 @@ const DashboardBookings = () => {
     setPayingBookingId(booking.id);
 
     try {
+      // Refresh session so Supabase client sends a fresh valid JWT to the edge function
+      await supabase.auth.refreshSession();
+
       const { data: paystackData, error: paystackError } = await supabase.functions.invoke(
         "create-paystack-checkout",
         {

@@ -27,7 +27,7 @@ const AuthLayout = ({ children, title, subtitle }: Props) => {
         <div className="relative z-10 flex flex-col justify-between p-12">
           <Link to="/">
             <img
-              src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+              src="/logo.png"
               alt="Raudah Travels"
               className="h-12 w-auto brightness-0 invert"
             />
@@ -76,7 +76,7 @@ const AuthLayout = ({ children, title, subtitle }: Props) => {
           <div className="relative z-10 px-6 py-8 text-center">
             <Link to="/">
               <img
-                src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+                src="/logo.png"
                 alt="Raudah Travels"
                 className="h-10 w-auto mx-auto brightness-0 invert mb-4"
               />

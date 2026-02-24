@@ -16,15 +16,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    // JWT verified by Supabase gateway (verify_jwt: true)
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    // JWT verification is handled by the Supabase gateway if verify_jwt: true is set.
+    // If you disable verify_jwt in config.toml, this function will be public.
     const { bookingId, email } = await req.json();
 
     if (!bookingId || !email) {

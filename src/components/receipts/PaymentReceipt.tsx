@@ -78,7 +78,7 @@ const PaymentReceipt = forwardRef<PaymentReceiptHandle, { data: ReceiptData }>(
                     }}
                 >
                     <img
-                        src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png"
+                        src="/logo.png"
                         alt="Raudah Logo"
                         style={{ height: 28, margin: "0 auto 6px", filter: "brightness(0) invert(1)" }}
                     />

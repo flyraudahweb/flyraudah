@@ -13,8 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle, Percent } from "lucide-react";
+import { ArrowLeft, CheckCircle, Percent, CreditCard, Upload, CheckCircle2, Loader2 } from "lucide-react";
 import { useBookingFormFields, useSystemFieldConfig } from "@/hooks/useBookingFormFields";
+import { usePaystackEnabled } from "@/hooks/usePaystackEnabled";
 import CustomFieldsSection from "@/components/bookings/CustomFieldsSection";
 
 const AgentBookForClient = () => {
@@ -34,6 +35,33 @@ const AgentBookForClient = () => {
   const [emergencyRelation, setEmergencyRelation] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
+  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
+  const { paystackEnabled } = usePaystackEnabled();
+  const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "paystack">("bank_transfer");
+  const [transferProofUrl, setTransferProofUrl] = useState("");
+  const [proofUploading, setProofUploading] = useState(false);
+
+  const handleProofUpload = async (file: File) => {
+    setProofUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `agent-proofs/${Date.now()}_${agent?.id ?? "unknown"}.${ext}`;
+      const { error } = await supabase.storage
+        .from("booking-attachments")
+        .upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage
+        .from("booking-attachments")
+        .getPublicUrl(path);
+      setTransferProofUrl(urlData.publicUrl);
+      toast.success("Proof of payment uploaded!");
+    } catch (err: any) {
+      toast.error("Upload failed: " + err.message);
+    } finally {
+      setProofUploading(false);
+    }
+  };
 
   // ── Custom dynamic form fields ────────────────────────────────────────────
   const { data: customFields = [] } = useBookingFormFields("agent");
@@ -70,16 +98,46 @@ const AgentBookForClient = () => {
     enabled: !!agent?.id,
   });
 
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ["bank-accounts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bank_accounts" as any)
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at");
+      if (error) {
+        console.warn("bank_accounts query error:", error.message);
+        return [];
+      }
+      return data as any[];
+    },
+  });
+
   if (pkgLoading) return <div className="p-8"><Skeleton className="h-96" /></div>;
   if (!pkg) return <div className="text-center py-12">Package not found</div>;
 
   const selectedClient = clients.find((c: any) => c.id === selectedClientId);
   const commissionType: "percentage" | "fixed" = (agent as any)?.commission_type ?? "percentage";
-  const commissionRate = agent?.commission_rate ?? 0;
-  const wholesalePrice = commissionType === "fixed"
-    ? Math.max(0, pkg.price - commissionRate)
-    : pkg.price - (pkg.price * (commissionRate || pkg.agent_discount) / 100);
-  const savings = pkg.price - wholesalePrice;
+  // Always cast to Number — Supabase returns numeric columns as strings in JS
+  const pkgPrice = Number(pkg.price);
+  const commissionRate = Number(agent?.commission_rate ?? 0);
+  // pkg.agent_discount is a fixed ₦ deduction (NOT a percentage).
+  // Use it only when the agent has no personal commission configured.
+  const pkgDiscount = Number(pkg.agent_discount ?? 0);
+
+  let wholesalePrice: number;
+  if (commissionType === "fixed") {
+    // Agent's commission_rate is a fixed ₦ discount
+    wholesalePrice = Math.max(0, pkgPrice - commissionRate);
+  } else if (commissionRate > 0) {
+    // Agent's commission_rate is a percentage → compute percentage discount
+    wholesalePrice = pkgPrice - (pkgPrice * commissionRate / 100);
+  } else {
+    // No personal agent commission → fall back to the package-level fixed discount
+    wholesalePrice = Math.max(0, pkgPrice - pkgDiscount);
+  }
+  const savings = pkgPrice - wholesalePrice;
 
 
   const roomTypes = [
@@ -88,6 +146,7 @@ const AgentBookForClient = () => {
 
   const handleSubmit = async () => {
     if (!user || !agent || !selectedClient || !selectedDateId) return;
+    setIsSubmitting(true);
 
     try {
       // CRITICAL SECURITY: Verify agent identity and client ownership server-side
@@ -114,7 +173,8 @@ const AgentBookForClient = () => {
 
       const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
-        .insert({
+        .upsert({
+          id: pendingBookingId || undefined,
           user_id: user.id,
           package_id: pkg.id,
           package_date_id: selectedDateId,
@@ -138,14 +198,72 @@ const AgentBookForClient = () => {
         .single();
 
       if (bookingError) throw bookingError;
+      setPendingBookingId(bookingData.id);
 
-      // Create payment record at wholesale price
-      await supabase.from("payments").insert({
-        booking_id: bookingData.id,
-        amount: wholesalePrice,
-        method: "bank_transfer",
-        status: "pending",
-      });
+      // Create/Update payment record at wholesale price
+      const { data: paymentData, error: paymentError } = await supabase
+        .from("payments")
+        .upsert({
+          id: pendingPaymentId || undefined,
+          booking_id: bookingData.id,
+          amount: wholesalePrice,
+          method: paymentMethod,
+          status: "pending",
+          proof_of_payment_url: paymentMethod === "bank_transfer" && transferProofUrl ? transferProofUrl : null,
+        })
+        .select()
+        .single();
+
+      if (paymentError) throw paymentError;
+      if (paymentData) setPendingPaymentId(paymentData.id);
+
+      // Card → Paystack Inline Popup
+      if (paymentMethod === "paystack") {
+        // Refresh session so the client sends a fresh valid JWT (verify_jwt: true on edge fn)
+        await supabase.auth.refreshSession();
+        const { data: paystackData, error: paystackError } = await supabase.functions.invoke(
+          "create-paystack-checkout",
+          { body: { email: user.email, bookingId: bookingData.id } }
+        );
+
+        if (paystackError || !paystackData?.access_code) {
+          throw new Error("Failed to initialize Paystack payment.");
+        }
+
+        // Load Paystack Inline SDK dynamically
+        const loadScript = () => {
+          return new Promise((resolve) => {
+            const script = document.createElement("script");
+            script.src = "https://js.paystack.co/v1/inline.js";
+            script.async = true;
+            script.onload = () => resolve(true);
+            document.body.appendChild(script);
+          });
+        };
+
+        if (!(window as any).PaystackPop) {
+          await loadScript();
+        }
+
+        const handler = (window as any).PaystackPop.setup({
+          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+          email: user.email,
+          amount: Math.round(wholesalePrice * 100),
+          access_code: paystackData.access_code,
+          callback: (response: any) => {
+            console.log("Payment success:", response);
+            navigate(`/payment/callback?reference=${response.reference}`);
+          },
+          onClose: () => {
+            console.log("Payment cancelled");
+            toast.info("Payment was cancelled. You can retry or change the payment method.");
+            // Do NOT proceed to Step 4 (Success)
+          },
+        });
+
+        handler.openIframe();
+        return;
+      }
 
       setBookingRef(bookingData.reference || bookingData.id.slice(0, 8));
       setStep(4);
@@ -342,24 +460,118 @@ const AgentBookForClient = () => {
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <Label>Emergency Contact Name</Label>
-                  <Input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} />
+                {sysField('emergency_contact_name', 'Emergency Contact Name').enabled && (
+                  <div>
+                    <Label>
+                      {sysField('emergency_contact_name', 'Emergency Contact Name').label}
+                      {sysField('emergency_contact_name', 'Emergency Contact Name').required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    <Input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} />
+                  </div>
+                )}
+                {sysField('emergency_contact_phone', 'Phone (+234 format)').enabled && (
+                  <div>
+                    <Label>
+                      {sysField('emergency_contact_phone', 'Phone (+234 format)').label}
+                      {sysField('emergency_contact_phone', 'Phone (+234 format)').required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    <Input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} placeholder="+2348123456789" />
+                  </div>
+                )}
+                {sysField('emergency_contact_relationship', 'Relationship').enabled && (
+                  <div>
+                    <Label>
+                      {sysField('emergency_contact_relationship', 'Relationship').label}
+                      {sysField('emergency_contact_relationship', 'Relationship').required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    <Input value={emergencyRelation} onChange={(e) => setEmergencyRelation(e.target.value)} placeholder="e.g. Spouse, Parent" />
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Selection */}
+              <div className="space-y-3 pt-4 border-t">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Select Payment Method
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => { setPaymentMethod("bank_transfer"); setTransferProofUrl(""); }}
+                    className={`p-3 border rounded-xl text-left transition-all ${paymentMethod === "bank_transfer" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                  >
+                    <p className="text-xs font-bold">Bank Transfer</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Upload proof of payment</p>
+                  </button>
+                  <button
+                    disabled={!paystackEnabled}
+                    onClick={() => setPaymentMethod("paystack")}
+                    className={`p-3 border rounded-xl text-left transition-all ${paymentMethod === "paystack" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"} ${!paystackEnabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <p className="text-xs font-bold">Card / Online</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Instant activation</p>
+                  </button>
                 </div>
-                <div>
-                  <Label>Phone (+234 format)</Label>
-                  <Input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} placeholder="+2348123456789" />
-                </div>
-                <div>
-                  <Label>Relationship</Label>
-                  <Input value={emergencyRelation} onChange={(e) => setEmergencyRelation(e.target.value)} placeholder="e.g. Spouse, Parent" />
-                </div>
+
+                {/* Bank Transfer: show bank account + require proof upload */}
+                {paymentMethod === "bank_transfer" && (
+                  <div className="rounded-xl border border-dashed border-amber-400 bg-amber-50 dark:bg-amber-900/10 p-4 space-y-3">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                      ⚠ Upload proof of payment before confirming
+                    </p>
+
+                    {/* Bank account details */}
+                    {bankAccounts.length > 0 ? (
+                      <div className="space-y-2">
+                        {bankAccounts.map((acct: any) => (
+                          <div key={acct.id} className="bg-white dark:bg-background rounded-lg p-3 text-xs space-y-1 border border-amber-200">
+                            <p className="font-bold">{acct.bank_name}</p>
+                            <p className="text-muted-foreground">Account Name: <span className="font-medium text-foreground">{acct.account_name}</span></p>
+                            <p className="text-muted-foreground">Account No: <span className="font-mono font-bold text-primary text-sm">{acct.account_number}</span></p>
+                            {acct.sort_code && <p className="text-muted-foreground">Sort Code: {acct.sort_code}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Contact our office for bank account details.</p>
+                    )}
+
+                    <p className="text-xs text-muted-foreground">
+                      Transfer <strong>₦{wholesalePrice.toLocaleString()}</strong> then upload your receipt or bank teller below.
+                    </p>
+                    {transferProofUrl ? (
+                      <div className="flex items-center gap-2 text-xs text-emerald-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <a href={transferProofUrl} target="_blank" rel="noopener noreferrer" className="underline truncate max-w-[220px]">
+                          Proof uploaded ✓
+                        </a>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          onChange={(e) => e.target.files?.[0] && handleProofUpload(e.target.files[0])}
+                        />
+                        <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-md border border-input bg-background text-xs hover:bg-muted transition-colors ${proofUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                          {proofUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                          {proofUploading ? "Uploading…" : "Choose Receipt / Teller"}
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1">Back</Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? "Creating Booking..." : "Confirm Booking"}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || (paymentMethod === "bank_transfer" && !transferProofUrl)}
+                  className="flex-1"
+                >
+                  {isSubmitting ? "Creating Booking..." : paymentMethod === "bank_transfer" ? "Confirm Booking" : "Proceed to Payment"}
                 </Button>
               </div>
             </CardContent>

@@ -23,7 +23,7 @@ const AgentLayout = () => {
             <div className="flex items-center gap-2">
               <SidebarTrigger className="hidden md:flex" />
               <div className="md:hidden flex items-center gap-2">
-                <img src="https://i.ibb.co/C3zkfpVR/Rauda-Logo-2-PNG.png" alt="Raudah" className="h-7 w-auto" />
+                <img src="/logo.png" alt="Raudah" className="h-7 w-auto" />
                 <span className="font-heading text-sm font-semibold text-foreground">Agent Portal</span>
               </div>
             </div>

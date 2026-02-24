@@ -25,8 +25,17 @@ import {
     AlertTriangle,
     User,
     Search,
+    Filter,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const eventConfig: Record<string, { icon: any; color: string; bgColor: string; label: string }> = {
     package_view: {
@@ -71,6 +80,8 @@ const fallbackConfig = {
 const AdminActivity = () => {
     const [search, setSearch] = useState("");
     const [eventFilter, setEventFilter] = useState<string>("all");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 20;
 
     // Fetch agents for identification
     const { data: agents = [] } = useQuery({
@@ -93,7 +104,7 @@ const AdminActivity = () => {
                 .from("user_activity" as any)
                 .select(`
                     *,
-                    profiles:user_id(full_name, phone, email:id)
+                    profiles:user_id(full_name, phone, email)
                 `);
 
             if (eventFilter !== "all") {
@@ -116,8 +127,15 @@ const AdminActivity = () => {
         const userName = (act.profiles?.full_name || "").toLowerCase();
         const packageName = (act.packages?.name || "").toLowerCase();
         const agentName = (agentMap.get(act.user_id) || "").toLowerCase();
-        return userName.includes(q) || packageName.includes(q) || agentName.includes(q);
+        const userEmail = (act.profiles?.email || "").toLowerCase();
+        return userName.includes(q) || packageName.includes(q) || agentName.includes(q) || userEmail.includes(q);
     });
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const paginated = filtered.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     // Stats
     const stats = {
@@ -169,12 +187,15 @@ const AdminActivity = () => {
                         placeholder="Search by user, package, or agent..."
                         className="pl-10"
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                     />
                 </div>
-                <Select value={eventFilter} onValueChange={setEventFilter}>
+                <Select value={eventFilter} onValueChange={(v) => { setEventFilter(v); setCurrentPage(1); }}>
                     <SelectTrigger className="w-full sm:w-[200px] bg-card">
-                        <SelectValue placeholder="All Events" />
+                        <div className="flex items-center gap-2">
+                            <Filter className="h-4 w-4 text-muted-foreground" />
+                            <SelectValue placeholder="All Events" />
+                        </div>
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Events</SelectItem>
@@ -204,7 +225,7 @@ const AdminActivity = () => {
                 </Card>
             ) : (
                 <div className="space-y-2">
-                    {filtered.map((act: any) => {
+                    {paginated.map((act: any) => {
                         const config = eventConfig[act.event_type] || fallbackConfig;
                         const Icon = config.icon;
                         const agentName = agentMap.get(act.user_id);
@@ -241,6 +262,28 @@ const AdminActivity = () => {
                                                 )}
                                             </div>
 
+                                            {/* Contact Info (Visible for all events now) */}
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                {userPhone && (
+                                                    <a
+                                                        href={`tel:${userPhone}`}
+                                                        className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:underline"
+                                                    >
+                                                        <Phone className="h-2.5 w-2.5" />
+                                                        {userPhone}
+                                                    </a>
+                                                )}
+                                                {act.profiles?.email && (
+                                                    <a
+                                                        href={`mailto:${act.profiles.email}`}
+                                                        className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:underline"
+                                                    >
+                                                        <Mail className="h-2.5 w-2.5" />
+                                                        {act.profiles.email}
+                                                    </a>
+                                                )}
+                                            </div>
+
                                             {/* Details row */}
                                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                                                 {act.packages?.name && (
@@ -263,26 +306,10 @@ const AdminActivity = () => {
 
                                             {/* Contact info — shown for failed payments */}
                                             {isFailed && (
-                                                <div className="flex flex-wrap items-center gap-3 pt-1.5 mt-1.5 border-t border-red-200/50">
-                                                    <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wider">
-                                                        Needs Assistance
+                                                <div className="flex flex-wrap items-center gap-2 pt-1 mt-1 border-t border-red-200/50">
+                                                    <span className="text-[10px] font-semibold text-red-600 uppercase tracking-wider">
+                                                        Support Alert
                                                     </span>
-                                                    {userPhone && (
-                                                        <a
-                                                            href={`tel:${userPhone}`}
-                                                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                                                        >
-                                                            <Phone className="h-3 w-3" />
-                                                            {userPhone}
-                                                        </a>
-                                                    )}
-                                                    <a
-                                                        href={`mailto:?subject=Payment Issue - Raudah Travels&body=Dear ${userName},%0A%0AWe noticed you encountered an issue with a recent payment.`}
-                                                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                                                    >
-                                                        <Mail className="h-3 w-3" />
-                                                        Email User
-                                                    </a>
                                                 </div>
                                             )}
                                         </div>
@@ -303,7 +330,43 @@ const AdminActivity = () => {
                     })}
                 </div>
             )}
-        </div>
+
+            {
+                totalPages > 1 && (
+                    <div className="flex justify-center mt-6">
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    <PaginationPrevious
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                </PaginationItem>
+
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <PaginationItem key={i + 1}>
+                                        <PaginationLink
+                                            onClick={() => setCurrentPage(i + 1)}
+                                            isActive={currentPage === i + 1}
+                                            className="cursor-pointer"
+                                        >
+                                            {i + 1}
+                                        </PaginationLink>
+                                    </PaginationItem>
+                                ))}
+
+                                <PaginationItem>
+                                    <PaginationNext
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
