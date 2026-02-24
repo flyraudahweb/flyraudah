@@ -29,7 +29,7 @@ const AgentLayout = () => {
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
-              <Link to="/dashboard/profile" title="My Profile">
+              <Link to="/agent/profile" title="My Profile">
                 <Avatar className="h-8 w-8 border border-border md:hidden cursor-pointer ring-offset-1 hover:ring-2 hover:ring-secondary/50 transition-all">
                   <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback className="bg-muted text-muted-foreground text-xs">{initials}</AvatarFallback>

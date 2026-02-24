@@ -32,8 +32,8 @@ const menuItems = [
   { title: "Packages", url: "/agent/packages", icon: Package },
   { title: "Bookings", url: "/agent/bookings", icon: CreditCard },
   { title: "Commissions", url: "/agent/commissions", icon: PiggyBank },
-  { title: "Profile", url: "/dashboard/profile", icon: User },
-  { title: "Support", url: "/dashboard/support", icon: Headset },
+  { title: "Profile", url: "/agent/profile", icon: User },
+  { title: "Support", url: "/agent/support", icon: Headset },
 ];
 
 const AgentSidebar = () => {

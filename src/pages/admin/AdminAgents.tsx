@@ -384,10 +384,17 @@ const AdminAgents = () => {
 
                                     <div className="flex flex-col gap-2">
                                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest ml-1">Quick Actions</p>
-                                        <Button variant="outline" size="sm" className="justify-start gap-2 h-10 border-border/60 hover:bg-primary/5 hover:text-primary transition-all shadow-sm">
-                                            <Mail className="h-4 w-4" /> Send Email
-                                        </Button>
-                                        <Button variant="outline" size="sm" className="justify-start gap-2 h-10 border-border/60 hover:bg-emerald-500/5 hover:text-emerald-600 transition-all shadow-sm">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="justify-start gap-2 h-10 border-border/60 hover:bg-emerald-500/5 hover:text-emerald-600 transition-all shadow-sm"
+                                            onClick={() => {
+                                                if (selectedAgent.phone) {
+                                                    const cleanPhone = selectedAgent.phone.replace(/\D/g, '');
+                                                    window.open(`https://wa.me/${cleanPhone}`, '_blank');
+                                                }
+                                            }}
+                                        >
                                             <Phone className="h-4 w-4" /> WhatsApp Message
                                         </Button>
                                     </div>

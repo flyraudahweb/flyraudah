@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,8 @@ const DashboardProfile = () => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState(profile?.full_name || "");
@@ -265,7 +268,10 @@ const DashboardProfile = () => {
           <Button
             variant="outline"
             className="w-full border-secondary/50 text-secondary hover:bg-secondary/10"
-            onClick={() => window.location.href = "/dashboard/support"}
+            onClick={() => {
+              const base = pathname.startsWith("/agent") ? "/agent" : "/dashboard";
+              navigate(`${base}/support`);
+            }}
           >
             Open Support Ticket
           </Button>
