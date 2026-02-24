@@ -82,13 +82,36 @@ const AgentOverview = () => {
   const activeBookings = agentBookings.filter((b) => b.status !== "cancelled").length;
   const confirmedBookings = agentBookings.filter((b) => b.status === "confirmed" || b.status === "completed").length;
   const totalRevenue = agentBookings.reduce((sum, b) => sum + Number((b as any).packages?.price || 0), 0);
-  const commissionRate = agent?.commission_rate || 0;
+  const commissionRate = Number(agent?.commission_rate || 0);
+  const commissionType = agent?.commission_type ?? "percentage";
+
   const commissionEarned = agentPayments
     .filter((p) => p.status === "verified")
-    .reduce((sum, p) => sum + Number(p.amount) * (commissionRate / 100), 0);
+    .reduce((sum, p) => {
+      const amount = Number(p.amount);
+      const booking = agentBookings.find(b => b.id === p.booking_id);
+      const retailPrice = Number((booking as any)?.packages?.price || 0);
+
+      if (commissionType === "fixed") {
+        return sum + Math.min(retailPrice, commissionRate);
+      }
+      // For percentage, if amount is wholesale, commission is actually (retail - amount)
+      // but let's keep it simple and just cap it at retail price.
+      return sum + Math.min(retailPrice, (retailPrice * commissionRate / 100));
+    }, 0);
+
   const pendingRevenue = agentPayments
     .filter((p) => p.status === "pending")
-    .reduce((sum, p) => sum + Number(p.amount) * (commissionRate / 100), 0);
+    .reduce((sum, p) => {
+      const amount = Number(p.amount);
+      const booking = agentBookings.find(b => b.id === p.booking_id);
+      const retailPrice = Number((booking as any)?.packages?.price || 0);
+
+      if (commissionType === "fixed") {
+        return sum + Math.min(retailPrice, commissionRate);
+      }
+      return sum + Math.min(retailPrice, (retailPrice * commissionRate / 100));
+    }, 0);
 
   const greetingHour = new Date().getHours();
   const greeting = greetingHour < 12 ? "Good morning" : greetingHour < 17 ? "Good afternoon" : "Good evening";
@@ -115,7 +138,7 @@ const AgentOverview = () => {
     {
       label: "Commission Earned",
       value: formatPrice(commissionEarned),
-      sub: commissionRate > 0 ? `${commissionRate}% rate` : "Rate TBD",
+      sub: commissionType === "fixed" ? `${formatPrice(commissionRate)} fixed` : `${commissionRate}% rate`,
       icon: PiggyBank,
       color: "text-amber-600",
       bg: "bg-amber-500/10",
@@ -188,13 +211,13 @@ const AgentOverview = () => {
                 {agent.agent_code}
               </span>
               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${agent.status === "active" ? "bg-emerald-500/30 text-white" :
-                  agent.status === "pending" ? "bg-amber-500/30 text-white" :
-                    "bg-red-500/30 text-white"
+                agent.status === "pending" ? "bg-amber-500/30 text-white" :
+                  "bg-red-500/30 text-white"
                 }`}>
                 {agent.status}
               </span>
               <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/20 text-white text-xs font-semibold">
-                {commissionRate}% commission
+                {commissionType === "fixed" ? `${formatPrice(commissionRate)} fixed` : `${commissionRate}% commission`}
               </span>
             </div>
           </div>
@@ -309,7 +332,7 @@ const AgentOverview = () => {
                 { icon: Building2, label: agent.business_name },
                 { icon: Mail, label: agent.email },
                 { icon: Phone, label: agent.phone },
-                { icon: CreditCard, label: `${commissionRate}% commission` },
+                { icon: CreditCard, label: commissionType === "fixed" ? `${formatPrice(commissionRate)}/booking` : `${commissionRate}% commission` },
               ].map((item, i) => item.label && (
                 <div key={i} className="flex items-center gap-2 text-foreground">
                   <item.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />

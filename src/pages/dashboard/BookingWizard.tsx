@@ -439,7 +439,6 @@ const BookingWizard = () => {
             navigate(`/payment/callback?reference=${response.reference}`);
           },
           onClose: () => {
-            console.log("Payment cancelled");
             toast.info("Payment was cancelled");
           },
         });
@@ -1057,7 +1056,9 @@ const BookingWizard = () => {
               <CardContent className="py-8 space-y-6">
                 <div className="flex flex-col items-center gap-2">
                   <SuccessAnimation size={90} />
-                  <h2 className="font-heading text-xl font-bold text-foreground">Booking Confirmed!</h2>
+                  <h2 className="font-heading text-xl font-bold text-foreground">
+                    {paymentMethod === "bank" ? "Booking Submitted!" : "Booking Confirmed!"}
+                  </h2>
                   <p className="text-sm text-muted-foreground text-center">Your booking has been submitted successfully</p>
                 </div>
 
@@ -1072,7 +1073,7 @@ const BookingWizard = () => {
                   <p><span className="font-medium">Status:</span> <span className="text-amber-600">Pending Payment Confirmation</span></p>
                 </div>
 
-                {bankAccounts.length > 0 && (
+                {(bankAccounts.length > 0 && !transferProofUrl) ? (
                   <div className="bg-muted/50 border border-border rounded-lg p-4 space-y-2">
                     <p className="text-sm font-semibold">Next Step — Complete Your Transfer</p>
                     {bankAccounts.map((acct: any) => (
@@ -1084,11 +1085,21 @@ const BookingWizard = () => {
                     ))}
                     <p className="text-xs text-muted-foreground">Reference: <span className="font-mono">{bookingReference}</span></p>
                   </div>
-                )}
+                ) : paymentMethod === "bank" ? (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 space-y-2 text-center">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto mb-1" />
+                    <p className="text-sm font-semibold text-emerald-700">Payment Proof Received</p>
+                    <p className="text-xs text-emerald-600/80">
+                      We've received your proof of payment. Our team will verify it and confirm your booking shortly.
+                    </p>
+                  </div>
+                ) : null}
 
-                <p className="text-xs text-muted-foreground text-center">
-                  After payment, upload your proof of payment from the "My Payments" section in your dashboard.
-                </p>
+                {(!transferProofUrl && paymentMethod === "bank") && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    After payment, upload your proof of payment from the "My Payments" section in your dashboard.
+                  </p>
+                )}
 
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => navigate("/dashboard/bookings")} className="flex-1">My Bookings</Button>

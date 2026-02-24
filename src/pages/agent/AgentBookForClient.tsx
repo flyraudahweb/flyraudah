@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { ArrowLeft, CheckCircle, Percent, CreditCard, Upload, CheckCircle2, Loader2 } from "lucide-react";
+import { formatPrice } from "@/data/packages";
 import { useBookingFormFields, useSystemFieldConfig } from "@/hooks/useBookingFormFields";
 import { usePaystackEnabled } from "@/hooks/usePaystackEnabled";
 import CustomFieldsSection from "@/components/bookings/CustomFieldsSection";
@@ -118,26 +119,23 @@ const AgentBookForClient = () => {
   if (!pkg) return <div className="text-center py-12">Package not found</div>;
 
   const selectedClient = clients.find((c: any) => c.id === selectedClientId);
-  const commissionType: "percentage" | "fixed" = (agent as any)?.commission_type ?? "percentage";
   // Always cast to Number — Supabase returns numeric columns as strings in JS
   const pkgPrice = Number(pkg.price);
   const commissionRate = Number(agent?.commission_rate ?? 0);
-  // pkg.agent_discount is a fixed ₦ deduction (NOT a percentage).
-  // Use it only when the agent has no personal commission configured.
+  const commissionType = agent?.commission_type ?? "percentage";
   const pkgDiscount = Number(pkg.agent_discount ?? 0);
 
   let wholesalePrice: number;
   if (commissionType === "fixed") {
-    // Agent's commission_rate is a fixed ₦ discount
     wholesalePrice = Math.max(0, pkgPrice - commissionRate);
   } else if (commissionRate > 0) {
-    // Agent's commission_rate is a percentage → compute percentage discount
-    wholesalePrice = pkgPrice - (pkgPrice * commissionRate / 100);
+    wholesalePrice = Math.max(0, pkgPrice - (pkgPrice * commissionRate / 100));
   } else {
-    // No personal agent commission → fall back to the package-level fixed discount
     wholesalePrice = Math.max(0, pkgPrice - pkgDiscount);
   }
   const savings = pkgPrice - wholesalePrice;
+
+
 
 
   const roomTypes = [
@@ -267,7 +265,6 @@ const AgentBookForClient = () => {
             navigate(`/payment/callback?reference=${response.reference}`);
           },
           onClose: () => {
-            console.log("Payment cancelled");
             toast.info("Payment was cancelled. You can retry or change the payment method.");
             // Do NOT proceed to Step 4 (Success)
           },
@@ -316,10 +313,10 @@ const AgentBookForClient = () => {
                   <span className="text-sm text-muted-foreground line-through">₦{Number(pkg.price).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-chart-2 mt-1">
-                  <Percent className="h-3 w-3" />
+                  <CheckCircle2 className="h-3.5 w-3.5" />
                   {commissionType === "fixed"
-                    ? `Fixed commission: ₦${savings.toLocaleString()}`
-                    : `You save ₦${savings.toLocaleString()} (${commissionRate}%)`}
+                    ? `Fixed commission: ${formatPrice(commissionRate)}`
+                    : `You save ${formatPrice(savings)} (${commissionRate}%)`}
                 </div>
               </div>
 
@@ -595,13 +592,23 @@ const AgentBookForClient = () => {
           <Card>
             <CardContent className="py-12 text-center space-y-4">
               <CheckCircle className="h-16 w-16 text-chart-2 mx-auto" />
-              <h2 className="text-2xl font-bold">Booking Created!</h2>
+              <h2 className="text-2xl font-bold">
+                {paymentMethod === "bank_transfer" ? "Booking Submitted!" : "Booking Created!"}
+              </h2>
               <p className="text-muted-foreground">
                 Reference: <span className="font-mono font-bold text-foreground">{bookingRef}</span>
               </p>
               <p className="text-sm text-muted-foreground">
                 Booking for <strong>{selectedClient?.full_name}</strong> at wholesale price of ₦{wholesalePrice.toLocaleString()}
               </p>
+              {paymentMethod === "bank_transfer" && transferProofUrl && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 max-w-sm mx-auto">
+                  <p className="text-xs font-semibold text-emerald-700 flex items-center justify-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Payment Proof Submitted
+                  </p>
+                </div>
+              )}
               <div className="flex gap-2 justify-center pt-4">
                 <Button variant="outline" onClick={() => navigate("/agent/bookings")}>View Bookings</Button>
                 <Button onClick={() => navigate("/agent/packages")}>Book Another</Button>

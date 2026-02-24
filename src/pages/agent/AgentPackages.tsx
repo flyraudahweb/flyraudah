@@ -32,7 +32,7 @@ const AgentPackages = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("agents")
-        .select("commission_rate, id")
+        .select("commission_rate, commission_type, id")
         .eq("user_id", user!.id)
         .maybeSingle();
       return data;
@@ -54,9 +54,15 @@ const AgentPackages = () => {
     },
   });
 
-  const commissionRate = agent?.commission_rate || 0;
+  const commissionRate = Number(agent?.commission_rate || 0);
+  const commissionType = agent?.commission_type ?? "percentage";
 
-  const getWholesalePrice = (price: number) => price - (price * commissionRate / 100);
+  const getWholesalePrice = (price: number) => {
+    if (commissionType === "fixed") {
+      return Math.max(0, price - commissionRate);
+    }
+    return Math.max(0, price - (price * commissionRate / 100));
+  };
 
   const filtered = packages.filter((pkg) => {
     const matchType = typeFilter === "all" || pkg.type === typeFilter;
@@ -77,7 +83,9 @@ const AgentPackages = () => {
           <p className="text-sm text-muted-foreground mt-1">
             Browse packages at your{" "}
             {commissionRate > 0 ? (
-              <span className="font-semibold text-emerald-600">{commissionRate}% agent discount</span>
+              <span className="font-semibold text-emerald-600">
+                {commissionType === "fixed" ? `${formatPrice(commissionRate)}` : `${commissionRate}%`} agent discount
+              </span>
             ) : (
               "exclusive agent pricing"
             )}
@@ -108,8 +116,8 @@ const AgentPackages = () => {
               key={type}
               onClick={() => setTypeFilter(type)}
               className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${typeFilter === type
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted/60 text-foreground hover:bg-muted"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted/60 text-foreground hover:bg-muted"
                 }`}
             >
               {type === "all" ? "All" : type.charAt(0).toUpperCase() + type.slice(1)}

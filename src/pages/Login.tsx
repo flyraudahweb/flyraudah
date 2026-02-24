@@ -65,7 +65,9 @@ const Login = () => {
 
         // 1. Establish the "Safe Default" based ON ROLES
         let target = "/dashboard";
-        if (isAdmin) target = "/admin";
+        const isStaffOrAdmin = roles.includes("admin") || roles.includes("super_admin") || roles.includes("staff");
+
+        if (isStaffOrAdmin) target = "/admin";
         else if (hasAgentRole) target = "/agent";
 
         // 2. Determine if the 'from' path is safe to use
@@ -74,11 +76,11 @@ const Login = () => {
           const isTargetingAdminArea = from.startsWith("/admin");
           const isTargetingAgentArea = from.startsWith("/agent");
 
-          if (isAdmin && isTargetingAdminArea) {
-            target = from; // Admin going to an admin page
+          if (isStaffOrAdmin && isTargetingAdminArea) {
+            target = from; // Admin/Staff going to an admin page
           } else if (hasAgentRole && isTargetingAgentArea) {
             target = from; // Agent going to an agent page
-          } else if (!isAdmin && !hasAgentRole && !isTargetingAdminArea && !isTargetingAgentArea) {
+          } else if (!isStaffOrAdmin && !hasAgentRole && !isTargetingAdminArea && !isTargetingAgentArea) {
             target = from; // User going to a user page
           } else {
           }

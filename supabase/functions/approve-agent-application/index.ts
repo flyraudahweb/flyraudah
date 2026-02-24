@@ -34,6 +34,8 @@ serve(async (req) => {
     const {
       application_id,
       temp_password,
+      commission_rate = 0,
+      commission_type = "percentage",
     } = await req.json();
 
     if (!application_id) throw new Error("application_id required");
@@ -87,6 +89,8 @@ serve(async (req) => {
       email: app.email,
       phone: app.phone,
       agent_code: agentCode,
+      commission_rate: Number(commission_rate),
+      commission_type: commission_type,
       status: "active",
     }, { onConflict: "user_id" });
     if (agentErr) throw new Error("Failed to create agent: " + agentErr.message);

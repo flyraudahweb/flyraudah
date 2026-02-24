@@ -114,6 +114,7 @@ export type Database = {
           agent_code: string
           business_name: string
           commission_rate: number
+          commission_type: "percentage" | "fixed"
           contact_person: string
           created_at: string
           email: string
@@ -127,6 +128,7 @@ export type Database = {
           agent_code: string
           business_name: string
           commission_rate?: number
+          commission_type?: "percentage" | "fixed"
           contact_person: string
           created_at?: string
           email: string
@@ -140,6 +142,7 @@ export type Database = {
           agent_code?: string
           business_name?: string
           commission_rate?: number
+          commission_type?: "percentage" | "fixed"
           contact_person?: string
           created_at?: string
           email?: string

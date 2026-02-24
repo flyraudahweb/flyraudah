@@ -97,17 +97,44 @@ const AdminPayments = () => {
       if (status === "verified") {
         await supabase.from("bookings").update({ status: "confirmed" }).eq("id", bookingId);
         try {
-          await supabase.functions.invoke("send-payment-receipt", {
+          const { data } = await supabase.functions.invoke("send-payment-receipt", {
             body: { bookingId, paymentAmount: amount },
           });
-        } catch (emailErr) {
-          console.error("Receipt email failed:", emailErr);
+          return data;
+        } catch (err) {
+          console.error("Error invoking send-payment-receipt function:", err);
+          return { error: "Invocation failed", emailSent: false, notifications: [] };
         }
       }
+      return { success: true };
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["admin-all-payments"] });
-      toast({ title: `Payment ${vars.status}`, description: vars.status === "verified" ? "Receipt email sent to pilgrim" : undefined });
+
+      if (vars.status === "verified") {
+        const res = data as any;
+        const emailSent = res?.emailSent;
+        const notificationsCreated = res?.notifications?.some((n: any) => n.success);
+
+        let description = "";
+        if (emailSent && notificationsCreated) {
+          description = "Receipt sent via Email & In-app notifications.";
+        } else if (notificationsCreated) {
+          description = "In-app notifications sent. (Email restricted to verified admin).";
+        } else if (emailSent) {
+          description = "Receipt email sent successfully.";
+        } else {
+          description = "Payment verified, but notifications failed.";
+        }
+
+        toast({
+          title: "Payment Verified ✓",
+          description,
+          variant: !notificationsCreated && !emailSent ? "destructive" : !emailSent ? "default" : undefined
+        });
+      } else {
+        toast({ title: "Payment Rejected", description: "The payment has been marked as rejected." });
+      }
       setSelectedPayment(null);
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),

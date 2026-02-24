@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, XCircle, Clock, Briefcase, Plus, UserPlus, Eye, EyeOff, Copy, Trash2, Edit } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Briefcase, Plus, UserPlus, Eye, EyeOff, Copy, Trash2, Edit, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ const statusColors: Record<string, string> = {
 interface ApproveDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (password: string) => void;
+  onConfirm: (password: string, commissionRate: number, commissionType: "percentage" | "fixed") => void;
   isPending: boolean;
   title: string;
   description: string;
@@ -52,13 +52,17 @@ const ApproveDialog = ({
 }: ApproveDialogProps) => {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [commissionRate, setCommissionRate] = useState("0");
+  const [commissionType, setCommissionType] = useState<"percentage" | "fixed">("percentage");
 
   const valid = password.trim().length >= 8;
 
   const handleConfirm = () => {
     if (!valid) return;
-    onConfirm(password.trim());
+    onConfirm(password.trim(), parseFloat(commissionRate) || 0, commissionType);
     setPassword("");
+    setCommissionRate("0");
+    setCommissionType("percentage");
   };
 
   return (
@@ -90,6 +94,40 @@ const ApproveDialog = ({
           <p className="text-xs text-muted-foreground">
             The agent will use this to log in for the first time. Ask them to change it immediately.
           </p>
+        </div>
+
+        <div className="space-y-4 py-2 border-t mt-4">
+          <Label className="text-sm font-bold">Commission Settings</Label>
+          <div className="space-y-1.5">
+            <Label>Commission Type</Label>
+            <div className="flex rounded-md border overflow-hidden">
+              {(["percentage", "fixed"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setCommissionType(t)}
+                  className={`flex-1 py-1.5 text-xs font-medium transition-colors ${commissionType === t
+                    ? "bg-secondary text-white"
+                    : "text-muted-foreground hover:bg-muted"
+                    }`}
+                >
+                  {t === "percentage" ? "% Rate" : "₦ Fixed"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>
+              {commissionType === "percentage" ? "Commission Rate (%)" : "Fixed Commission (₦)"}
+            </Label>
+            <Input
+              type="number"
+              min="0"
+              value={commissionRate}
+              onChange={(e) => setCommissionRate(e.target.value)}
+              placeholder={commissionType === "percentage" ? "e.g. 10" : "e.g. 50000"}
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -375,10 +413,18 @@ const EditAgentDialog = ({ open, agent, onClose, onConfirm, isPending }: EditAge
               >
                 <option value="active">Active</option>
                 <option value="suspended">Suspended</option>
-                <option value="inactive">Inactive</option>
               </select>
             </div>
           </div>
+
+          {form.commission_type === "percentage" && parseFloat(form.commission_rate) > 100 && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 text-red-800 text-xs">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <p>
+                <strong>Warning:</strong> You've set a percentage rate above 100%. If this is a flat Naira amount, please change the type to <strong>₦ Fixed</strong>.
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -454,9 +500,14 @@ const AdminAgentApplications = () => {
 
   /** Approve pending application / create account for approved-no-user_id */
   const approveMutation = useMutation({
-    mutationFn: async ({ app, password }: { app: any; password: string }) => {
+    mutationFn: async ({ app, password, commissionRate, commissionType }: { app: any; password: string; commissionRate: number; commissionType: string }) => {
       const res = await supabase.functions.invoke("approve-agent-application", {
-        body: { application_id: app.id, temp_password: password },
+        body: {
+          application_id: app.id,
+          temp_password: password,
+          commission_rate: commissionRate,
+          commission_type: commissionType
+        },
       });
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
@@ -812,23 +863,29 @@ const AdminAgentApplications = () => {
       {/* ── Dialogs ─────────────────────────────────────────────────────── */}
 
       {/* Approve pending application */}
-      <ApproveDialog
-        open={!!approveTarget}
-        onClose={() => setApproveTarget(null)}
-        onConfirm={(pw) => approveMutation.mutate({ app: approveTarget, password: pw })}
-        isPending={approveMutation.isPending}
-        title={`Approve: ${approveTarget?.business_name ?? ""}`}
-        description="Set a temporary password for the agent's login. They should change it on first sign-in."
-      />
+      {approveTarget && (
+        <ApproveDialog
+          open={!!approveTarget}
+          onClose={() => setApproveTarget(null)}
+          onConfirm={(password, rate, type) =>
+            approveMutation.mutate({ app: approveTarget, password, commissionRate: rate, commissionType: type })
+          }
+          isPending={approveMutation.isPending}
+          title="Approve Agent Application"
+          description={`Set a password and commission for ${approveTarget.business_name}`}
+        />
+      )}
 
       {/* Create account for approved applications without user_id */}
       <ApproveDialog
         open={!!createAccountTarget}
         onClose={() => setCreateAccountTarget(null)}
-        onConfirm={(pw) => approveMutation.mutate({ app: createAccountTarget, password: pw })}
+        onConfirm={(pw, rate, type) =>
+          approveMutation.mutate({ app: createAccountTarget, password: pw, commissionRate: rate, commissionType: type })
+        }
         isPending={approveMutation.isPending}
         title={`Create Account: ${createAccountTarget?.business_name ?? ""}`}
-        description="This application is approved but has no account yet. Set a temporary password to create the agent login."
+        description="Set a temporary password and commission for the agent's account."
       />
 
       {/* Edit agent */}

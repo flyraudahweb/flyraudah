@@ -62,6 +62,7 @@ const ALL_PERMISSIONS = [
 type StaffMember = {
     user_id: string;
     full_name: string | null;
+    email: string | null;
     role: string;
     permissions: string[];
 };
@@ -85,7 +86,7 @@ function useStaffList() {
             // Fetch profiles
             const { data: profiles } = await supabase
                 .from("profiles")
-                .select("id, full_name")
+                .select("id, full_name, email")
                 .in("id", userIds);
 
             // Fetch permissions
@@ -94,12 +95,16 @@ function useStaffList() {
                 .select("user_id, permission")
                 .in("user_id", userIds);
 
-            return roleRows.map((r) => ({
-                user_id: r.user_id,
-                role: r.role as string,
-                full_name: profiles?.find((p) => p.id === r.user_id)?.full_name ?? null,
-                permissions: perms?.filter((p) => p.user_id === r.user_id).map((p) => p.permission) ?? [],
-            }));
+            return roleRows.map((r) => {
+                const profile = profiles?.find((p) => p.id === r.user_id);
+                return {
+                    user_id: r.user_id,
+                    role: r.role as string,
+                    full_name: profile?.full_name ?? null,
+                    email: profile?.email ?? null,
+                    permissions: perms?.filter((p) => p.user_id === r.user_id).map((p) => p.permission) ?? [],
+                };
+            });
         },
     });
 }
@@ -403,11 +408,18 @@ export default function AdminStaffManagement() {
                                                 {isMe && <Badge variant="outline" className="text-xs">You</Badge>}
                                                 <RoleBadge role={member.role} />
                                             </div>
-                                            <CardDescription className="text-xs mt-0.5">
-                                                {member.role === "staff"
-                                                    ? `${member.permissions.length} permission${member.permissions.length !== 1 ? "s" : ""} assigned`
-                                                    : "Full access to all sections"}
-                                            </CardDescription>
+                                            <div className="flex flex-col gap-0.5 mt-0.5">
+                                                {member.email && (
+                                                    <span className="text-xs text-secondary font-medium truncate">
+                                                        {member.email}
+                                                    </span>
+                                                )}
+                                                <CardDescription className="text-xs">
+                                                    {member.role === "staff"
+                                                        ? `${member.permissions.length} permission${member.permissions.length !== 1 ? "s" : ""} assigned`
+                                                        : "Full access to all sections"}
+                                                </CardDescription>
+                                            </div>
                                         </div>
                                         <div className="flex gap-2 shrink-0">
                                             {canEdit && (

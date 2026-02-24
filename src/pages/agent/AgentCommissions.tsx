@@ -25,7 +25,7 @@ const AgentCommissions = () => {
   });
 
   const commissionRate = agent?.commission_rate || 0;
-  const commissionType: "percentage" | "fixed" = (agent as any)?.commission_type ?? "percentage";
+  const commissionType = agent?.commission_type ?? "percentage";
 
   // Helper: compute commission per payment amount
   const calcCommission = (amount: number) =>
@@ -64,12 +64,31 @@ const AgentCommissions = () => {
   const pendingPayments = payments.filter((p) => p.status === "pending");
 
   const totalEarned = commissionType === "fixed"
-    ? verifiedPayments.length * commissionRate
-    : verifiedPayments.reduce((sum, p) => sum + Number(p.amount) * (commissionRate / 100), 0);
+    ? bookings.reduce((sum, b) => {
+      const hasVerifiedPayment = payments.some(p => p.booking_id === b.id && p.status === "verified");
+      if (!hasVerifiedPayment) return sum;
+      const retailPrice = Number((b as any).packages?.price || 0);
+      return sum + Math.min(retailPrice, commissionRate);
+    }, 0)
+    : verifiedPayments.reduce((sum, p) => {
+      const booking = bookings.find(b => b.id === p.booking_id);
+      const retailPrice = Number((booking as any)?.packages?.price || 0);
+      return sum + Math.min(retailPrice, (retailPrice * commissionRate / 100));
+    }, 0);
 
   const pendingPayout = commissionType === "fixed"
-    ? pendingPayments.length * commissionRate
-    : pendingPayments.reduce((sum, p) => sum + Number(p.amount) * (commissionRate / 100), 0);
+    ? bookings.reduce((sum, b) => {
+      const hasVerifiedPayment = payments.some(p => p.booking_id === b.id && p.status === "verified");
+      const hasPendingPayment = payments.some(p => p.booking_id === b.id && p.status === "pending");
+      if (hasVerifiedPayment || !hasPendingPayment) return sum;
+      const retailPrice = Number((b as any).packages?.price || 0);
+      return sum + Math.min(retailPrice, commissionRate);
+    }, 0)
+    : pendingPayments.reduce((sum, p) => {
+      const booking = bookings.find(b => b.id === p.booking_id);
+      const retailPrice = Number((booking as any)?.packages?.price || 0);
+      return sum + Math.min(retailPrice, (retailPrice * commissionRate / 100));
+    }, 0);
 
   const totalRevenue = verifiedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
@@ -94,13 +113,14 @@ const AgentCommissions = () => {
       .filter((p) => p.status === "pending")
       .reduce((sum, p) => sum + Number(p.amount), 0);
 
+    const retailPrice = Number((booking as any).packages?.price || 0);
     const commission = commissionType === "fixed"
-      ? (bookingPayments.filter(p => p.status === "verified").length > 0 ? commissionRate : 0)
-      : paidAmount * (commissionRate / 100);
+      ? (bookingPayments.some(p => p.status === "verified") ? Math.min(retailPrice, commissionRate) : 0)
+      : (paidAmount > 0 ? Math.min(retailPrice, (retailPrice * commissionRate / 100)) : 0);
 
     const pendingCommission = commissionType === "fixed"
-      ? (bookingPayments.filter(p => p.status === "pending").length > 0 ? commissionRate : 0)
-      : pendingAmount * (commissionRate / 100);
+      ? (!bookingPayments.some(p => p.status === "verified") && bookingPayments.some(p => p.status === "pending") ? Math.min(retailPrice, commissionRate) : 0)
+      : (pendingAmount > 0 ? Math.min(retailPrice, (retailPrice * commissionRate / 100)) : 0);
 
     return { ...booking, paidAmount, pendingAmount, commission, pendingCommission };
   }).filter((b) => b.paidAmount > 0 || b.pendingAmount > 0);

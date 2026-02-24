@@ -23,7 +23,7 @@ serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch booking with package details
+    // Fetch booking with package details and agent info
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .select("*, packages(name, type, category, price, currency)")
@@ -36,8 +36,20 @@ serve(async (req: Request) => {
 
     // Fetch user email from auth
     const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(booking.user_id);
-    if (authError || !authUser?.user?.email) {
-      throw new Error("User email not found");
+    let userEmail = authUser?.user?.email;
+
+    // Fallback: Fetch email from profiles if auth lookup fails
+    if (!userEmail) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", booking.user_id)
+        .single();
+      userEmail = profile?.email;
+    }
+
+    if (!userEmail) {
+      console.warn("User email not found for booking:", bookingId);
     }
 
     // Fetch profile for full name
@@ -47,7 +59,27 @@ serve(async (req: Request) => {
       .eq("id", booking.user_id)
       .single();
 
-    const userEmail = authUser.user.email;
+    // Fetch agent email if booking was made by an agent
+    let agentEmail = null;
+    if (booking.agent_id) {
+      const { data: agentData } = await supabase
+        .from("agents")
+        .select("email")
+        .eq("id", booking.agent_id)
+        .single();
+      agentEmail = agentData?.email;
+    }
+
+    // Note: In Resend sandbox mode, we can only send to the verified owner email.
+    // For now, we only include the admin to ensure delivery and avoid 403 errors.
+    const adminEmail = "flyraudahweb@gmail.com";
+    const recipients = [userEmail, agentEmail, adminEmail]
+      .filter(Boolean)
+      .filter(email => email === adminEmail) as string[];
+
+    // We keep the original emails for in-app notifications
+    const pilgrimEmail = userEmail;
+    const bookingAgentEmail = agentEmail;
     const userName = profile?.full_name || booking.full_name || "Valued Customer";
     const packageInfo = booking.packages;
     const amount = paymentAmount || packageInfo?.price || 0;
@@ -61,6 +93,39 @@ serve(async (req: Request) => {
 
     const formatAmount = (val: number) =>
       new Intl.NumberFormat("en-NG", { style: "currency", currency }).format(val);
+
+    // Create in-app notifications
+    const notificationResults = [];
+
+    // Notification for the pilgrim
+    const { error: pilgrimNotifError } = await supabase.from("notifications").insert({
+      user_id: booking.user_id,
+      title: "Payment Verified ✓",
+      message: `Your payment of ${formatAmount(amount)} for ${packageInfo?.name || "your package"} has been verified.`,
+      type: "success",
+      link: "/dashboard/bookings"
+    });
+    notificationResults.push({ type: "pilgrim", success: !pilgrimNotifError });
+
+    // Notification for the agent (if applicable)
+    if (booking.agent_id) {
+      const { data: agentAccount } = await supabase
+        .from("agents")
+        .select("user_id")
+        .eq("id", booking.agent_id)
+        .single();
+
+      if (agentAccount?.user_id) {
+        const { error: agentNotifError } = await supabase.from("notifications").insert({
+          user_id: agentAccount.user_id,
+          title: "Client Payment Verified ✓",
+          message: `Payment of ${formatAmount(amount)} for client ${userName} has been verified.`,
+          type: "success",
+          link: "/agent/bookings"
+        });
+        notificationResults.push({ type: "agent", success: !agentNotifError });
+      }
+    }
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -148,29 +213,45 @@ serve(async (req: Request) => {
 </body>
 </html>`;
 
-    // Send email via Resend
-    const emailRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Raudah Travels <onboarding@resend.dev>",
-        to: [userEmail],
-        subject: `Payment Receipt — ${bookingRef}`,
-        html: emailHtml,
-      }),
-    });
+    let emailSent = false;
+    let emailError = null;
 
-    const emailData = await emailRes.json();
+    try {
+      // Note: In Resend sandbox mode, we can only send to the verified owner email.
+      // We send the receipt to the admin for verification, while the user/agent get in-app notifications.
+      const emailRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Raudah Travels <onboarding@resend.dev>",
+          to: recipients,
+          subject: `Payment Receipt — ${bookingRef}`,
+          html: emailHtml,
+        }),
+      });
 
-    if (!emailRes.ok) {
-      console.error("Resend error:", emailData);
-      throw new Error(`Email send failed: ${JSON.stringify(emailData)}`);
+      const emailData = await emailRes.json();
+      if (emailRes.ok) {
+        emailSent = true;
+      } else {
+        emailError = emailData;
+        console.error("Resend error (expected in sandbox):", emailData);
+      }
+    } catch (e) {
+      emailError = e.message;
+      console.error("Email send exception:", e);
     }
 
-    return new Response(JSON.stringify({ success: true, emailId: emailData.id }), {
+    return new Response(JSON.stringify({
+      success: true,
+      emailSent,
+      emailError,
+      notifications: notificationResults,
+      message: emailSent ? "Receipt delivered via Email & Supabase" : "Receipt delivered via Supabase (Email restricted)"
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
