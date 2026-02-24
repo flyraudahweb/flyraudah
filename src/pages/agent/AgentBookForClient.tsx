@@ -219,8 +219,20 @@ const AgentBookForClient = () => {
 
       // Card → Paystack Inline Popup
       if (paymentMethod === "paystack") {
-        // Refresh session so the client sends a fresh valid JWT (verify_jwt: true on edge fn)
-        await supabase.auth.refreshSession();
+        try {
+          // Re-verify session before invoking edge function
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error("Please log in again to continue.");
+
+          // Only refresh if session is about to expire (within 5 mins)
+          const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+          if (expiresAt && (expiresAt - Date.now()) < 5 * 60 * 1000) {
+            await supabase.auth.refreshSession();
+          }
+        } catch (authErr) {
+          console.warn("Auth check failed:", authErr);
+        }
+
         const { data: paystackData, error: paystackError } = await supabase.functions.invoke(
           "create-paystack-checkout",
           { body: { email: user.email, bookingId: bookingData.id } }

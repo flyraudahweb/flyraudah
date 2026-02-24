@@ -38,6 +38,7 @@ const AdminPilgrims = lazyWithRetry(() => import("./pages/admin/AdminPilgrims"))
 const AdminAnalytics = lazyWithRetry(() => import("./pages/admin/AdminAnalytics"));
 const AdminIdTags = lazyWithRetry(() => import("./pages/admin/AdminIdTags"));
 const AdminAgentApplications = lazyWithRetry(() => import("./pages/admin/AdminAgentApplications"));
+const AdminAgents = lazyWithRetry(() => import("./pages/admin/AdminAgents"));
 const AdminAiAssistant = lazyWithRetry(() => import("./pages/admin/AdminAiAssistant"));
 const AdminBankAccounts = lazyWithRetry(() => import("./pages/admin/AdminBankAccounts"));
 const AdminActivity = lazyWithRetry(() => import("./pages/admin/AdminActivity"));
@@ -160,6 +161,9 @@ const App = () => (
                     } />
                     <Route path="id-tags" element={
                       <ProtectedRoute requiredPermission="id_tags"><AdminIdTags /></ProtectedRoute>
+                    } />
+                    <Route path="agents" element={
+                      <ProtectedRoute requiredPermission="agents"><AdminAgents /></ProtectedRoute>
                     } />
                     <Route path="agent-applications" element={
                       <ProtectedRoute requiredPermission="agents"><AdminAgentApplications /></ProtectedRoute>

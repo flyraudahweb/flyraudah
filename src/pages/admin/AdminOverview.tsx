@@ -15,17 +15,24 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, PieChart, Pie, Cell, ResponsiveContainer
 } from "recharts";
-import { format, subMonths, startOfMonth } from "date-fns";
+import { format, subMonths, startOfMonth, subDays, startOfDay } from "date-fns";
 
 const AdminOverview = () => {
   // Main stats
   const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
+      const now = new Date();
+      const currentMonthStart = startOfMonth(now);
+
+      // Weekly boundaries for "Real" trends
+      const sevenDaysAgo = subDays(now, 7);
+      const fourteenDaysAgo = subDays(now, 14);
+
       const [pkgRes, bookRes, payRes, agentRes, profileRes] = await Promise.all([
         supabase.from("packages").select("id", { count: "exact", head: true }),
-        supabase.from("bookings").select("id, status", { count: "exact" }),
-        supabase.from("payments").select("amount, status"),
+        supabase.from("bookings").select("id, status, created_at"),
+        supabase.from("payments").select("amount, status, created_at"),
         supabase.from("agents").select("id", { count: "exact", head: true }),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
       ]);
@@ -34,8 +41,31 @@ const AdminOverview = () => {
         .filter((p) => p.status === "verified")
         .reduce((sum, p) => sum + Number(p.amount), 0);
 
+      // Weekly Trends (Last 7 Days vs Previous 7 Days)
+      const currentWeekPayments = (payRes.data || [])
+        .filter(p => p.status === "verified" && new Date(p.created_at) >= sevenDaysAgo);
+      const prevWeekPayments = (payRes.data || [])
+        .filter(p => p.status === "verified" && new Date(p.created_at) >= fourteenDaysAgo && new Date(p.created_at) < sevenDaysAgo);
+
+      const currentRev = currentWeekPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const prevRev = prevWeekPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+      // Display absolute amount if baseline is 0, otherwise percentage
+      const revenueTrend = prevRev > 0
+        ? `${Math.round(((currentRev - prevRev) / prevRev) * 100)}%`
+        : (currentRev > 0 ? `+${formatPrice(currentRev)}` : "0%");
+
+      const currentWeekBookings = (bookRes.data || [])
+        .filter(b => b.status !== 'cancelled' && new Date(b.created_at) >= sevenDaysAgo).length;
+      const prevWeekBookings = (bookRes.data || [])
+        .filter(b => b.status !== 'cancelled' && new Date(b.created_at) >= fourteenDaysAgo && new Date(b.created_at) < sevenDaysAgo).length;
+
+      const bookingTrend = prevWeekBookings > 0
+        ? `${Math.round(((currentWeekBookings - prevWeekBookings) / prevWeekBookings) * 100)}%`
+        : (currentWeekBookings > 0 ? `+${currentWeekBookings}` : "0%");
+
       const pendingPayments = (payRes.data || []).filter((p) => p.status === "pending").length;
-      const totalBookings = bookRes.count || 0;
+      const totalBookings = bookRes.data?.length || 0;
       const confirmedBookings = (bookRes.data || []).filter((b) => b.status === "confirmed").length;
       const activeBookings = (bookRes.data || []).filter((b) => b.status !== "cancelled").length;
       const conversionRate = totalBookings > 0 ? Math.round((confirmedBookings / totalBookings) * 100) : 0;
@@ -50,6 +80,8 @@ const AdminOverview = () => {
         agents: agentRes.count || 0,
         pilgrims: profileRes.count || 0,
         conversionRate,
+        revenueTrend,
+        bookingTrend
       };
     },
   });
@@ -130,8 +162,24 @@ const AdminOverview = () => {
   });
 
   const statCards = [
-    { label: "Total Revenue", value: formatPrice(stats?.totalRevenue || 0), icon: CreditCard, color: "text-primary", bg: "bg-primary/10", trend: "+12%", up: true },
-    { label: "Total Bookings", value: String(stats?.totalBookings || 0), icon: CalendarCheck, color: "text-secondary", bg: "bg-secondary/10", trend: "+8%", up: true },
+    {
+      label: "Total Revenue",
+      value: formatPrice(stats?.totalRevenue || 0),
+      icon: CreditCard,
+      color: "text-primary",
+      bg: "bg-primary/10",
+      trend: stats?.revenueTrend,
+      up: stats?.revenueTrend && !stats.revenueTrend.startsWith("-") && stats.revenueTrend !== "0%"
+    },
+    {
+      label: "Total Bookings",
+      value: String(stats?.totalBookings || 0),
+      icon: CalendarCheck,
+      color: "text-secondary",
+      bg: "bg-secondary/10",
+      trend: stats?.bookingTrend,
+      up: stats?.bookingTrend && !stats.bookingTrend.startsWith("-") && stats.bookingTrend !== "0%"
+    },
     { label: "Active Pilgrims", value: String(stats?.confirmedBookings || 0), icon: UserCheck, color: "text-primary", bg: "bg-primary/10" },
     { label: "Pending Payments", value: String(stats?.pendingPayments || 0), icon: CreditCard, color: "text-destructive", bg: "bg-destructive/10", urgent: (stats?.pendingPayments || 0) > 0 },
     { label: "Total Agents", value: String(stats?.agents || 0), icon: Users, color: "text-secondary", bg: "bg-secondary/10" },

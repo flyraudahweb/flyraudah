@@ -40,6 +40,7 @@ const ALL_MENU_ITEMS = [
   { title: "Pilgrims", url: "/admin/pilgrims", icon: Users, permission: "pilgrims" },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3, permission: "analytics" },
   { title: "ID Tags", url: "/admin/id-tags", icon: Barcode, permission: "id_tags" },
+  { title: "Agents", url: "/admin/agents", icon: Users, permission: "agents" },
   { title: "Agent Applications", url: "/admin/agent-applications", icon: UserPlus, permission: "agents" },
   { title: "Bank Accounts", url: "/admin/bank-accounts", icon: Building2, permission: "bank_accounts" },
   { title: "Activity", url: "/admin/activity", icon: History, permission: "activity" },
