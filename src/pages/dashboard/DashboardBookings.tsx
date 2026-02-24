@@ -93,10 +93,17 @@ const DashboardBookings = () => {
         });
       }
 
+      const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+      if (!publicKey) {
+        console.error("Paystack Public Key (VITE_PAYSTACK_PUBLIC_KEY) is missing!");
+        toast.error("Payment configuration error.");
+        return;
+      }
+
       const handler = (window as any).PaystackPop.setup({
-        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-        email: user.email,
-        amount: Math.round(outstanding * 100),
+        key: publicKey,
+        email: user?.email || "",
+        amount: Math.round((paystackData.amount || outstanding) * 100),
         access_code: paystackData.access_code,
         callback: (response: any) => {
           navigate(`/payment/callback?reference=${response.reference}`);

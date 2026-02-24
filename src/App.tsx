@@ -190,6 +190,7 @@ const App = () => (
                     <Route path="staff" element={
                       <ProtectedRoute requiredPermission="staff_management"><AdminStaffManagement /></ProtectedRoute>
                     } />
+                    <Route path="profile" element={<DashboardProfile />} />
                   </Route>
                   <Route
                     path="/agent"

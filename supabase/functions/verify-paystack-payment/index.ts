@@ -25,8 +25,8 @@ serve(async (req: Request) => {
       });
     }
 
-    // 1. Verify with Paystack API
-    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+    // 1. Verify with Paystack API (server-side, authoritative)
+    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${PAYSTACK_API_KEY}` },
     });
@@ -53,7 +53,7 @@ serve(async (req: Request) => {
     // 2. Fetch booking and check status
     const { data: booking, error: bookingErr } = await supabase
       .from("bookings")
-      .select("id, status, package_id, agent_id")
+      .select("id, status, package_id, agent_id, user_id")
       .eq("id", bookingId)
       .single();
 
@@ -61,8 +61,55 @@ serve(async (req: Request) => {
       throw new Error("Booking not found in database");
     }
 
+    // ── SECURITY: Authorize requester (Issue #8) ──
+    const authHeader = req.headers.get("Authorization");
+    const isServiceRole = authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+
+    if (!isServiceRole) {
+      if (!authHeader) throw new Error("Missing Authorization header");
+
+      const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user }, error: userError } = await userClient.auth.getUser();
+      if (userError || !user) throw new Error("Unauthorized user");
+
+      // Check if user is the booking owner or an admin
+      const { data: userRole } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+
+      if (booking.user_id !== user.id && !userRole) {
+        console.error(`PERMISSION DENIED: User ${user.id} attempted to verify booking ${bookingId} owned by ${booking.user_id}`);
+        return new Response(JSON.stringify({ error: "Access denied" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // ── FIX #2 + #5: Idempotency guard — if already confirmed, return immediately ──
     if (booking.status === "confirmed") {
-      // Idempotent — already confirmed
+      return new Response(JSON.stringify({ status: "verified", bookingId }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── FIX #2: Also check if there's already a verified payment to prevent TOCTOU race ──
+    const { data: alreadyVerified } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("booking_id", bookingId)
+      .eq("method", "paystack")
+      .eq("status", "verified")
+      .maybeSingle();
+
+    if (alreadyVerified) {
+      // Payment was verified (likely by webhook), just make sure booking is confirmed too
+      await supabase
+        .from("bookings")
+        .update({ status: "confirmed" })
+        .eq("id", bookingId)
+        .neq("status", "confirmed"); // No-op if already confirmed
       return new Response(JSON.stringify({ status: "verified", bookingId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -80,7 +127,7 @@ serve(async (req: Request) => {
       throw new Error("Package not found");
     }
 
-    // 4. Calculate authoritative expected price (same logic as the DB trigger)
+    // 4. Calculate authoritative expected price (same logic as checkout + webhook)
     let expectedNaira = Number(pkg.price);
     if (booking.agent_id) {
       const { data: agent } = await supabase
@@ -99,8 +146,8 @@ serve(async (req: Request) => {
       }
     }
 
-    // 5. CRITICAL: Reject if paid amount is less than expected (allow 1% rounding tolerance)
-    const tolerance = expectedNaira * 0.01;
+    // 5. CRITICAL: Reject if paid amount is less than expected (₦1 tolerance for rounding)
+    const tolerance = Math.max(1, expectedNaira * 0.01);
     if (paystackNaira < expectedNaira - tolerance) {
       console.error(
         `FRAUD ATTEMPT: booking ${bookingId} — expected ₦${expectedNaira}, Paystack reported ₦${paystackNaira} (ref: ${reference})`
@@ -111,8 +158,7 @@ serve(async (req: Request) => {
       );
     }
 
-
-    // 5. Mark payment as verified
+    // ── FIX #7: Only update pending payments (not already-verified ones) ──
     const { error: updateError } = await supabase
       .from("payments")
       .update({
@@ -121,7 +167,8 @@ serve(async (req: Request) => {
         verified_at: new Date().toISOString(),
       })
       .eq("booking_id", bookingId)
-      .eq("method", "paystack");
+      .eq("method", "paystack")
+      .eq("status", "pending");
 
     if (updateError) throw updateError;
 
@@ -133,7 +180,16 @@ serve(async (req: Request) => {
 
     if (bookingUpdateError) throw bookingUpdateError;
 
-    // 7. Send receipt email (fire-and-forget)
+    // 7. Track activity
+    await supabase.from("user_activity").insert({
+      user_id: booking.user_id,
+      event_type: "payment_verified",
+      package_id: booking.package_id,
+      booking_id: bookingId,
+      metadata: { method: "paystack", reference, amount: paystackNaira, source: "verify_callback" }
+    });
+
+    // 8. Send receipt email (fire-and-forget)
     try {
       await fetch(`${SUPABASE_URL}/functions/v1/send-payment-receipt`, {
         method: "POST",

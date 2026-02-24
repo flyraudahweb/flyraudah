@@ -16,20 +16,28 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller is admin
-    const authHeader = req.headers.get("Authorization")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+    // ── SECURITY: Authorize requester ──
+    const authHeader = req.headers.get("Authorization");
+    const isServiceRole = authHeader === `Bearer ${serviceRoleKey}`;
 
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: user.id,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Unauthorized: admin role required");
+    let user = null;
+    if (!isServiceRole) {
+      if (!authHeader) throw new Error("Missing Authorization header");
+
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user: authUser } } = await userClient.auth.getUser();
+      if (!authUser) throw new Error("Not authenticated");
+      user = authUser;
+
+      const { data: isAdmin } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "admin",
+      });
+      if (!isAdmin) throw new Error("Unauthorized: admin role required");
+    }
 
     const {
       application_id,

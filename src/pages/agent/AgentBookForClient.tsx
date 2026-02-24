@@ -255,10 +255,17 @@ const AgentBookForClient = () => {
           await loadScript();
         }
 
+        const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+        if (!publicKey) {
+          console.error("Paystack Public Key (VITE_PAYSTACK_PUBLIC_KEY) is missing!");
+          toast.error("Payment configuration error.");
+          return;
+        }
+
         const handler = (window as any).PaystackPop.setup({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          email: user.email,
-          amount: Math.round(wholesalePrice * 100),
+          key: publicKey,
+          email: user?.email || "",
+          amount: Math.round((paystackData.amount || wholesalePrice) * 100),
           access_code: paystackData.access_code,
           callback: (response: any) => {
             console.log("Payment success:", response);
@@ -266,7 +273,6 @@ const AgentBookForClient = () => {
           },
           onClose: () => {
             toast.info("Payment was cancelled. You can retry or change the payment method.");
-            // Do NOT proceed to Step 4 (Success)
           },
         });
 

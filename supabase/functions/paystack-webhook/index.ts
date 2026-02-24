@@ -49,17 +49,35 @@ serve(async (req: Request) => {
         const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
         try {
+            // ── FIX #2: Idempotency guard — skip if already verified ──
+            const { data: existingPayment } = await supabaseAdmin
+                .from("payments")
+                .select("id, status")
+                .eq("booking_id", bookingId)
+                .eq("method", "paystack")
+                .eq("status", "verified")
+                .maybeSingle();
+
+            if (existingPayment) {
+                console.log(`Webhook idempotency: payment for booking ${bookingId} already verified, skipping.`);
+                return new Response(JSON.stringify({ received: true, skipped: true }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+
             // 2. Security Hardening: Cross-reference paid amount with DB price
             const { data: booking, error: bookingError } = await supabaseAdmin
                 .from("bookings")
                 .select(`
-          id,
-          packages (
-            price,
-            deposit_allowed,
-            minimum_deposit
-          )
-        `)
+                    id,
+                    agent_id,
+                    packages (
+                        price,
+                        deposit_allowed,
+                        minimum_deposit
+                    )
+                `)
                 .eq("id", bookingId)
                 .single();
 
@@ -68,15 +86,34 @@ serve(async (req: Request) => {
             const paidAmount = amount / 100;
             const pkg = booking.packages as any;
 
-            const isFullPrice = Math.abs(paidAmount - Number(pkg.price)) < 0.01;
-            const isDeposit = pkg.deposit_allowed && pkg.minimum_deposit && Math.abs(paidAmount - Number(pkg.minimum_deposit)) < 0.01;
+            // ── FIX #3 (webhook side): Calculate expected amount accounting for agent pricing ──
+            let expectedPrice = Number(pkg.price);
+            if (booking.agent_id) {
+                const { data: agent } = await supabaseAdmin
+                    .from("agents")
+                    .select("commission_rate, commission_type")
+                    .eq("id", booking.agent_id)
+                    .single();
+
+                if (agent) {
+                    const rate = Number(agent.commission_rate ?? 0);
+                    if (agent.commission_type === "fixed") {
+                        expectedPrice = Math.max(0, expectedPrice - rate);
+                    } else {
+                        expectedPrice = expectedPrice * (1 - rate / 100);
+                    }
+                }
+            }
+
+            const isFullPrice = Math.abs(paidAmount - expectedPrice) < 1; // ₦1 tolerance
+            const isDeposit = pkg.deposit_allowed && pkg.minimum_deposit && Math.abs(paidAmount - Number(pkg.minimum_deposit)) < 1;
 
             if (!isFullPrice && !isDeposit) {
-                console.error(`🚨 FRAUD ALERT (WEBHOOK): Amount mismatch! Paid: ${paidAmount}, Expected: ${pkg.price} or ${pkg.minimum_deposit}`);
+                console.error(`🚨 FRAUD ALERT (WEBHOOK): Amount mismatch! Paid: ${paidAmount}, Expected: ${expectedPrice} or deposit ${pkg.minimum_deposit}`);
                 return new Response("Amount mismatch", { status: 403 });
             }
 
-            // 3. Update DB
+            // ── FIX #7: Narrow update filter — only update pending payments ──
             const { error: updateError } = await supabaseAdmin
                 .from("payments")
                 .update({
@@ -85,7 +122,8 @@ serve(async (req: Request) => {
                     verified_at: new Date().toISOString(),
                 })
                 .eq("booking_id", bookingId)
-                .eq("method", "paystack");
+                .eq("method", "paystack")
+                .eq("status", "pending");
 
             if (updateError) throw updateError;
 
@@ -104,10 +142,10 @@ serve(async (req: Request) => {
                 event_type: "payment_verified",
                 package_id: updatedBooking.package_id,
                 booking_id: bookingId,
-                metadata: { method: "paystack", reference, amount: paidAmount }
+                metadata: { method: "paystack", reference, amount: paidAmount, source: "webhook" }
             });
 
-            // 5. Trigger receipt email
+            // 5. Trigger receipt email (fire-and-forget)
             try {
                 await fetch(`${SUPABASE_URL}/functions/v1/send-payment-receipt`, {
                     method: "POST",
@@ -128,11 +166,11 @@ serve(async (req: Request) => {
         } catch (err) {
             console.error("Webhook processing error:", err.message);
             return new Response(err.message, { status: 500 });
-        });
-  }
+        }
+    }
 
-return new Response(JSON.stringify({ received: true }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-});
+    return new Response(JSON.stringify({ received: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+    });
 });

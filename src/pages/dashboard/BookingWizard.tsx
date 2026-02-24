@@ -427,11 +427,17 @@ const BookingWizard = () => {
           await loadScript();
         }
 
+        const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+        if (!publicKey) {
+          console.error("Paystack Public Key (VITE_PAYSTACK_PUBLIC_KEY) is missing!");
+          toast.error("Payment configuration error. Please contact support.");
+          return;
+        }
+
         const handler = (window as any).PaystackPop.setup({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          email: user.email,
-          // Use server-returned amount (not client-side paymentAmount) for display only
-          amount: Math.round((paystackData.amount ?? paymentAmount) * 100),
+          key: publicKey,
+          email: user?.email || "",
+          amount: Math.round((paystackData.amount || paymentAmount) * 100),
           access_code: paystackData.access_code,
           callback: (response: any) => {
             console.log("Payment success:", response);

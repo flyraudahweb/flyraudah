@@ -16,8 +16,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    // JWT verification is handled by the Supabase gateway if verify_jwt: true is set.
-    // If you disable verify_jwt in config.toml, this function will be public.
+    // JWT verification is handled by the Supabase gateway (verify_jwt: true).
     const { bookingId, email } = await req.json();
 
     if (!bookingId || !email) {
@@ -32,7 +31,7 @@ serve(async (req: Request) => {
 
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
-      .select("id, reference, status, package_id")
+      .select("id, reference, status, package_id, agent_id")
       .eq("id", bookingId)
       .single();
 
@@ -63,12 +62,30 @@ serve(async (req: Request) => {
       });
     }
 
-    const amount = Number(pkg.price);
+    // ── FIX #3: Calculate proper amount — account for agent wholesale pricing ──
+    let amount = Number(pkg.price);
     if (!amount || amount <= 0) {
       return new Response(JSON.stringify({ error: "Invalid package price" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (booking.agent_id) {
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("commission_rate, commission_type")
+        .eq("id", booking.agent_id)
+        .single();
+
+      if (agent) {
+        const rate = Number(agent.commission_rate ?? 0);
+        if (agent.commission_type === "fixed") {
+          amount = Math.max(0, amount - rate);
+        } else {
+          amount = amount * (1 - rate / 100);
+        }
+      }
     }
 
     // Initialize with Paystack — amount comes from DB, never from the client
@@ -81,7 +98,7 @@ serve(async (req: Request) => {
       body: JSON.stringify({
         email,
         amount: Math.round(amount * 100), // kobo
-        reference: booking.reference || `booking-${bookingId}-${Date.now()}`,
+        reference: `${booking.reference || `booking-${bookingId}`}-${Date.now()}`,
         metadata: {
           booking_id: bookingId,
           cancel_action: `${Deno.env.get("SITE_URL") ?? "https://flyraudah.com"}/dashboard`,
