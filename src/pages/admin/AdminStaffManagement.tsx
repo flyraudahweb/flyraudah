@@ -40,7 +40,17 @@ import {
     Trash2,
     Edit2,
     Loader2,
+    MessageSquare,
 } from "lucide-react";
+
+/* ─── Support category definitions ───────────────────────── */
+const SUPPORT_CATEGORIES = [
+    { key: "general", label: "General Inquiry", description: "General questions and inquiries" },
+    { key: "booking", label: "Booking Issues", description: "Booking-related problems" },
+    { key: "payment", label: "Payment Issues", description: "Payment and billing queries" },
+    { key: "documents", label: "Document Problems", description: "Document upload or verification" },
+    { key: "technical", label: "Technical Support", description: "Technical or system issues" },
+];
 
 /* ─── Permission definitions ─────────────────────────────── */
 const ALL_PERMISSIONS = [
@@ -65,6 +75,7 @@ type StaffMember = {
     email: string | null;
     role: string;
     permissions: string[];
+    specialties: string[];
 };
 
 /* ─── Hooks ───────────────────────────────────────────────── */
@@ -95,6 +106,11 @@ function useStaffList() {
                 .select("user_id, permission")
                 .in("user_id", userIds);
 
+            const { data: specs } = await supabase
+                .from("staff_support_specialties" as any)
+                .select("user_id, category")
+                .in("user_id", userIds);
+
             return roleRows.map((r) => {
                 const profile = profiles?.find((p) => p.id === r.user_id);
                 return {
@@ -103,6 +119,7 @@ function useStaffList() {
                     full_name: profile?.full_name ?? null,
                     email: profile?.email ?? null,
                     permissions: perms?.filter((p) => p.user_id === r.user_id).map((p) => p.permission) ?? [],
+                    specialties: (specs as any[])?.filter((s) => s.user_id === r.user_id).map((s) => s.category) ?? [],
                 };
             });
         },
@@ -123,6 +140,7 @@ export default function AdminStaffManagement() {
     const [inviteFullName, setInviteFullName] = useState("");
     const [inviteRole, setInviteRole] = useState<"admin" | "staff">("staff");
     const [invitePerms, setInvitePerms] = useState<string[]>(["overview"]);
+    const [inviteSpecs, setInviteSpecs] = useState<string[]>([]);
     const [inviteTempPassword, setInviteTempPassword] = useState("");
     const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
     const [inviting, setInviting] = useState(false);
@@ -137,10 +155,11 @@ export default function AdminStaffManagement() {
     const [editTarget, setEditTarget] = useState<StaffMember | null>(null);
     const [editPerms, setEditPerms] = useState<string[]>([]);
     const [editRole, setEditRole] = useState<string>("staff");
+    const [editSpecs, setEditSpecs] = useState<string[]>([]);
 
     /* ── Mutations */
     const savePermissions = useMutation({
-        mutationFn: async ({ userId, perms, role }: { userId: string; perms: string[]; role: string }) => {
+        mutationFn: async ({ userId, perms, role, specs }: { userId: string; perms: string[]; role: string; specs: string[] }) => {
             // Update role
             const { error: roleErr } = await supabase
                 .from("user_roles")
@@ -156,9 +175,18 @@ export default function AdminStaffManagement() {
                 );
                 if (permErr) throw permErr;
             }
+
+            // Update support specialties
+            await supabase.from("staff_support_specialties" as any).delete().eq("user_id", userId);
+            if (specs.length > 0) {
+                const { error: specErr } = await supabase.from("staff_support_specialties" as any).insert(
+                    specs.map((c) => ({ user_id: userId, category: c }))
+                );
+                if (specErr) throw specErr;
+            }
         },
         onSuccess: () => {
-            toast.success("Permissions updated successfully");
+            toast.success("Staff profile updated successfully");
             qc.invalidateQueries({ queryKey: ["staff-list"] });
             setEditTarget(null);
         },
@@ -184,8 +212,7 @@ export default function AdminStaffManagement() {
         setInviting(true);
         try {
             const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-            if (!token) { toast.error("You must be logged in"); return; }
+            if (!sessionData?.session?.access_token) { toast.error("You must be logged in"); return; }
 
             const { data, error } = await supabase.functions.invoke("invite-staff", {
                 body: {
@@ -195,11 +222,17 @@ export default function AdminStaffManagement() {
                     permissions: inviteRole === "staff" ? invitePerms : [],
                     temp_password: inviteTempPassword,
                 },
-                headers: { Authorization: `Bearer ${token}` },
             });
 
             if (error) { toast.error(error.message ?? "Failed to create staff account"); return; }
             if (data?.error) { toast.error(data.error); return; }
+
+            // Save specialties for newly created user
+            if (data?.user_id && inviteSpecs.length > 0) {
+                await supabase.from("staff_support_specialties" as any).insert(
+                    inviteSpecs.map((c) => ({ user_id: data.user_id, category: c }))
+                );
+            }
 
             // Show credentials so admin can share them manually
             setCreatedCredentials({ email: inviteEmail.trim(), password: inviteTempPassword });
@@ -217,6 +250,7 @@ export default function AdminStaffManagement() {
         setInviteFullName("");
         setInviteTempPassword("");
         setInvitePerms(["overview"]);
+        setInviteSpecs([]);
         setCreatedCredentials(null);
     };
 
@@ -334,6 +368,30 @@ export default function AdminStaffManagement() {
                                         </div>
                                     )}
 
+                                    {/* Support Specialties */}
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center gap-1.5">
+                                            <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                                            Support Ticket Specialties
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">Which ticket categories will this person handle?</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {SUPPORT_CATEGORIES.map((c) => (
+                                                <label key={c.key} className="flex items-start gap-2 cursor-pointer rounded-md border p-2 hover:bg-muted/40 transition-colors">
+                                                    <Checkbox
+                                                        checked={inviteSpecs.includes(c.key)}
+                                                        onCheckedChange={() => setInviteSpecs((prev) => togglePerm(prev, c.key))}
+                                                        className="mt-0.5"
+                                                    />
+                                                    <div>
+                                                        <p className="text-sm font-medium leading-none">{c.label}</p>
+                                                        <p className="text-xs text-muted-foreground">{c.description}</p>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     {/* Temp password */}
                                     <div className="space-y-1.5">
                                         <Label>Temporary Password <span className="text-destructive">*</span></Label>
@@ -421,7 +479,7 @@ export default function AdminStaffManagement() {
                                                 </CardDescription>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2 shrink-0">
+                                        <div className="flex items-center gap-3">
                                             {canEdit && (
                                                 <Button
                                                     variant="ghost"
@@ -431,6 +489,7 @@ export default function AdminStaffManagement() {
                                                         setEditTarget(member);
                                                         setEditPerms(member.permissions);
                                                         setEditRole(member.role);
+                                                        setEditSpecs(member.specialties);
                                                     }}
                                                 >
                                                     <Edit2 className="h-3.5 w-3.5" />
@@ -455,24 +514,39 @@ export default function AdminStaffManagement() {
                                     </div>
                                 </CardHeader>
 
-                                {member.role === "staff" && member.permissions.length > 0 && (
+                                {(member.role === "staff" && member.permissions.length > 0) || member.specialties.length > 0 ? (
                                     <>
                                         <Separator />
-                                        <CardContent className="pt-3 pb-3">
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {member.permissions.map((p) => {
-                                                    const def = ALL_PERMISSIONS.find((x) => x.key === p);
-                                                    return (
-                                                        <Badge key={p} variant="secondary" className="text-xs">
-                                                            <ShieldCheck className="h-3 w-3 mr-1" />
-                                                            {def?.label ?? p}
-                                                        </Badge>
-                                                    );
-                                                })}
-                                            </div>
+                                        <CardContent className="pt-3 pb-3 space-y-2">
+                                            {member.role === "staff" && member.permissions.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {member.permissions.map((p) => {
+                                                        const def = ALL_PERMISSIONS.find((x) => x.key === p);
+                                                        return (
+                                                            <Badge key={p} variant="secondary" className="text-xs">
+                                                                <ShieldCheck className="h-3 w-3 mr-1" />
+                                                                {def?.label ?? p}
+                                                            </Badge>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            {member.specialties.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {member.specialties.map((s) => {
+                                                        const def = SUPPORT_CATEGORIES.find((x) => x.key === s);
+                                                        return (
+                                                            <Badge key={s} className="text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20">
+                                                                <MessageSquare className="h-3 w-3 mr-1" />
+                                                                {def?.label ?? s}
+                                                            </Badge>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </CardContent>
                                     </>
-                                )}
+                                ) : null}
                             </Card>
                         );
                     })}
@@ -528,12 +602,36 @@ export default function AdminStaffManagement() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Support Specialties */}
+                            <div className="space-y-2">
+                                <Label className="flex items-center gap-1.5">
+                                    <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                                    Support Ticket Specialties
+                                </Label>
+                                <p className="text-xs text-muted-foreground">Which ticket categories will this person handle?</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {SUPPORT_CATEGORIES.map((c) => (
+                                        <label key={c.key} className="flex items-start gap-2 cursor-pointer rounded-md border p-2 hover:bg-muted/40 transition-colors">
+                                            <Checkbox
+                                                checked={editSpecs.includes(c.key)}
+                                                onCheckedChange={() => setEditSpecs((prev) => togglePerm(prev, c.key))}
+                                                className="mt-0.5"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-medium leading-none">{c.label}</p>
+                                                <p className="text-xs text-muted-foreground">{c.description}</p>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
                             <Button
                                 onClick={() =>
-                                    savePermissions.mutate({ userId: editTarget.user_id, perms: editPerms, role: editRole })
+                                    savePermissions.mutate({ userId: editTarget.user_id, perms: editPerms, role: editRole, specs: editSpecs })
                                 }
                                 disabled={savePermissions.isPending}
                                 className="gap-2"

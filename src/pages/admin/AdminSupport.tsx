@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,9 +18,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { MessageCircle, Send, ChevronRight, Clock, ShieldCheck, User, Filter, Search } from "lucide-react";
+import { MessageCircle, Send, ChevronRight, Clock, ShieldCheck, User, Filter, Search, UserCheck, X } from "lucide-react";
 import { format } from "date-fns";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -34,6 +32,7 @@ interface Ticket {
     category: string;
     status: TicketStatus;
     priority: TicketPriority;
+    assigned_to: string | null;
     created_at: string;
     updated_at: string;
     last_message_at?: string;
@@ -50,6 +49,13 @@ interface Message {
     sender_id: string;
     message: string;
     created_at: string;
+}
+
+interface StaffSpec {
+    user_id: string;
+    category: string;
+    full_name: string | null;
+    email: string | null;
 }
 
 const statusColors: Record<TicketStatus, string> = {
@@ -74,24 +80,65 @@ const AdminSupport = () => {
     const [newMessage, setNewMessage] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // ── Fetch staff with specialties
+    const { data: staffSpecs = [] } = useQuery<StaffSpec[]>({
+        queryKey: ["staff-support-specs"],
+        queryFn: async () => {
+            const { data: specs, error } = await supabase
+                .from("staff_support_specialties" as any)
+                .select("user_id, category");
+            if (error) throw error;
+
+            const userIds = [...new Set((specs as any[]).map((s) => s.user_id))];
+            if (userIds.length === 0) return [];
+
+            const { data: profiles } = await supabase
+                .from("profiles")
+                .select("id, full_name, email")
+                .in("id", userIds);
+
+            return (specs as any[]).map((s) => {
+                const profile = profiles?.find((p) => p.id === s.user_id);
+                return {
+                    user_id: s.user_id,
+                    category: s.category,
+                    full_name: profile?.full_name ?? null,
+                    email: profile?.email ?? null,
+                };
+            });
+        },
+    });
+
+    // Helper: get display name of assigned staff
+    const getAssigneeName = useCallback((assignedTo: string | null) => {
+        if (!assignedTo) return null;
+        const match = staffSpecs.find((s) => s.user_id === assignedTo);
+        return match?.full_name ?? match?.email ?? "Assigned";
+    }, [staffSpecs]);
+
+    // Helper: pick best specialist for a category
+    const pickSpecialist = useCallback((category: string): string | null => {
+        const matches = staffSpecs.filter((s) => s.category === category);
+        if (matches.length === 0) return null;
+        // pick first match (can be extended to least-busy logic)
+        return matches[0].user_id;
+    }, [staffSpecs]);
 
     // Fetch Tickets with Profiles
     const { data: tickets, isLoading: isLoadingTickets } = useQuery({
-        queryKey: ["admin-support-tickets", statusFilter],
+        queryKey: ["admin-support-tickets", statusFilter, searchQuery],
         queryFn: async () => {
             let query = supabase
                 .from("support_tickets")
-                .select(`
-          *,
-          profiles (full_name, phone)
-        `)
+                .select(`*, profiles (full_name, phone)`)
                 .order("last_message_at", { ascending: false });
 
             if (statusFilter !== "all") {
                 query = query.eq("status", statusFilter as any);
             }
-
             if (searchQuery) {
                 query = query.or(`subject.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
             }
@@ -102,8 +149,12 @@ const AdminSupport = () => {
         },
     });
 
+    const filteredTickets = assignedToMeOnly
+        ? tickets?.filter((t) => t.assigned_to === user?.id) ?? []
+        : tickets ?? [];
+
     // Fetch Messages for selected ticket
-    const { data: messages, isLoading: isLoadingMessages } = useQuery({
+    const { data: messages } = useQuery({
         queryKey: ["support-messages", selectedTicket?.id],
         queryFn: async () => {
             if (!selectedTicket) return [];
@@ -122,58 +173,36 @@ const AdminSupport = () => {
     useEffect(() => {
         const channel = supabase
             .channel('admin-queue-updates')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'support_tickets',
-                },
-                () => {
-                    queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
-                }
-            )
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, () => {
+                queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
+            })
             .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
     }, [queryClient]);
 
     // Real-time subscription for selected ticket messages
     useEffect(() => {
         if (!selectedTicket) return;
-
         const channel = supabase
             .channel(`admin-ticket-messages-${selectedTicket.id}`)
-            .on(
-                "postgres_changes",
-                {
-                    event: "INSERT",
-                    schema: "public",
-                    table: "support_messages",
-                    filter: `ticket_id=eq.${selectedTicket.id}`,
-                },
-                () => {
-                    queryClient.invalidateQueries({ queryKey: ["support-messages", selectedTicket.id] });
-                    // Also reset unread count when viewing
-                    supabase.from("support_tickets").update({ unread_count_admin: 0 }).eq("id", selectedTicket.id);
-                }
-            )
+            .on("postgres_changes", {
+                event: "INSERT",
+                schema: "public",
+                table: "support_messages",
+                filter: `ticket_id=eq.${selectedTicket.id}`,
+            }, () => {
+                queryClient.invalidateQueries({ queryKey: ["support-messages", selectedTicket.id] });
+                supabase.from("support_tickets").update({ unread_count_admin: 0 }).eq("id", selectedTicket.id);
+            })
             .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
     }, [selectedTicket?.id, queryClient]);
 
     // Auto-scroll to bottom
     useEffect(() => {
         if (scrollRef.current) {
             const scrollArea = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (scrollArea) {
-                scrollArea.scrollTop = scrollArea.scrollHeight;
-            }
+            if (scrollArea) scrollArea.scrollTop = scrollArea.scrollHeight;
         }
     }, [messages]);
 
@@ -182,23 +211,80 @@ const AdminSupport = () => {
         const channel = supabase.channel(`typing-${selectedTicket.id}`);
         channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
-                await channel.track({
-                    user_id: user.id,
-                    is_typing: isTyping,
-                    at: new Date().toISOString(),
-                });
+                await channel.track({ user_id: user.id, is_typing: isTyping, at: new Date().toISOString() });
             }
         });
     };
+
+    // Auto-assign when opening a ticket
+    const handleSelectTicket = async (ticket: Ticket) => {
+        let updated = ticket;
+
+        // Reset unread
+        supabase.from("support_tickets").update({ unread_count_admin: 0 }).eq("id", ticket.id);
+
+        // Auto-assign if no assignee yet
+        if (!ticket.assigned_to && staffSpecs.length > 0) {
+            const specialist = pickSpecialist(ticket.category);
+            if (specialist) {
+                const { data: updatedTicket } = await supabase
+                    .from("support_tickets")
+                    .update({ assigned_to: specialist, status: ticket.status === "open" ? "in_progress" : ticket.status })
+                    .eq("id", ticket.id)
+                    .select("*, profiles (full_name, phone)")
+                    .single();
+                if (updatedTicket) {
+                    updated = updatedTicket as Ticket;
+                    queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
+                    // Notify the assigned staff member
+                    await supabase.from("notifications").insert({
+                        user_id: specialist,
+                        title: "Support ticket assigned to you",
+                        message: `Ticket "${ticket.subject}" (${ticket.category}) has been assigned to you.`,
+                        type: "info",
+                        link: "/admin/support",
+                    });
+                }
+            }
+        }
+
+        setSelectedTicket(updated);
+    };
+
+    // Manual assign mutation
+    const assignMutation = useMutation({
+        mutationFn: async ({ ticketId, assignee }: { ticketId: string; assignee: string | null }) => {
+            const { error } = await supabase
+                .from("support_tickets")
+                .update({ assigned_to: assignee })
+                .eq("id", ticketId);
+            if (error) throw error;
+            // Notify new assignee
+            if (assignee) {
+                await supabase.from("notifications").insert({
+                    user_id: assignee,
+                    title: "Support ticket assigned to you",
+                    message: `You have been assigned ticket "${selectedTicket?.subject}".`,
+                    type: "info",
+                    link: "/admin/support",
+                });
+            }
+        },
+        onSuccess: (_, vars) => {
+            queryClient.invalidateQueries({ queryKey: ["admin-support-tickets"] });
+            if (selectedTicket) {
+                setSelectedTicket({ ...selectedTicket, assigned_to: vars.assignee });
+            }
+            toast({ title: "Ticket reassigned" });
+        },
+        onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    });
 
     // Update Ticket Status Mutation
     const updateStatusMutation = useMutation({
         mutationFn: async (status: TicketStatus) => {
             if (!selectedTicket) return;
-            const { error } = await supabase
-                .from("support_tickets")
-                .update({ status })
-                .eq("id", selectedTicket.id);
+            const { error } = await supabase.from("support_tickets").update({ status }).eq("id", selectedTicket.id);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -231,10 +317,16 @@ const AdminSupport = () => {
 
     const handleStatusChange = (status: TicketStatus) => {
         updateStatusMutation.mutate(status);
-        if (selectedTicket) {
-            setSelectedTicket({ ...selectedTicket, status });
-        }
+        if (selectedTicket) setSelectedTicket({ ...selectedTicket, status });
     };
+
+    // Unique staff members for assign dropdown
+    const uniqueStaff = staffSpecs.reduce<{ user_id: string; full_name: string | null; email: string | null }[]>((acc, s) => {
+        if (!acc.find((a) => a.user_id === s.user_id)) acc.push({ user_id: s.user_id, full_name: s.full_name, email: s.email });
+        return acc;
+    }, []);
+
+    const assigneeName = getAssigneeName(selectedTicket?.assigned_to ?? null);
 
     return (
         <div className="space-y-6">
@@ -253,6 +345,18 @@ const AdminSupport = () => {
                             <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider text-muted-foreground">
                                 <Filter className="h-4 w-4" /> Support Queue
                             </CardTitle>
+                            {/* Assigned-to-me toggle */}
+                            <Button
+                                size="sm"
+                                variant={assignedToMeOnly ? "default" : "ghost"}
+                                className={`h-7 px-2 text-[10px] gap-1 font-bold uppercase tracking-widest transition-all ${assignedToMeOnly ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                                onClick={() => setAssignedToMeOnly((v) => !v)}
+                                title="Show only tickets assigned to me"
+                            >
+                                <UserCheck className="h-3 w-3" />
+                                My Tickets
+                                {assignedToMeOnly && <X className="h-3 w-3 ml-0.5" onClick={(e) => { e.stopPropagation(); setAssignedToMeOnly(false); }} />}
+                            </Button>
                         </div>
                         <div className="space-y-2">
                             <div className="relative">
@@ -287,19 +391,15 @@ const AdminSupport = () => {
                                         <div className="h-3 bg-muted rounded w-1/2" />
                                     </div>
                                 ))
-                            ) : tickets?.length === 0 ? (
+                            ) : filteredTickets.length === 0 ? (
                                 <div className="p-12 text-center text-muted-foreground sm:text-sm italic opacity-50">
                                     No tickets matching these criteria.
                                 </div>
                             ) : (
-                                tickets?.map((ticket) => (
+                                filteredTickets.map((ticket) => (
                                     <div
                                         key={ticket.id}
-                                        onClick={() => {
-                                            setSelectedTicket(ticket);
-                                            // Optimistically reset unread count
-                                            supabase.from("support_tickets").update({ unread_count_admin: 0 }).eq("id", ticket.id);
-                                        }}
+                                        onClick={() => handleSelectTicket(ticket)}
                                         className={`p-4 cursor-pointer hover:bg-muted/30 transition-all border-l-4 ${selectedTicket?.id === ticket.id ? "bg-muted/50 border-primary shadow-inner" : "border-transparent"}`}
                                     >
                                         <div className="flex items-start justify-between gap-2">
@@ -313,6 +413,12 @@ const AdminSupport = () => {
                                                 <p className="text-[10px] text-muted-foreground mt-0.5 truncate uppercase tracking-tight flex items-center gap-1">
                                                     <User className="h-2 w-2" /> {ticket.profiles?.full_name || "Unknown"}
                                                 </p>
+                                                {ticket.assigned_to && (
+                                                    <p className="text-[10px] text-primary mt-0.5 flex items-center gap-1 truncate">
+                                                        <UserCheck className="h-2 w-2" />
+                                                        {getAssigneeName(ticket.assigned_to)}
+                                                    </p>
+                                                )}
                                             </div>
                                             <Badge variant="outline" className={`${statusColors[ticket.status]} text-[9px] h-4 px-1.5 shrink-0 rounded-full`}>
                                                 {ticket.status.replace('_', ' ')}
@@ -337,23 +443,57 @@ const AdminSupport = () => {
                     {selectedTicket ? (
                         <>
                             <CardHeader className="p-4 border-b bg-muted/10 flex-row items-center justify-between space-y-0">
-                                <div className="flex items-center gap-3">
-                                    <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => setSelectedTicket(null)}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8 hover:bg-primary/10 hover:text-primary shrink-0" onClick={() => setSelectedTicket(null)}>
                                         <ChevronRight className="h-4 w-4 rotate-180" />
                                     </Button>
-                                    <div>
-                                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                                    <div className="min-w-0">
+                                        <CardTitle className="text-base font-bold flex items-center gap-2 truncate">
                                             {selectedTicket.subject}
                                         </CardTitle>
                                         <CardDescription className="text-[10px] font-medium flex items-center gap-2 uppercase tracking-wide">
                                             <User className="h-3 w-3 text-primary" /> {selectedTicket.profiles?.full_name} • {selectedTicket.profiles?.phone}
                                         </CardDescription>
+                                        {/* Assigned-to display */}
+                                        {assigneeName && (
+                                            <p className="text-[10px] text-primary flex items-center gap-1 mt-0.5">
+                                                <UserCheck className="h-3 w-3" />
+                                                Assigned to: <span className="font-bold">{assigneeName}</span>
+                                                {selectedTicket.assigned_to === user?.id && (
+                                                    <Badge className="text-[8px] h-3.5 px-1 py-0 ml-1 bg-primary/20 text-primary border-0">You</Badge>
+                                                )}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+
+                                <div className="flex items-center gap-2 shrink-0">
                                     <Badge className={`${priorityColors[selectedTicket.priority]} text-[10px] uppercase h-6 px-3 rounded-full border-2 hidden sm:inline-flex`}>
                                         {selectedTicket.priority}
                                     </Badge>
+
+                                    {/* Manual assign dropdown */}
+                                    {uniqueStaff.length > 0 && (
+                                        <Select
+                                            value={selectedTicket.assigned_to ?? "none"}
+                                            onValueChange={(val) => assignMutation.mutate({ ticketId: selectedTicket.id, assignee: val === "none" ? null : val })}
+                                        >
+                                            <SelectTrigger className="h-8 w-[130px] text-[10px] bg-card/50 border-border/50 rounded-full font-bold">
+                                                <UserCheck className="h-3 w-3 mr-1 shrink-0" />
+                                                <SelectValue placeholder="Assign to…" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">Unassigned</SelectItem>
+                                                <Separator />
+                                                {uniqueStaff.map((s) => (
+                                                    <SelectItem key={s.user_id} value={s.user_id}>
+                                                        {s.full_name ?? s.email ?? s.user_id.slice(0, 8)}
+                                                        {s.user_id === user?.id && " (You)"}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
 
                                     <div className="flex items-center gap-1">
                                         {selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
@@ -512,7 +652,7 @@ const AdminSupport = () => {
                         <div className="flex-1 flex flex-col items-center justify-center text-center p-12 space-y-6">
                             <div className="relative">
                                 <div className="absolute inset-0 bg-primary/10 rounded-full blur-2xl animate-pulse" />
-                                <div className="relative p-10 rounded-full bg-card/50 border-2 border-dashed border-border/50 shadow-2xl ring-1 ring-white/10 group-hover:scale-110 transition-transform duration-500">
+                                <div className="relative p-10 rounded-full bg-card/50 border-2 border-dashed border-border/50 shadow-2xl ring-1 ring-white/10">
                                     <ShieldCheck className="h-16 w-16 text-primary/50" />
                                 </div>
                             </div>
@@ -536,7 +676,6 @@ const TypingIndicator = ({ ticketId }: { ticketId: string }) => {
 
     useEffect(() => {
         const channel = supabase.channel(`typing-${ticketId}`);
-
         channel
             .on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState();
@@ -546,10 +685,7 @@ const TypingIndicator = ({ ticketId }: { ticketId: string }) => {
                 setIsTyping(typingUsers.length > 0);
             })
             .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
     }, [ticketId, user?.id]);
 
     if (!isTyping) return null;
