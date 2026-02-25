@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
     Shield, Syringe, FileCheck, Plane, CreditCard, FileText,
     Download, Printer, Pencil, Users, Calendar, Phone, AlertCircle,
-    Image, Eye, ExternalLink,
+    Image, Eye, ExternalLink, UserCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,39 +42,45 @@ const Field = ({ label, value }: { label: string; value?: string | null }) => (
     </div>
 );
 
-// ─── PDF / Print helper ───────────────────────────────────────────────────────
+// ─── Print helper (iframe-based to avoid popup blockers) ─────────────────────
 
-const buildPrintHTML = (b: any) => {
+const openPrint = (b: any, photoDataUrl?: string | null) => {
     const pkg = b.packages;
     const fmt = (d?: string | null) => d ? format(new Date(d), "PPP") : "—";
-    return `
-<!DOCTYPE html><html><head><title>Pilgrim: ${b.full_name}</title>
+    const photoHtml = photoDataUrl
+        ? `<div class="photo-box"><img src="${photoDataUrl}" alt="Passport photo" style="width:90px;height:110px;object-fit:cover;border-radius:6px;border:2px solid #166534" /></div>`
+        : "";
+
+    const html = `<!DOCTYPE html><html><head><title>Pilgrim: ${b.full_name}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Inter',sans-serif;padding:40px;color:#1a1a1a;background:#fff}
-  .header{display:flex;justify-content:space-between;border-bottom:3px solid #166534;padding-bottom:16px;margin-bottom:20px}
-  .brand h1{font-size:20px;color:#166534;font-weight:700}.brand p{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px}
+  body{font-family:'Inter',sans-serif;padding:36px;color:#1a1a1a;background:#fff}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #166534;padding-bottom:14px;margin-bottom:18px}
+  .header-left{display:flex;align-items:center;gap:14px}
+  .brand h1{font-size:19px;color:#166534;font-weight:700;line-height:1.2}
+  .brand p{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
   .ref{text-align:right}.ref .lbl{font-size:10px;color:#888;text-transform:uppercase}.ref .val{font-size:16px;font-weight:700;color:#166534;font-family:monospace}.ref .dt{font-size:11px;color:#666}
-  .accent{height:4px;background:linear-gradient(135deg,#16a34a,#166534);border-radius:2px;margin-bottom:20px}
+  .accent{height:4px;background:linear-gradient(135deg,#16a34a,#166534);border-radius:2px;margin-bottom:18px}
   h3{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#166534;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid #e5e7eb}
-  .section{margin-bottom:20px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px}
-  .g3{grid-template-columns:1fr 1fr 1fr}
+  .section{margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px}
   .fl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
   .fv{font-size:12px;font-weight:500}
   .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:600;text-transform:capitalize}
   .pending{background:#fef3c7;color:#92400e}.confirmed{background:#d1fae5;color:#065f46}.cancelled{background:#fee2e2;color:#991b1b}.completed{background:#e5e7eb;color:#374151}
-  .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between}
+  .footer{margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between}
   .footer p{font-size:10px;color:#aaa}
-  @media print{body{padding:20px}}
+  @media print{body{padding:20px}@page{margin:1cm}}
 </style></head><body>
 <div class="header">
-  <div class="brand"><h1>🕋 Raudah Travels &amp; Tours</h1><p>Pilgrim Booking Record</p></div>
+  <div class="header-left">
+    ${photoHtml}
+    <div class="brand"><h1>🕋 Raudah Travels &amp; Tours</h1><p>Pilgrim Booking Record</p></div>
+  </div>
   <div class="ref"><p class="lbl">Booking Reference</p><p class="val">${b.reference || b.id.slice(0, 8)}</p><p class="dt">${fmt(b.created_at)}</p></div>
 </div>
 <div class="accent"></div>
-
 <div class="section">
   <h3>Personal Information</h3>
   <div class="grid">
@@ -86,12 +92,11 @@ const buildPrintHTML = (b: any) => {
     <div><p class="fl">Place of Birth</p><p class="fv">${b.place_of_birth || "—"}</p></div>
     <div><p class="fl">Occupation</p><p class="fv">${b.occupation || "—"}</p></div>
     <div><p class="fl">Phone</p><p class="fv">${b.phone || "—"}</p></div>
-    <div><p class="fl">Father's Name</p><p class="fv">${b.fathers_name || "—"}</p></div>
-    <div><p class="fl">Mother's Name</p><p class="fv">${b.mothers_name || "—"}</p></div>
-    <div class="g3" style="grid-column:1/-1"><p class="fl">Address</p><p class="fv">${b.address || "—"}</p></div>
+    <div><p class="fl">Father&apos;s Name</p><p class="fv">${b.fathers_name || "—"}</p></div>
+    <div><p class="fl">Mother&apos;s Name</p><p class="fv">${b.mothers_name || "—"}</p></div>
+    <div style="grid-column:1/-1"><p class="fl">Address</p><p class="fv">${b.address || "—"}</p></div>
   </div>
 </div>
-
 <div class="section">
   <h3>Passport &amp; Visa Data</h3>
   <div class="grid">
@@ -104,7 +109,6 @@ const buildPrintHTML = (b: any) => {
     <div><p class="fl">Mahram Passport</p><p class="fv">${b.mahram_passport || "—"}</p></div>
   </div>
 </div>
-
 <div class="section">
   <h3>Booking Details</h3>
   <div class="grid">
@@ -116,7 +120,6 @@ const buildPrintHTML = (b: any) => {
     <div><p class="fl">Booked On</p><p class="fv">${fmt(b.created_at)}</p></div>
   </div>
 </div>
-
 <div class="section">
   <h3>Emergency Contact</h3>
   <div class="grid">
@@ -125,22 +128,28 @@ const buildPrintHTML = (b: any) => {
     <div><p class="fl">Relationship</p><p class="fv">${b.emergency_contact_relationship || "—"}</p></div>
   </div>
 </div>
-
 ${b.special_requests ? `<div class="section"><h3>Special Requests</h3><p class="fv">${b.special_requests}</p></div>` : ""}
-
 <div class="footer">
   <p>Printed on ${format(new Date(), "PPP 'at' p")}</p>
-  <p>Raudah Travels &amp; Tours Ltd.</p>
-</div>
-<script>window.print(); window.close();</script>
-</body></html>`;
-};
+  <p>Raudah Travels &amp; Tours Ltd. — Confidential</p>
+</div></body></html>`;
 
-const openPrint = (b: any) => {
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(buildPrintHTML(b));
-    w.document.close();
+    // Use hidden iframe to avoid popup blockers
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.top = "-9999px";
+    iframe.style.width = "210mm";
+    iframe.style.height = "297mm";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) { document.body.removeChild(iframe); return; }
+    doc.open(); doc.write(html); doc.close();
+    // Wait for fonts/images then print
+    setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 2000);
+    }, 600);
 };
 
 // ─── CSV Export (single booking) ─────────────────────────────────────────────
@@ -225,32 +234,32 @@ const AdminPilgrimDetailDialog = ({ booking, onClose, onEdit }: Props) => {
 
     const [passportPhotoUrl, setPassportPhotoUrl] = useState<string | null>(null);
     const [photoLoading, setPhotoLoading] = useState(false);
-    const [photoLoaded, setPhotoLoaded] = useState(false);
 
-    const loadPassportPhoto = async () => {
-        if (!passportDoc || photoLoaded) return;
-        setPhotoLoading(true);
-        try {
-            const { data } = await supabase.storage
-                .from("passport-photos")
-                .createSignedUrl(passportDoc.file_url, 3600);
-            if (data?.signedUrl) {
-                setPassportPhotoUrl(data.signedUrl);
-                setPhotoLoaded(true);
-            } else {
-                // Try documents bucket
+    // Eagerly load passport photo as soon as passportDoc is available
+    useEffect(() => {
+        const loadPhoto = async () => {
+            if (!passportDoc) return;
+            setPhotoLoading(true);
+            try {
+                // Try passport-photos bucket first
+                const { data } = await supabase.storage
+                    .from("passport-photos")
+                    .createSignedUrl(passportDoc.file_url, 3600);
+                if (data?.signedUrl) {
+                    setPassportPhotoUrl(data.signedUrl);
+                    return;
+                }
+                // Fall back to documents bucket
                 const { data: d2 } = await supabase.storage
                     .from("documents")
                     .createSignedUrl(passportDoc.file_url, 3600);
-                if (d2?.signedUrl) { setPassportPhotoUrl(d2.signedUrl); setPhotoLoaded(true); }
-                else toast.error("Could not load passport photo");
+                if (d2?.signedUrl) setPassportPhotoUrl(d2.signedUrl);
+            } catch { /* silent — photo is optional */ } finally {
+                setPhotoLoading(false);
             }
-        } catch {
-            toast.error("Failed to load passport photo");
-        } finally {
-            setPhotoLoading(false);
-        }
-    };
+        };
+        loadPhoto();
+    }, [passportDoc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const getDocUrl = async (doc: any) => {
         const bucket = doc.file_url.startsWith(`${doc.user_id}/`) ? "documents" : "documents";
@@ -269,29 +278,54 @@ const AdminPilgrimDetailDialog = ({ booking, onClose, onEdit }: Props) => {
         <Dialog open={!!booking} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <DialogTitle className="font-heading text-xl">{booking.full_name}</DialogTitle>
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => onEdit(booking)} className="gap-1.5">
-                                <Pencil className="h-3.5 w-3.5" /> Edit
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => openPrint(booking)} className="gap-1.5">
-                                <Printer className="h-3.5 w-3.5" /> Print
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => downloadCSV([booking], `${booking.full_name}.csv`)} className="gap-1.5">
-                                <Download className="h-3.5 w-3.5" /> Export
-                            </Button>
+                    {/* Header with photo thumbnail + name + actions */}
+                    <div className="flex items-start gap-4">
+                        {/* Passport photo thumbnail */}
+                        <div className="shrink-0">
+                            {photoLoading ? (
+                                <div className="w-[72px] h-[88px] rounded-lg bg-muted animate-pulse" />
+                            ) : passportPhotoUrl ? (
+                                <img
+                                    src={passportPhotoUrl}
+                                    alt="Passport photo"
+                                    className="w-[72px] h-[88px] rounded-lg object-cover border-2 border-primary/30 shadow-sm"
+                                />
+                            ) : (
+                                <div className="w-[72px] h-[88px] rounded-lg bg-muted/60 border border-dashed border-border flex items-center justify-center">
+                                    <UserCircle className="h-8 w-8 text-muted-foreground/40" />
+                                </div>
+                            )}
                         </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs font-mono text-muted-foreground">{booking.reference || booking.id.slice(0, 8)}</span>
-                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${statusColors[booking.status] || "bg-muted text-muted-foreground"}`}>
-                            {booking.status}
-                        </span>
+                        {/* Name + actions */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <DialogTitle className="font-heading text-xl">{booking.full_name}</DialogTitle>
+                                <div className="flex items-center gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => onEdit(booking)} className="gap-1.5">
+                                        <Pencil className="h-3.5 w-3.5" /> Edit
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => openPrint(booking, passportPhotoUrl)} className="gap-1.5">
+                                        <Printer className="h-3.5 w-3.5" /> Print
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={() => downloadCSV([booking], `${booking.full_name}.csv`)} className="gap-1.5">
+                                        <Download className="h-3.5 w-3.5" /> Export
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                <span className="text-xs font-mono text-muted-foreground">{booking.reference || booking.id.slice(0, 8)}</span>
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${statusColors[booking.status] || "bg-muted text-muted-foreground"}`}>
+                                    {booking.status}
+                                </span>
+                                {booking.gender && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted capitalize">{booking.gender}</span>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </DialogHeader>
 
-                <Tabs defaultValue="booking" onValueChange={(v) => v === "photo" && loadPassportPhoto()}>
+                <Tabs defaultValue="booking">
                     <TabsList className="grid grid-cols-4 w-full">
                         <TabsTrigger value="booking" className="gap-1.5 text-xs"><Calendar className="h-3 w-3" /> Booking</TabsTrigger>
                         <TabsTrigger value="passport" className="gap-1.5 text-xs"><Shield className="h-3 w-3" /> Passport Data</TabsTrigger>
@@ -442,7 +476,7 @@ const AdminPilgrimDetailDialog = ({ booking, onClose, onEdit }: Props) => {
                             <div className="text-center py-10">
                                 <Image className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
                                 <p className="text-sm text-muted-foreground">No passport photo uploaded</p>
-                                <p className="text-xs text-muted-foreground mt-1">The pilgrim hasn't uploaded a passport photo scan yet.</p>
+                                <p className="text-xs text-muted-foreground mt-1">The pilgrim hasn&apos;t uploaded a passport photo scan yet.</p>
                             </div>
                         ) : photoLoading ? (
                             <div className="flex flex-col items-center justify-center py-10 gap-3">
@@ -471,9 +505,7 @@ const AdminPilgrimDetailDialog = ({ booking, onClose, onEdit }: Props) => {
                             </div>
                         ) : (
                             <div className="text-center py-10">
-                                <Button onClick={loadPassportPhoto} className="gap-2">
-                                    <Image className="h-4 w-4" /> Load Passport Photo
-                                </Button>
+                                <p className="text-sm text-muted-foreground">Could not load passport photo.</p>
                             </div>
                         )}
                     </TabsContent>
