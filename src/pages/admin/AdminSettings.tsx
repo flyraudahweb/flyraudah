@@ -11,10 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Settings, CreditCard, Share2, ShieldCheck, Clock, Save,
     Facebook, Instagram, Twitter, MessageCircle, Globe, Phone, Mail, MapPin,
-    Sparkles, AlertTriangle,
+    Sparkles, AlertTriangle, ImageIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -105,6 +106,56 @@ const AdminSettings = () => {
             toast({ title: "Contact info saved" });
         },
     });
+
+    // ── Passport photo settings ──────────────────────────────────────────────────
+    const DEFAULT_PHOTO_SETTINGS = {
+        maxSizeMB: 5,
+        maxWidth: 3000,
+        maxHeight: 3000,
+        allowedFormats: ["jpeg", "png"],
+        backgroundRequirement: "White or off-white background",
+        faceRequirement: "Centered, front-facing, no glasses",
+        showRulesToPilgrim: true,
+    };
+
+    const { data: photoSettingsRow } = useQuery({
+        queryKey: ["setting", "passport_photo_settings"],
+        queryFn: () => fetchSetting("passport_photo_settings"),
+    });
+
+    const [photoSettings, setPhotoSettings] = useState(DEFAULT_PHOTO_SETTINGS);
+
+    useEffect(() => {
+        if (photoSettingsRow?.value && typeof photoSettingsRow.value === "object") {
+            setPhotoSettings((prev) => ({ ...prev, ...(photoSettingsRow.value as any) }));
+        }
+    }, [photoSettingsRow]);
+
+    const savePhotoSettings = useMutation({
+        mutationFn: () => upsertSetting("passport_photo_settings", photoSettings),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["setting", "passport_photo_settings"] });
+            toast({ title: "Passport photo requirements saved" });
+        },
+        onError: async () => {
+            // Row might not exist yet — try inserting first
+            await supabase
+                .from("site_settings" as any)
+                .insert({ key: "passport_photo_settings", value: JSON.stringify(DEFAULT_PHOTO_SETTINGS) } as any);
+            await upsertSetting("passport_photo_settings", photoSettings);
+            queryClient.invalidateQueries({ queryKey: ["setting", "passport_photo_settings"] });
+            toast({ title: "Passport photo requirements saved" });
+        },
+    });
+
+    const toggleFormat = (fmt: string) => {
+        setPhotoSettings((prev) => ({
+            ...prev,
+            allowedFormats: prev.allowedFormats.includes(fmt)
+                ? prev.allowedFormats.filter((f) => f !== fmt)
+                : [...prev.allowedFormats, fmt],
+        }));
+    };
 
     // ── Social links ────────────────────────────────────────────────────────────
     const { data: socialRow } = useQuery({
@@ -417,6 +468,106 @@ const AdminSettings = () => {
                         >
                             <Save className="h-4 w-4" />
                             {saveSocial.isPending ? "Saving…" : "Save Social Links"}
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* ── Passport Photo Requirements Card ────────────────────────── */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <ImageIcon className="h-5 w-5 text-primary" />
+                            Passport Photo Requirements
+                        </CardTitle>
+                        <CardDescription>
+                            Rules shown to pilgrims when uploading their passport photo for Umrah/Hajj visa.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        {/* File constraints */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-1.5">
+                                <Label>Max File Size (MB)</Label>
+                                <Input
+                                    type="number" min={1} max={20}
+                                    value={photoSettings.maxSizeMB}
+                                    onChange={(e) => setPhotoSettings((p) => ({ ...p, maxSizeMB: Number(e.target.value) }))}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Max Width (px)</Label>
+                                <Input
+                                    type="number" min={100} max={10000} step={100}
+                                    value={photoSettings.maxWidth}
+                                    onChange={(e) => setPhotoSettings((p) => ({ ...p, maxWidth: Number(e.target.value) }))}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Max Height (px)</Label>
+                                <Input
+                                    type="number" min={100} max={10000} step={100}
+                                    value={photoSettings.maxHeight}
+                                    onChange={(e) => setPhotoSettings((p) => ({ ...p, maxHeight: Number(e.target.value) }))}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Allowed formats */}
+                        <div className="space-y-2">
+                            <Label>Allowed File Formats</Label>
+                            <div className="flex flex-wrap gap-4">
+                                {["jpeg", "png", "pdf", "heic"].map((fmt) => (
+                                    <div key={fmt} className="flex items-center gap-2">
+                                        <Checkbox
+                                            id={`fmt-${fmt}`}
+                                            checked={photoSettings.allowedFormats.includes(fmt)}
+                                            onCheckedChange={() => toggleFormat(fmt)}
+                                        />
+                                        <Label htmlFor={`fmt-${fmt}`} className="uppercase text-xs font-semibold cursor-pointer">{fmt}</Label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Background and face requirement text */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label>Background Requirement</Label>
+                                <Input
+                                    placeholder="e.g. White or off-white background"
+                                    value={photoSettings.backgroundRequirement}
+                                    onChange={(e) => setPhotoSettings((p) => ({ ...p, backgroundRequirement: e.target.value }))}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Face / Pose Requirement</Label>
+                                <Input
+                                    placeholder="e.g. Centered, front-facing, no glasses"
+                                    value={photoSettings.faceRequirement}
+                                    onChange={(e) => setPhotoSettings((p) => ({ ...p, faceRequirement: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Show to pilgrim toggle */}
+                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                            <div>
+                                <p className="text-sm font-medium">Show Requirements to Pilgrims</p>
+                                <p className="text-xs text-muted-foreground">Display these rules on the booking photo upload step</p>
+                            </div>
+                            <Switch
+                                checked={photoSettings.showRulesToPilgrim}
+                                onCheckedChange={(v) => setPhotoSettings((p) => ({ ...p, showRulesToPilgrim: v }))}
+                            />
+                        </div>
+
+                        <Button
+                            onClick={() => savePhotoSettings.mutate()}
+                            disabled={savePhotoSettings.isPending}
+                            className="gap-2"
+                        >
+                            <Save className="h-4 w-4" />
+                            {savePhotoSettings.isPending ? "Saving…" : "Save Photo Requirements"}
                         </Button>
                     </CardContent>
                 </Card>
