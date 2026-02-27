@@ -9,6 +9,7 @@ import {
   User,
   LogOut,
   Headset,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Sidebar,
@@ -34,6 +35,7 @@ const menuItems = [
   { title: "Commissions", url: "/agent/commissions", icon: PiggyBank },
   { title: "Profile", url: "/agent/profile", icon: User },
   { title: "Support", url: "/agent/support", icon: Headset },
+  { title: "Rules & Policy", url: "/agent/rules", icon: ShieldAlert },
 ];
 
 const AgentSidebar = () => {

@@ -107,6 +107,11 @@ const openPrint = (b: any, photoDataUrl?: string | null) => {
     <div><p class="fl">Mahram Name</p><p class="fv">${b.mahram_name || "—"}</p></div>
     <div><p class="fl">Mahram Relationship</p><p class="fv">${b.mahram_relationship || "—"}</p></div>
     <div><p class="fl">Mahram Passport</p><p class="fv">${b.mahram_passport || "—"}</p></div>
+    <div><p class="fl">Visa Provider</p><p class="fv">${b.visa_provider || "—"}</p></div>
+    <div><p class="fl">Visa Type</p><p class="fv">${b.visa_type || "—"}</p></div>
+    <div><p class="fl">Flight No.</p><p class="fv">${b.flight_number || "—"}</p></div>
+    <div><p class="fl">Arrival Date</p><p class="fv">${fmt(b.arrival_date)}</p></div>
+    <div><p class="fl">Departure Date</p><p class="fv">${fmt(b.departure_date)}</p></div>
   </div>
 </div>
 <div class="section">
@@ -175,6 +180,11 @@ export const bookingToCSVRow = (b: any): Record<string, string> => ({
     "Meningitis Vaccine Date": b.meningitis_vaccine_date || "",
     "Previous Umrah": b.previous_umrah ? "Yes" : "No",
     "Previous Umrah Year": b.previous_umrah_year?.toString() || "",
+    "Visa Provider": b.visa_provider || "",
+    "Visa Type": b.visa_type || "",
+    "Flight Number": b.flight_number || "",
+    "Arrival Date": b.arrival_date ? format(new Date(b.arrival_date), "yyyy-MM-dd") : "",
+    "Departure Date": b.departure_date ? format(new Date(b.departure_date), "yyyy-MM-dd") : "",
     Package: b.packages?.name || "",
     "Package Type": b.packages?.type || "",
     "Room Preference": b.room_preference || "",
@@ -410,6 +420,11 @@ const AdminPilgrimDetailDialog = ({ booking, onClose, onEdit }: Props) => {
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                 <Field label="Meningitis Vaccine Date" value={booking.meningitis_vaccine_date ? format(new Date(booking.meningitis_vaccine_date), "PPP") : null} />
                                 <Field label="Previous Umrah" value={booking.previous_umrah ? `Yes (${booking.previous_umrah_year || "Year unknown"})` : "No"} />
+                                <Field label="Visa Provider" value={booking.visa_provider} />
+                                <Field label="Visa Type" value={booking.visa_type} />
+                                <Field label="Flight No." value={booking.flight_number} />
+                                <Field label="Arrival Date" value={booking.arrival_date ? format(new Date(booking.arrival_date), "PPP") : null} />
+                                <Field label="Departure Date" value={booking.departure_date ? format(new Date(booking.departure_date), "PPP") : null} />
                             </div>
                         </div>
                         {(booking.mahram_name || booking.mahram_relationship || booking.mahram_passport) && (

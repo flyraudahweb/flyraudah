@@ -16,6 +16,8 @@ import {
   Pencil,
   ShieldCheck,
   FormInput,
+  MessageCircle,
+  Plane,
 } from "lucide-react";
 import {
   Sidebar,
@@ -40,6 +42,7 @@ const ALL_MENU_ITEMS = [
   { title: "Pilgrims", url: "/admin/pilgrims", icon: Users, permission: "pilgrims" },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3, permission: "analytics" },
   { title: "ID Tags", url: "/admin/id-tags", icon: Barcode, permission: "id_tags" },
+  { title: "Visa Management", url: "/admin/visa-management", icon: ShieldCheck, permission: "visa_management" },
   { title: "Agents", url: "/admin/agents", icon: Users, permission: "agents" },
   { title: "Agent Applications", url: "/admin/agent-applications", icon: UserPlus, permission: "agents" },
   { title: "Bank Accounts", url: "/admin/bank-accounts", icon: Building2, permission: "bank_accounts" },
@@ -47,6 +50,7 @@ const ALL_MENU_ITEMS = [
   { title: "Amendments", url: "/admin/amendments", icon: Pencil, permission: "amendments" },
   { title: "Support Tickets", url: "/admin/support", icon: Headset, permission: "support" },
   { title: "Staff Management", url: "/admin/staff", icon: ShieldCheck, permission: "staff_management" },
+  { title: "Team Chat", url: "/admin/chat", icon: MessageCircle, permission: "overview" },
   { title: "Booking Form", url: "/admin/booking-form", icon: FormInput, permission: "settings" },
   { title: "Settings", url: "/admin/settings", icon: Settings, permission: "settings" },
 ];

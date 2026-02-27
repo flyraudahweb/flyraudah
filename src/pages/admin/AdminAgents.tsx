@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,9 +6,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Users, Eye, Search, TrendingUp, Building2, MapPin, Mail, Phone, ExternalLink, Package } from "lucide-react";
+import { Users, Eye, Search, TrendingUp, Building2, MapPin, Mail, Phone, ExternalLink, Package, Wallet, FileText, Download, Loader2, Star, Award } from "lucide-react";
 import { useState, useMemo } from "react";
 import { formatPrice } from "@/data/packages";
+import { WalletTopUpModal } from "@/components/admin/WalletTopUpModal";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { downloadMultipleDocuments } from "@/utils/documentExport";
 import {
     Pagination,
     PaginationContent,
@@ -25,7 +31,11 @@ const AdminAgents = () => {
     const [selectedAgent, setSelectedAgent] = useState<any>(null);
     const [clientPage, setClientPage] = useState(1);
     const [bookingPage, setBookingPage] = useState(1);
+    const [topUpOpen, setTopUpOpen] = useState(false);
+    const [isDownloadingDocs, setIsDownloadingDocs] = useState(false);
     const modalItemsPerPage = 5;
+
+    const queryClient = useQueryClient();
 
     const { data: agents = [], isLoading } = useQuery({
         queryKey: ["admin-agents-list"],
@@ -81,6 +91,25 @@ const AdminAgents = () => {
         },
     });
 
+    const updateAgentMutation = useMutation({
+        mutationFn: async ({ id, is_premium, rating }: { id: string; is_premium?: boolean; rating?: number }) => {
+            const updates: any = {};
+            if (is_premium !== undefined) updates.is_premium = is_premium;
+            if (rating !== undefined) updates.rating = rating;
+
+            const { error } = await supabase.from("agents").update(updates).eq("id", id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["admin-agents-list"] });
+            queryClient.invalidateQueries({ queryKey: ["admin-agent-details"] });
+            toast.success("Agent settings updated");
+        },
+        onError: (err: any) => {
+            toast.error(err.message || "Failed to update agent");
+        }
+    });
+
     const filtered = useMemo(() => {
         return agents.filter((a) =>
             (a.business_name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -100,18 +129,53 @@ const AdminAgents = () => {
         queryFn: async () => {
             if (!selectedAgent) return null;
 
-            const [clientsRes, bookingsRes] = await Promise.all([
+            const [clientsRes, bookingsRes, walletRes] = await Promise.all([
                 supabase.from("agent_clients").select("*").eq("agent_id", selectedAgent.id),
-                supabase.from("bookings").select("*, packages(name, type, price)").eq("agent_id", selectedAgent.id).order("created_at", { ascending: false })
+                supabase.from("bookings").select("*, packages(name, type, price)").eq("agent_id", selectedAgent.id).order("created_at", { ascending: false }),
+                supabase.from("agent_wallets").select("balance").eq("agent_id", selectedAgent.id).single()
             ]);
+
+            const bookingIds = (bookingsRes.data || []).map(b => b.id);
+            let docsData: any[] = [];
+            if (bookingIds.length > 0) {
+                const { data } = await supabase.from("documents").select("*, bookings:booking_id(full_name)").in("booking_id", bookingIds);
+                docsData = data || [];
+            }
 
             return {
                 clients: clientsRes.data || [],
-                bookings: bookingsRes.data || []
+                bookings: bookingsRes.data || [],
+                walletBalance: Number(walletRes.data?.balance || 0),
+                documents: docsData
             };
         },
         enabled: !!selectedAgent,
     });
+
+    const handleBulkDownloadDocs = async () => {
+        if (!agentDetails || agentDetails.documents.length === 0) {
+            toast.error("No documents available to download.");
+            return;
+        }
+
+        setIsDownloadingDocs(true);
+        try {
+            const downloadList = agentDetails.documents.map((d: any) => ({
+                url: d.file_url,
+                fileName: d.file_name,
+                type: d.type,
+                pilgrimName: d.bookings?.full_name || "Unknown",
+            }));
+
+            toast.info(`Preparing ${downloadList.length} documents for download...`);
+            await downloadMultipleDocuments(downloadList, `${selectedAgent.business_name.replace(/\s+/g, '_')}_docs_${format(new Date(), "yyyyMMdd")}.zip`);
+            toast.success(`Downloaded ${downloadList.length} documents successfully.`);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to download documents.");
+        } finally {
+            setIsDownloadingDocs(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -206,6 +270,7 @@ const AdminAgents = () => {
                                 <TableHead className="text-center">Clients</TableHead>
                                 <TableHead className="text-center">Bookings</TableHead>
                                 <TableHead className="text-right">Revenue</TableHead>
+                                <TableHead className="text-center">Rating</TableHead>
                                 <TableHead className="text-center">Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -229,7 +294,10 @@ const AdminAgents = () => {
                                     <TableRow key={agent.id} className="group hover:bg-muted/30 transition-colors">
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-semibold text-foreground leading-tight">{agent.business_name}</span>
+                                                <span className="font-semibold text-foreground leading-tight flex items-center gap-1.5">
+                                                    {agent.is_premium && <Award className="h-4 w-4 text-amber-500 fill-amber-500" title="Premium Agent" />}
+                                                    {agent.business_name}
+                                                </span>
                                                 <span className="text-xs text-muted-foreground">{agent.contact_person} • {agent.agent_code}</span>
                                             </div>
                                         </TableCell>
@@ -248,6 +316,12 @@ const AdminAgents = () => {
                                         <TableCell className="text-center font-medium">{agent.clientCount}</TableCell>
                                         <TableCell className="text-center font-medium">{agent.bookingCount}</TableCell>
                                         <TableCell className="text-right font-bold text-primary">{formatPrice(agent.totalRevenue)}</TableCell>
+                                        <TableCell className="text-center">
+                                            <div className="flex items-center justify-center gap-1">
+                                                <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
+                                                <span className="font-medium text-sm">{agent.rating || '5.0'}</span>
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="text-center">
                                             <Badge variant={agent.status === "active" ? "default" : "secondary"} className="capitalize text-[10px] px-2 py-0">
                                                 {agent.status}
@@ -321,10 +395,18 @@ const AdminAgents = () => {
                                 <div className="absolute inset-0 bg-black/10" />
                                 <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-4">
                                     <div className="flex-1">
-                                        <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 mb-3 backdrop-blur-md">
-                                            Agent Profile
-                                        </Badge>
-                                        <h2 className="text-2xl md:text-3xl font-bold text-white font-heading leading-tight">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-md">
+                                                Agent Profile
+                                            </Badge>
+                                            {selectedAgent.is_premium && (
+                                                <Badge className="bg-amber-500 text-white border-0 flex items-center gap-1">
+                                                    <Award className="h-3 w-3" />
+                                                    Platinum Partner
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <h2 className="text-2xl md:text-3xl font-bold text-white font-heading leading-tight flex items-center gap-2">
                                             {selectedAgent.business_name}
                                         </h2>
                                         <p className="text-white/80 text-sm mt-1 flex items-center gap-2">
@@ -335,6 +417,12 @@ const AdminAgents = () => {
                                         <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 min-w-[120px]">
                                             <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">Revenue</p>
                                             <p className="text-lg font-bold text-white">{formatPrice(selectedAgent.totalRevenue)}</p>
+                                        </div>
+                                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 min-w-[120px]">
+                                            <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold flex items-center gap-1"><Wallet className="h-3 w-3" /> Wallet</p>
+                                            <p className="text-lg font-bold text-white">
+                                                {loadingDetails ? "..." : formatPrice(agentDetails?.walletBalance || 0)}
+                                            </p>
                                         </div>
                                         <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 min-w-[100px]">
                                             <p className="text-[10px] text-white/60 uppercase tracking-widest font-bold">Clients</p>
@@ -382,6 +470,55 @@ const AdminAgents = () => {
                                         </CardContent>
                                     </Card>
 
+                                    <Card className="border-border/60 bg-background shadow-sm">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                                <Award className="h-4 w-4 text-amber-500" />
+                                                Gamification settings
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4 pt-0 text-sm">
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="premium-toggle" className="flex flex-col gap-1 cursor-pointer">
+                                                    <span className="font-semibold">Platinum Partner Status</span>
+                                                    <span className="text-[10px] text-muted-foreground font-normal">Grants access to premium support</span>
+                                                </Label>
+                                                <Switch
+                                                    id="premium-toggle"
+                                                    checked={selectedAgent.is_premium}
+                                                    onCheckedChange={(v) => {
+                                                        setSelectedAgent({ ...selectedAgent, is_premium: v });
+                                                        updateAgentMutation.mutate({ id: selectedAgent.id, is_premium: v });
+                                                    }}
+                                                    disabled={updateAgentMutation.isPending}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="agent-rating" className="font-semibold">Star Rating (1.0 to 5.0)</Label>
+                                                <div className="flex items-center gap-3">
+                                                    <Input
+                                                        id="agent-rating"
+                                                        type="number"
+                                                        step="0.1"
+                                                        min="1"
+                                                        max="5"
+                                                        className="w-24 h-8 text-sm"
+                                                        defaultValue={selectedAgent.rating || 5}
+                                                        onChange={(e) => {
+                                                            const val = parseFloat(e.target.value);
+                                                            if (!isNaN(val) && val >= 1 && val <= 5) {
+                                                                setSelectedAgent({ ...selectedAgent, rating: val });
+                                                                updateAgentMutation.mutate({ id: selectedAgent.id, rating: val });
+                                                            }
+                                                        }}
+                                                        disabled={updateAgentMutation.isPending}
+                                                    />
+                                                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
                                     <div className="flex flex-col gap-2">
                                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest ml-1">Quick Actions</p>
                                         <Button
@@ -396,6 +533,14 @@ const AdminAgents = () => {
                                             }}
                                         >
                                             <Phone className="h-4 w-4" /> WhatsApp Message
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="justify-start gap-2 h-10 border-border/60 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all shadow-sm"
+                                            onClick={() => setTopUpOpen(true)}
+                                        >
+                                            <Wallet className="h-4 w-4 text-emerald-600" /> Top-Up Wallet
                                         </Button>
                                     </div>
                                 </div>
@@ -536,12 +681,66 @@ const AdminAgents = () => {
                                             </div>
                                         </CardContent>
                                     </Card>
+
+                                    {/* Documents */}
+                                    <Card className="border-border/60 bg-background shadow-sm overflow-hidden">
+                                        <CardHeader className="pb-3 border-b bg-muted/20">
+                                            <CardTitle className="text-sm font-bold flex items-center justify-between">
+                                                <span className="flex items-center gap-2">
+                                                    <FileText className="h-4 w-4 text-primary" />
+                                                    Uploaded Documents
+                                                </span>
+                                                <div className="flex items-center gap-3">
+                                                    <Badge variant="secondary" className="px-2 py-0 text-[10px]">{agentDetails?.documents.length || 0}</Badge>
+                                                    {(agentDetails?.documents.length || 0) > 0 && (
+                                                        <Button size="sm" variant="default" onClick={handleBulkDownloadDocs} disabled={isDownloadingDocs} className="h-7 text-xs gap-1.5">
+                                                            {isDownloadingDocs ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                                                            Bulk Download
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-0">
+                                            <div className="max-h-[220px] overflow-y-auto p-4 flex flex-wrap gap-2 bg-background/50">
+                                                {loadingDetails ? (
+                                                    <div className="w-full p-4 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-primary" /></div>
+                                                ) : agentDetails?.documents.length === 0 ? (
+                                                    <p className="w-full text-center text-xs text-muted-foreground p-4">No documents uploaded by this agent's clients yet.</p>
+                                                ) : (
+                                                    agentDetails?.documents.map((doc: any) => (
+                                                        <div key={doc.id} className="border border-border/50 bg-background rounded-lg p-2.5 flex items-center gap-3 w-full sm:w-[calc(50%-0.25rem)]">
+                                                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                                                <FileText className="h-4 w-4 text-primary" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs font-semibold truncate">{doc.bookings?.full_name}</p>
+                                                                <p className="text-[10px] text-muted-foreground uppercase break-all">{doc.file_name || doc.type}</p>
+                                                            </div>
+                                                            <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => window.open(doc.file_url, '_blank')}>
+                                                                <ExternalLink className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
                                 </div>
                             </div>
                         </>
                     )}
                 </DialogContent>
             </Dialog>
+            {selectedAgent && (
+                <WalletTopUpModal
+                    open={topUpOpen}
+                    onOpenChange={setTopUpOpen}
+                    agentId={selectedAgent.id}
+                    agentName={selectedAgent.business_name}
+                />
+            )}
         </div>
     );
 };

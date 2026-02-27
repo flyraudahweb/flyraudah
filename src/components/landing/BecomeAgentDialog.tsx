@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -15,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -31,6 +33,9 @@ const schema = z.object({
   email: z.string().email("Enter a valid email"),
   phone: z.string().min(10, "Enter a valid phone number"),
   message: z.string().optional(),
+  acceptTerms: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the terms and conditions" }),
+  }),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -54,6 +59,20 @@ const BecomeAgentDialog = ({
       email: "",
       phone: "",
       message: "",
+      acceptTerms: undefined,
+    },
+  });
+
+  const { data: agentTerms } = useQuery({
+    queryKey: ["agent-terms"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("setting_value")
+        .eq("setting_key", "agent_terms")
+        .maybeSingle();
+      if (error) throw error;
+      return data?.setting_value || "";
     },
   });
 
@@ -182,6 +201,30 @@ const BecomeAgentDialog = ({
                     />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            {agentTerms && (
+              <div className="bg-muted/30 border border-border/50 rounded-md p-3 max-h-32 overflow-y-auto text-xs text-muted-foreground whitespace-pre-wrap">
+                {agentTerms}
+              </div>
+            )}
+            <FormField
+              control={form.control}
+              name="acceptTerms"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-border/50 p-4 bg-muted/10">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      I accept the Agent Terms and Conditions
+                    </FormLabel>
+                  </div>
                 </FormItem>
               )}
             />

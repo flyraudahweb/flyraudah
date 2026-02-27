@@ -33,6 +33,7 @@ import {
   Plus, ChevronRight, Clock, AlertCircle, HelpCircle
 } from "lucide-react";
 import { format } from "date-fns";
+import PlatinumSupportChat from "@/components/agent/PlatinumSupportChat";
 
 type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -46,6 +47,7 @@ interface Ticket {
   priority: TicketPriority;
   created_at: string;
   updated_at: string;
+  unread_count_user?: number;
 }
 
 interface Message {
@@ -81,11 +83,14 @@ const DashboardSupport = () => {
 
   // Fetch Tickets
   const { data: tickets, isLoading: isLoadingTickets } = useQuery({
-    queryKey: ["support-tickets"],
+    queryKey: ["support-tickets", user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       const { data, error } = await supabase
         .from("support_tickets")
         .select("*")
+        .eq("user_id", user.id)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Ticket[];
@@ -142,6 +147,17 @@ const DashboardSupport = () => {
       }
     }
   }, [messages]);
+
+  // Reset unread counts when a ticket is opened
+  useEffect(() => {
+    if (selectedTicket && selectedTicket.unread_count_user && selectedTicket.unread_count_user > 0) {
+      const resetUnread = async () => {
+        await supabase.from("support_tickets").update({ unread_count_user: 0 }).eq("id", selectedTicket.id);
+        queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+      };
+      resetUnread();
+    }
+  }, [selectedTicket, queryClient]);
 
   const handleTyping = (isTyping: boolean) => {
     if (!selectedTicket || !user) return;
@@ -209,6 +225,24 @@ const DashboardSupport = () => {
     if (!newMessage.trim()) return;
     sendMessageMutation.mutate(newMessage);
   };
+
+  // Fetch agent details to check premium status
+  const { data: agentData } = useQuery({
+    queryKey: ["agent-profile", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from("agents")
+        .select("is_premium, rating")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const isPremiumAgent = agentData?.is_premium || agentData?.rating === 5;
 
   const handleWhatsApp = () => {
     window.open("https://wa.me/2348035378973?text=Hello%20Raudah%20Travels,%20I%20need%20assistance.", "_blank");
@@ -429,11 +463,16 @@ const DashboardSupport = () => {
     );
   }
 
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Support Center</h1>
+          <h1 className="font-heading text-2xl font-bold text-foreground flex items-center gap-2">
+            Support Center
+            {isPremiumAgent && <Badge className="bg-gold text-secondary-foreground">Platinum Status</Badge>}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">Manage your support tickets and get help from our team.</p>
         </div>
 
@@ -466,7 +505,11 @@ const DashboardSupport = () => {
                       <SelectContent>
                         <SelectItem value="general">General Inquiry</SelectItem>
                         <SelectItem value="booking">Booking Issue</SelectItem>
+                        <SelectItem value="booking_assistance">Pilgrim Booking Assistance</SelectItem>
+                        <SelectItem value="visa">Visa Processing</SelectItem>
+                        <SelectItem value="flights">Flights & Transport</SelectItem>
                         <SelectItem value="payment">Payment Issue</SelectItem>
+                        <SelectItem value="agent_commissions">Agent Commissions</SelectItem>
                         <SelectItem value="documents">Document Problem</SelectItem>
                         <SelectItem value="technical">Technical Support</SelectItem>
                       </SelectContent>
@@ -504,6 +547,15 @@ const DashboardSupport = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-4">
+          {isPremiumAgent && (
+            <div className="mb-6">
+              <PlatinumSupportChat />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-heading text-lg font-bold">Standard Support Tickets</h2>
+          </div>
           {isLoadingTickets ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -541,6 +593,11 @@ const DashboardSupport = () => {
                           <Badge variant="outline" className={`${statusColors[ticket.status]} text-[10px] h-5`}>
                             {ticket.status.replace('_', ' ')}
                           </Badge>
+                          {(ticket.unread_count_user ?? 0) > 0 && (
+                            <Badge variant="destructive" className="h-4 min-w-4 px-1 shrink-0 items-center justify-center rounded-full text-[10px]">
+                              {ticket.unread_count_user} New
+                            </Badge>
+                          )}
                         </h3>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                           <span className="capitalize">{ticket.category}</span>

@@ -58,7 +58,7 @@ export default function AdminIdTags() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, full_name, passport_number, reference, gender, status, departure_city, package_id, emergency_contact_name, emergency_contact_phone")
+        .select("id, full_name, passport_number, reference, gender, status, departure_city, package_id, emergency_contact_name, emergency_contact_phone, visa_provider, visa_type, flight_number, arrival_date, departure_date")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

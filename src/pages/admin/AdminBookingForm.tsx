@@ -36,7 +36,7 @@ const AdminBookingForm = () => {
         field_type: "text" as BookingFormField["field_type"],
         placeholder: "",
         required: false,
-        applies_to: "both" as BookingFormField["applies_to"],
+        applies_to: "all" as BookingFormField["applies_to"],
         options_raw: "",
         accept: "",
     });
@@ -70,7 +70,7 @@ const AdminBookingForm = () => {
     // ── Dialog helpers ────────────────────────────────────────────────────────────
     const openAddDialog = () => {
         setEditingField(null);
-        setFieldForm({ label: "", field_type: "text", placeholder: "", required: false, applies_to: "both", options_raw: "", accept: "" });
+        setFieldForm({ label: "", field_type: "text", placeholder: "", required: false, applies_to: "all", options_raw: "", accept: "" });
         setShowFieldDialog(true);
     };
 
@@ -317,7 +317,7 @@ const AdminBookingForm = () => {
                                 <p className="text-xs text-muted-foreground">
                                     {field.field_type}
                                     {field.placeholder ? ` — "${field.placeholder}"` : ""}
-                                    {field.applies_to !== "both" ? ` · ${field.applies_to} only` : ""}
+                                    {field.applies_to !== "all" ? ` · ${field.applies_to}` : ""}
                                 </p>
                             </div>
 
@@ -463,9 +463,11 @@ const AdminBookingForm = () => {
                                 >
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="all">Everywhere (User, Agent, Admin)</SelectItem>
                                         <SelectItem value="both">Both (User & Agent)</SelectItem>
                                         <SelectItem value="user">User Booking Form Only</SelectItem>
                                         <SelectItem value="agent">Agent Booking Form Only</SelectItem>
+                                        <SelectItem value="admin">Admin Booking Form Only</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

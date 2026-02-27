@@ -48,6 +48,14 @@ Copy-paste this template and fill it in:
 
 ## Changelog
 
+### 2026-02-26 — Staff Management, AI Proposal & Security Hardening
+- **Conversation:** `2b115ffc-2954-499c-a836-74d9938e01c4`
+- **Type:** Feature | Security Fix | UI/UX
+- **Changed Files:** `AdminStaffManagement.tsx`, `Proposal.tsx`, `App.tsx`, `staff_permissions` table, `generate-proposal` edge fn, `invite-staff` edge fn, `verifyAuth.ts`
+- **Summary:** Implemented a full Staff Management system with granular permissions (`super_admin`, `staff` roles) and support ticket routing by specialty. Launched a new AI-powered Proposal Generation engine that processes document uploads or text into professional travel proposals. Hardened Edge Function security across the platform by implementing manual JWT verification (`verifyAuth`) to allow secure service-role bypass for system-triggered tasks. Added support ticket system with categorization and priority levels.
+- **DB Migrations:** `20260224121700_full_schema_snapshot.sql`
+- **Added Prompt Engineering Guide**: Created [PROMPT_ENGINEERING_GUIDE.md](file:///c:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/memory/PROMPT_ENGINEERING_GUIDE.md) to help steer future AI-led feature implementations safely.
+
 ### 2026-02-21 — Payment, Tracking & Repeat Customer Features
 - **Conversation:** `0334eb92-5dc8-480e-902d-06c80e79c730`
 - **Type:** Feature | Schema Change | UI/UX
@@ -117,11 +125,12 @@ Copy-paste this template and fill it in:
 - [x] Document upload (passport, vaccine cert, visa, etc.)
 - [x] Dashboard with booking/payment/document history
 - [x] Real-time notifications (booking & payment status changes)
-- [x] Support page
+- [x] Support page (Tickets & Chat)
 - [x] Profile management
 - [x] PWA install prompt
 - [x] Language preference setting (i18n)
 - [x] Dark/light theme support
+- [x] AI Proposal Generator (via Custom template)
 
 ### Admin Features
 - [x] Package management (create/edit/archive Hajj & Umrah packages)
@@ -132,6 +141,11 @@ Copy-paste this template and fill it in:
 - [x] Agent application review (approve/reject)
 - [x] AI assistant chat (via `admin-ai-chat` edge function)
 - [x] Notifications management
+- [x] Staff Management (Role & Permission control)
+- [x] Support Ticket Management (By specialty)
+- [x] User Activity Audit Log
+- [x] Booking Amendment review
+- [x] Bank Account Management
 
 ### Agent Features
 - [x] Agent application portal
@@ -143,6 +157,7 @@ Copy-paste this template and fill it in:
 
 ### Platform Features
 - [x] Role-based access control (RBAC via Supabase RLS)
+- [x] Granular Staff Permissions
 - [x] Auto-generated booking references (RTT-YYYY-XXXXXX)
 - [x] Supabase Realtime notifications
 - [x] Islamic calendar dates on packages
@@ -150,11 +165,10 @@ Copy-paste this template and fill it in:
 - [x] Agent discount pricing on packages
 - [x] Error boundary + lazy loading with auto-retry
 - [x] SEO meta tags per page (react-helmet-async)
+- [x] Edge Function Security Hardening (Manual JWT verification)
 
 ### Not Yet Built (Future)
-- [ ] Visa processing tracking
+- [ ] Visa processing tracking (In progress - fields added)
 - [ ] Flight ticket management
-- [ ] In-app chat/support tickets
-- [ ] Moderator role UI (role exists in DB but no portal)
 - [ ] Group booking
 - [ ] WhatsApp/SMS notifications

@@ -45,7 +45,12 @@ const pilgrimSchema = z.object({
   mothersName: z.string().optional().default(""),
   // Passport — always required (Saudi Umrah visa legal requirement)
   passportNumber: z.string().regex(/^[A-Z0-9]{6,9}$/, "Invalid passport number (e.g. A12345678)"),
-  passportExpiry: z.string().refine((d) => new Date(d) > new Date(), "Passport must be valid for at least 6 months"),
+  passportExpiry: z.string().refine((d) => {
+    const expiryDate = new Date(d);
+    const requiredDate = new Date();
+    requiredDate.setMonth(requiredDate.getMonth() + 7);
+    return expiryDate >= requiredDate;
+  }, "Passport must be valid for at least 7 months from today"),
   // Mahram (Saudi Arabia requires mahram for women under 45 without a group)
   mahramName: z.string().optional(),
   mahramRelationship: z.string().optional(),
@@ -108,6 +113,8 @@ const BookingWizard = () => {
   const [paymentMethod, setPaymentMethod] = useState<"card" | "bank">(paystackEnabled ? "card" : "bank");
   const [passportFile, setPassportFile] = useState<File | null>(null);
   const [vaccineFile, setVaccineFile] = useState<File | null>(null);
+  const [medicalReportFile, setMedicalReportFile] = useState<File | null>(null);
+  const [pregnancyLetterFile, setPregnancyLetterFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingReference, setBookingReference] = useState("");
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(() => draft?.pendingBookingId ?? null);
@@ -116,6 +123,7 @@ const BookingWizard = () => {
   const [isFemale, setIsFemale] = useState(false);
   const [transferProofUrl, setTransferProofUrl] = useState("");
   const [proofUploading, setProofUploading] = useState(false);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
 
   const handleProofUpload = async (file: File) => {
     setProofUploading(true);
@@ -340,6 +348,7 @@ const BookingWizard = () => {
           emergency_contact_phone: tData.emergencyContactPhone,
           emergency_contact_relationship: tData.emergencyContactRelationship,
           status: "pending",
+          disclaimer_accepted: disclaimerAccepted,
           custom_data: Object.keys(customData).length > 0 ? customData : null,
         } as any)
         .select()
@@ -1042,11 +1051,29 @@ const BookingWizard = () => {
                   )}
                 </div>
 
+                {/* Disclaimer / Terms of Service */}
+                <div className="bg-muted/30 border border-border p-4 rounded-lg space-y-3 mt-4">
+                  <Label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary shadow-sm"
+                      checked={disclaimerAccepted}
+                      onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                    />
+                    <div className="space-y-1">
+                      <p className="font-semibold text-sm">I agree to the Terms, Conditions, and Disclaimer</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        By confirming this booking, I certify that all information (including passport validity of \u2265 7 months) is accurate. I acknowledge that Raudah Travels is not liable for visa rejections, flight delays, or overstays. {user?.app_role === "agent" && "As an agent, I accept full responsibility for my clients' adherence to visa durations; hiding pilgrims or extending stays beyond their visa timeframe holds me liable for penalties."}
+                      </p>
+                    </div>
+                  </Label>
+                </div>
+
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setStep(4)} className="flex-1">Back</Button>
                   <Button
                     onClick={onSubmitBooking}
-                    disabled={isSubmitting || (paymentMethod === "bank" && !transferProofUrl)}
+                    disabled={isSubmitting || !disclaimerAccepted || (paymentMethod === "bank" && !transferProofUrl)}
                     className="flex-1"
                   >
                     {isSubmitting ? "Processing…" : paymentMethod === "card" ? "Pay with Paystack" : "Confirm Booking"}

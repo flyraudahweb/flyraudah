@@ -7,7 +7,7 @@ export interface BookingFormField {
     field_type: "text" | "textarea" | "number" | "select" | "file";
     placeholder: string | null;
     required: boolean;
-    applies_to: "user" | "agent" | "both";
+    applies_to: "user" | "agent" | "both" | "admin" | "all";
     sort_order: number;
     options: string[] | null;
     accept: string | null;
@@ -67,16 +67,20 @@ export function useSystemFieldConfig() {
     return { get, isLoading };
 }
 
-/** Fetch fields that apply to a given scope (user or agent). Only custom fields (not system). */
-export function useBookingFormFields(scope: "user" | "agent") {
+/** Fetch fields that apply to a given scope (user or agent or admin). Only custom fields (not system). */
+export function useBookingFormFields(scope: "user" | "agent" | "admin") {
     return useQuery<BookingFormField[]>({
         queryKey: ["booking-form-fields", scope],
         queryFn: async () => {
+            const appliesToScope = scope === "admin"
+                ? [scope, "all"]
+                : [scope, "both", "all"];
+
             const { data, error } = await supabase
                 .from("booking_form_fields" as any)
                 .select("*")
                 .eq("is_system", false)
-                .in("applies_to", [scope, "both"])
+                .in("applies_to", appliesToScope)
                 .eq("enabled", true)
                 .order("sort_order", { ascending: true });
             if (error) throw error;

@@ -119,7 +119,7 @@ serve(async (req: Request) => {
     // 3. Fetch authoritative package price
     const { data: pkg, error: pkgErr } = await supabase
       .from("packages")
-      .select("price")
+      .select("price, agent_discount")
       .eq("id", booking.package_id)
       .single();
 
@@ -138,10 +138,14 @@ serve(async (req: Request) => {
 
       if (agent) {
         const rate = Number(agent.commission_rate ?? 0);
+        const pkgDiscount = Number(pkg.agent_discount ?? 0);
+
         if (agent.commission_type === "fixed") {
           expectedNaira = Math.max(0, expectedNaira - rate);
-        } else {
+        } else if (rate > 0) {
           expectedNaira = expectedNaira * (1 - rate / 100);
+        } else {
+          expectedNaira = Math.max(0, expectedNaira - pkgDiscount);
         }
       }
     }

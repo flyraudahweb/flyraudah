@@ -104,7 +104,7 @@ const AdminActivity = () => {
                 .from("user_activity" as any)
                 .select(`
                     *,
-                    profiles:user_id(full_name, phone, email)
+                    profiles!user_id(full_name, phone, email)
                 `);
 
             if (eventFilter !== "all") {

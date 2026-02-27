@@ -79,24 +79,27 @@
 
 ## 3. User Roles & Access Control
 
-The app has **4 roles** defined in the `app_role` enum, enforced via Supabase RLS:
+The app has **6 roles** defined in the `app_role` enum, enforced via Supabase RLS:
+| Role          | Access                                                                      |
+|---------------|-----------------------------------------------------------------------------|
+| `user`        | Default after signup. Can browse packages, book, pay, upload docs, view own data. |
+| `agent`       | Must apply and be approved. Can manage a client directory, book on behalf of clients, view commissions. |
+| `moderator`   | Defined in DB enum but not yet used in UI routing.                         |
+| `staff`       | Limited admin access. Access is controlled via granular permissions in `staff_permissions`. |
+| `admin`       | Full platform access. Can manage packages, payments, and staff (for roles < admin). |
+| `super_admin` | Absolute access. Can manage all users, roles, and system-level settings.    |
 
-| Role        | Access                                                                      |
-|-------------|-----------------------------------------------------------------------------|
-| `user`      | Default after signup. Can browse packages, book, pay, upload docs, view own data. |
-| `agent`     | Must apply and be approved. Can manage a client directory, book on behalf of clients, view commissions. |
-| `moderator` | Defined in DB enum but not yet used in UI routing.                         |
-| `admin`     | Full platform access: manage packages, verify payments, view all pilgrims, analytics, ID tags, AI assistant, approve agent applications. |
+**Staff Permissions System:**
+- Located in `staff_permissions` table.
+- Permissions include: `overview`, `packages`, `payments`, `pilgrims`, `analytics`, `id_tags`, `agents`, `bank_accounts`, `activity`, `amendments`, `support`, `settings`, `staff_management`.
+- Admins/Super Admins assign permissions via the Staff Management UI.
 
-**Role assignment:**
-- New users get `user` role automatically via `handle_new_user()` DB trigger.
-- Agents are promoted via the `approve-agent-application` edge function.
-- Admin role is assigned manually in the DB.
-
-**Auth helper function (DB):**
+**Auth helper functions (DB):**
 ```sql
 public.has_role(_user_id uuid, _role public.app_role) RETURNS boolean
+public.has_permission(_user_id uuid, _permission text) RETURNS boolean
 ```
+Used in all RLS policies and frontend checks.
 Used in all RLS policies. Marked `SECURITY DEFINER` + `STABLE`.
 
 **Frontend enforcement:**
@@ -130,15 +133,23 @@ Used in all RLS policies. Marked `SECURITY DEFINER` + `STABLE`.
   support                   → DashboardSupport
   book/:id                  → BookingWizard (multi-step booking form)
 
-/admin/                     → Admin portal (ProtectedRoute, requiredRole="admin")
-  index                     → AdminOverview
-  packages                  → AdminPackages
-  payments                  → AdminPayments
-  pilgrims                  → AdminPilgrims
-  analytics                 → AdminAnalytics
-  id-tags                   → AdminIdTags (pilgrim ID tag generator)
-  agent-applications        → AdminAgentApplications
-  ai-assistant              → AdminAiAssistant
+/admin/                     → Admin portal (ProtectedRoute, requiredRole="staff")
+  index                     → AdminOverview (requires "overview" perm)
+  packages                  → AdminPackages (requires "packages" perm)
+  payments                  → AdminPayments (requires "payments" perm)
+  pilgrims                  → AdminPilgrims (requires "pilgrims" perm)
+  analytics                 → AdminAnalytics (requires "analytics" perm)
+  id-tags                   → AdminIdTags (requires "id_tags" perm)
+  agents                    → AdminAgents (requires "agents" perm)
+  agent-applications        → AdminAgentApplications (requires "agents" perm)
+  ai-assistant              → AdminAiAssistant (requires auth)
+  bank-accounts             → AdminBankAccounts (requires "bank_accounts" perm)
+  activity                  → AdminActivity (requires "activity" perm)
+  amendments                → AdminAmendmentRequests (requires "amendments" perm)
+  support                   → AdminSupport (requires "support" perm)
+  settings                  → AdminSettings (requires "settings" perm)
+  booking-form              → AdminBookingForm (requires "settings" perm)
+  staff                     → AdminStaffManagement (requires "staff_management" perm)
 
 /agent/                     → Agent portal (ProtectedRoute, requiredRole="agent")
   index                     → AgentOverview
@@ -155,9 +166,7 @@ Used in all RLS policies. Marked `SECURITY DEFINER` + `STABLE`.
 
 All tables have Row Level Security (RLS) enabled.
 
-### Core Enums
-```sql
-app_role:          admin | moderator | agent | user
+app_role:          super_admin | admin | staff | moderator | agent | user
 booking_status:    pending | confirmed | cancelled | completed
 payment_status:    pending | verified | rejected | refunded
 payment_method:    paystack | bank_transfer | ussd
@@ -167,6 +176,8 @@ agent_status:      active | suspended | pending
 package_status:    active | draft | archived
 package_type:      hajj | umrah
 package_category:  premium | standard | budget
+ticket_priority:   low | medium | high | urgent
+ticket_status:     open | in_progress | resolved | closed
 ```
 
 ### Tables
@@ -281,15 +292,51 @@ reviewed_by, reviewed_at
 created_at
 ```
 
+#### `public.staff_permissions`
+Granular permissions for staff members.
+```
+id (UUID PK), user_id → auth.users, permission (text), granted_by, created_at
+```
+
+#### `public.staff_support_specialties`
+Links staff to support ticket categories.
+```
+id (UUID PK), user_id → auth.users, category (text), created_at
+```
+
+#### `public.bank_accounts`
+Admin-managed accounts for manual payments.
+```
+id, bank_name, account_name, account_number, sort_code, is_active, created_at
+```
+
+#### `public.support_tickets`
+Customer support tickets.
+```
+id, user_id, subject, description, category, priority, status, unread_count_admin, last_message_at, created_at, updated_at
+```
+
+#### `public.support_messages`
+Messages within a support ticket.
+```
+id, ticket_id, sender_id, message, attachment_url, created_at
+```
+
+#### `public.user_activity`
+Audit log of user actions.
+```
+id, user_id, event_type, metadata (json), package_id, booking_id, created_at
+```
+
+#### `public.booking_amendment_requests`
+```
+id, booking_id, user_id, requested_changes (json), status, admin_notes, reviewed_by, reviewed_at, created_at
+```
+
 #### `public.notifications`
 Realtime-enabled. Auto-populated by DB triggers.
 ```
-id, user_id
-title, message
-type (info|success|warning|error)
-read (boolean, default false)
-link (optional nav link)
-created_at
+id, user_id, title, message, type, read, link, created_at
 ```
 **Auto-notification triggers:**
 - `on_booking_status_change` → notifies user when booking status changes
@@ -320,14 +367,15 @@ Located in `supabase/functions/`:
 
 | Function Name              | Purpose                                                              |
 |----------------------------|----------------------------------------------------------------------|
-| `admin-ai-chat`            | AI assistant for admins (OpenAI or similar LLM integration)         |
-| `approve-agent-application`| Approves agent applications — promotes user role to `agent`, creates agent record |
-| `create-paystack-checkout` | Initiates a Paystack payment session, returns checkout URL          |
-| `generate-proposal`        | Generates a business/agent proposal document                        |
+| `admin-ai-chat`            | AI assistant for admins (uses custom prompt engineering)             |
+| `approve-agent-application`| Approves agent applications — promotes user role to `agent`, creates agent record|
+| `create-paystack-checkout` | Initiates payment with manual JWT verification for security          |
+| `generate-proposal`        | AI-powered structured proposal generator from text/PDF               |
+| `invite-staff`             | Admin-only tool to create staff accounts with preset credentials     |
 | `seed-demo-data`           | Seeds demo packages and data for development/testing                |
-| `send-payment-receipt`     | Sends payment receipt email to user after verification              |
-| `verify-paystack-payment`  | Verifies Paystack payment reference and updates payment status      |
-| `_shared/`                 | Shared utilities (CORS headers, etc.) used across functions         |
+| `send-payment-receipt`     | Manual verification receipt sender (service role bypass)             |
+| `verify-paystack-payment`  | Verifies Paystack reference with hybrid auth (service/user)          |
+| `_shared/`                 | Shared utilities (CORS, JWT helpers, validation)                     |
 
 ---
 
@@ -433,9 +481,11 @@ npm run preview    # Preview production build
 - **Auth deadlock prevention:** `fetchUserData` is called inside `setTimeout(..., 0)` inside the `onAuthStateChange` listener to prevent Supabase auth listener blocking on DB calls.
 - **Booking references:** Generated server-side by DB trigger with collision detection — format `RTT-{YEAR}-{6digits}`.
 - **Agent flow:** Agents must first submit an `agent_applications` record → admin approves via `approve-agent-application` edge fn → user gets `agent` role → `agents` record created.
-- **Pre-filling Booking Form:** For repeat customers, the system automatically fetches and populates the most recent booking data (passport, parent names, address, etc.) to streamline the process.
-- **User Activity Tracking:** Real-time logging of customer interactions (`package_view`, `booking_start`, `payment_attempt`, etc.) to monitor conversion funnels.
 - **Dynamic Bank Accounts:** Admin-managed bank accounts displayed to pilgrims for transfers.
+- **User Activity Tracking:** Real-time logging of customer interactions (`package_view`, `booking_start`, `payment_attempt`, etc.) to monitor conversion funnels.
+- **AI Proposal Engine:** Uses advanced LLM templates to convert messy client requirements (PDF/Text) into professional Hajj/Umrah proposals.
+- **Support Specialties:** Tickets are routed to staff based on their specialties (`payment`, `documents`, etc.).
+- **Edge Function Hardening:** All critical edge functions use a manual JWT verification wrapper (`verifyAuth`) instead of relying solely on Supabase `verify_jwt` toggle, allowing for service-role bypass where necessary while maintaining user security.
 
 ---
 

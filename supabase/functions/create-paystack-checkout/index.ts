@@ -51,7 +51,7 @@ serve(async (req: Request) => {
 
     const { data: pkg, error: pkgError } = await supabase
       .from("packages")
-      .select("price")
+      .select("price, agent_discount")
       .eq("id", booking.package_id)
       .single();
 
@@ -80,10 +80,14 @@ serve(async (req: Request) => {
 
       if (agent) {
         const rate = Number(agent.commission_rate ?? 0);
+        const pkgDiscount = Number(pkg.agent_discount ?? 0);
+
         if (agent.commission_type === "fixed") {
           amount = Math.max(0, amount - rate);
-        } else {
+        } else if (rate > 0) {
           amount = amount * (1 - rate / 100);
+        } else {
+          amount = Math.max(0, amount - pkgDiscount);
         }
       }
     }

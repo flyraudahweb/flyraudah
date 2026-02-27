@@ -43,13 +43,16 @@ import {
     MessageSquare,
 } from "lucide-react";
 
-/* ─── Support category definitions ───────────────────────── */
 const SUPPORT_CATEGORIES = [
     { key: "general", label: "General Inquiry", description: "General questions and inquiries" },
     { key: "booking", label: "Booking Issues", description: "Booking-related problems" },
     { key: "payment", label: "Payment Issues", description: "Payment and billing queries" },
     { key: "documents", label: "Document Problems", description: "Document upload or verification" },
     { key: "technical", label: "Technical Support", description: "Technical or system issues" },
+    { key: "booking_assistance", label: "Pilgrim Booking Assistance", description: "Help guiding pilgrim booking" },
+    { key: "visa", label: "Visa Processing", description: "Visa issuance and tracking" },
+    { key: "flights", label: "Flights & Transport", description: "Flight ticketing and logistics" },
+    { key: "agent_commissions", label: "Agent Commissions", description: "Agent limits and top-ups" },
 ];
 
 /* ─── Permission definitions ─────────────────────────────── */
@@ -66,6 +69,7 @@ const ALL_PERMISSIONS = [
     { key: "amendments", label: "Amendments", description: "Handle booking amendment requests" },
     { key: "support", label: "Support Tickets", description: "Manage customer support tickets" },
     { key: "settings", label: "Settings", description: "Modify site settings" },
+    { key: "visa_management", label: "Visa Providers", description: "Manage the list of visa providers" },
     { key: "staff_management", label: "Staff Management", description: "Manage staff accounts and permissions" },
 ];
 

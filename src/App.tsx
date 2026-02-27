@@ -35,6 +35,7 @@ const AdminOverview = lazyWithRetry(() => import("./pages/admin/AdminOverview"))
 const AdminPackages = lazyWithRetry(() => import("./pages/admin/AdminPackages"));
 const AdminPayments = lazyWithRetry(() => import("./pages/admin/AdminPayments"));
 const AdminPilgrims = lazyWithRetry(() => import("./pages/admin/AdminPilgrims"));
+const AdminBookPilgrim = lazyWithRetry(() => import("./pages/admin/AdminBookPilgrim"));
 const AdminAnalytics = lazyWithRetry(() => import("./pages/admin/AdminAnalytics"));
 const AdminIdTags = lazyWithRetry(() => import("./pages/admin/AdminIdTags"));
 const AdminAgentApplications = lazyWithRetry(() => import("./pages/admin/AdminAgentApplications"));
@@ -45,6 +46,8 @@ const AdminActivity = lazyWithRetry(() => import("./pages/admin/AdminActivity"))
 const AdminAmendmentRequests = lazyWithRetry(() => import("./pages/admin/AdminAmendmentRequests"));
 const AdminSupport = lazyWithRetry(() => import("./pages/admin/AdminSupport"));
 const AdminStaffManagement = lazyWithRetry(() => import("./pages/admin/AdminStaffManagement"));
+const AdminTeamChat = lazyWithRetry(() => import("./pages/admin/AdminTeamChat"));
+const AdminVisaManagement = lazyWithRetry(() => import("./pages/admin/AdminVisaManagement"));
 const AgentLayout = lazyWithRetry(() => import("./components/agent/AgentLayout"));
 const AgentOverview = lazyWithRetry(() => import("./pages/agent/AgentOverview"));
 const AgentClients = lazyWithRetry(() => import("./pages/agent/AgentClients"));
@@ -52,6 +55,8 @@ const AgentBookForClient = lazyWithRetry(() => import("./pages/agent/AgentBookFo
 const AgentPackages = lazyWithRetry(() => import("./pages/agent/AgentPackages"));
 const AgentBookings = lazyWithRetry(() => import("./pages/agent/AgentBookings"));
 const AgentCommissions = lazyWithRetry(() => import("./pages/agent/AgentCommissions"));
+const AgentWalletHistory = lazyWithRetry(() => import("./pages/agent/AgentWalletHistory"));
+const AgentRules = lazyWithRetry(() => import("./pages/agent/AgentRules"));
 const Proposal = lazyWithRetry(() => import("./pages/Proposal"));
 const AboutUs = lazyWithRetry(() => import("./pages/AboutUs"));
 const Services = lazyWithRetry(() => import("./pages/Services"));
@@ -156,11 +161,17 @@ const App = () => (
                     <Route path="pilgrims" element={
                       <ProtectedRoute requiredPermission="pilgrims"><AdminPilgrims /></ProtectedRoute>
                     } />
+                    <Route path="book-pilgrim" element={
+                      <ProtectedRoute requiredPermission="pilgrims"><AdminBookPilgrim /></ProtectedRoute>
+                    } />
                     <Route path="analytics" element={
                       <ProtectedRoute requiredPermission="analytics"><AdminAnalytics /></ProtectedRoute>
                     } />
                     <Route path="id-tags" element={
                       <ProtectedRoute requiredPermission="id_tags"><AdminIdTags /></ProtectedRoute>
+                    } />
+                    <Route path="visa-management" element={
+                      <ProtectedRoute requiredPermission="visa_management"><AdminVisaManagement /></ProtectedRoute>
                     } />
                     <Route path="agents" element={
                       <ProtectedRoute requiredPermission="agents"><AdminAgents /></ProtectedRoute>
@@ -190,6 +201,7 @@ const App = () => (
                     <Route path="staff" element={
                       <ProtectedRoute requiredPermission="staff_management"><AdminStaffManagement /></ProtectedRoute>
                     } />
+                    <Route path="chat" element={<AdminTeamChat />} />
                     <Route path="profile" element={<DashboardProfile />} />
                   </Route>
                   <Route
@@ -206,8 +218,10 @@ const App = () => (
                     <Route path="book/:id" element={<AgentBookForClient />} />
                     <Route path="bookings" element={<AgentBookings />} />
                     <Route path="commissions" element={<AgentCommissions />} />
+                    <Route path="transactions" element={<AgentWalletHistory />} />
                     <Route path="profile" element={<DashboardProfile />} />
                     <Route path="support" element={<DashboardSupport />} />
+                    <Route path="rules" element={<AgentRules />} />
                   </Route>
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

@@ -39,7 +39,7 @@ const AgentBookForClient = () => {
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
   const { paystackEnabled } = usePaystackEnabled();
-  const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "paystack">("bank_transfer");
+  const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "paystack" | "wallet">("wallet");
   const [transferProofUrl, setTransferProofUrl] = useState("");
   const [proofUploading, setProofUploading] = useState(false);
 
@@ -115,6 +115,21 @@ const AgentBookForClient = () => {
     },
   });
 
+  const { data: walletData } = useQuery({
+    queryKey: ["agent-wallet", agent?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_wallets")
+        .select("balance")
+        .eq("agent_id", agent!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data || { balance: 0 };
+    },
+    enabled: !!agent?.id,
+  });
+  const walletBalance = Number(walletData?.balance || 0);
+
   if (pkgLoading) return <div className="p-8"><Skeleton className="h-96" /></div>;
   if (!pkg) return <div className="text-center py-12">Package not found</div>;
 
@@ -169,51 +184,84 @@ const AgentBookForClient = () => {
         throw new Error("Unauthorized: Client does not belong to this agent.");
       }
 
-      const { data: bookingData, error: bookingError } = await supabase
-        .from("bookings")
-        .upsert({
-          id: pendingBookingId || undefined,
-          user_id: user.id,
-          package_id: pkg.id,
-          package_date_id: selectedDateId,
-          agent_id: verifiedAgent.id,
-          agent_client_id: verifiedClient.id,
-          full_name: selectedClient.full_name,
-          passport_number: selectedClient.passport_number,
-          passport_expiry: selectedClient.passport_expiry,
-          date_of_birth: selectedClient.date_of_birth,
-          gender: selectedClient.gender,
-          departure_city: departureCity,
-          room_preference: roomPreference,
-          special_requests: specialRequests || null,
-          emergency_contact_name: emergencyName,
-          emergency_contact_phone: emergencyPhone,
-          emergency_contact_relationship: emergencyRelation,
-          status: "pending",
-          custom_data: Object.keys(customData).length > 0 ? customData : null,
-        })
-        .select()
-        .single();
+      let finalBookingId = pendingBookingId || "";
 
-      if (bookingError) throw bookingError;
-      setPendingBookingId(bookingData.id);
+      if (paymentMethod === "wallet") {
+        if (walletBalance < wholesalePrice) {
+          throw new Error("Insufficient wallet balance. Please top up your wallet.");
+        }
 
-      // Create/Update payment record at wholesale price
-      const { data: paymentData, error: paymentError } = await supabase
-        .from("payments")
-        .upsert({
-          id: pendingPaymentId || undefined,
-          booking_id: bookingData.id,
-          amount: wholesalePrice,
-          method: paymentMethod,
-          status: "pending",
-          proof_of_payment_url: paymentMethod === "bank_transfer" && transferProofUrl ? transferProofUrl : null,
-        })
-        .select()
-        .single();
+        const { data: rpcData, error: rpcError } = await supabase.rpc("process_agent_booking", {
+          _package_id: pkg.id,
+          _package_date_id: selectedDateId,
+          _agent_id: verifiedAgent.id,
+          _agent_client_id: verifiedClient.id,
+          _full_name: selectedClient.full_name || "",
+          _passport_number: selectedClient.passport_number || "",
+          _passport_expiry: selectedClient.passport_expiry || null,
+          _date_of_birth: selectedClient.date_of_birth || null,
+          _gender: selectedClient.gender || "",
+          _departure_city: departureCity || "",
+          _room_preference: roomPreference || "",
+          _special_requests: specialRequests || null,
+          _emergency_contact_name: emergencyName || "",
+          _emergency_contact_phone: emergencyPhone || "",
+          _emergency_contact_relationship: emergencyRelation || "",
+          _custom_data: Object.keys(customData).length > 0 ? customData : null,
+          _amount: wholesalePrice
+        });
 
-      if (paymentError) throw paymentError;
-      if (paymentData) setPendingPaymentId(paymentData.id);
+        if (rpcError) throw rpcError;
+        finalBookingId = rpcData;
+        setPendingBookingId(finalBookingId);
+      } else {
+        const { data: bookingData, error: bookingError } = await supabase
+          .from("bookings")
+          .upsert({
+            id: pendingBookingId || undefined,
+            user_id: user.id,
+            package_id: pkg.id,
+            package_date_id: selectedDateId,
+            agent_id: verifiedAgent.id,
+            agent_client_id: verifiedClient.id,
+            full_name: selectedClient.full_name,
+            passport_number: selectedClient.passport_number,
+            passport_expiry: selectedClient.passport_expiry,
+            date_of_birth: selectedClient.date_of_birth,
+            gender: selectedClient.gender,
+            departure_city: departureCity,
+            room_preference: roomPreference,
+            special_requests: specialRequests || null,
+            emergency_contact_name: emergencyName,
+            emergency_contact_phone: emergencyPhone,
+            emergency_contact_relationship: emergencyRelation,
+            status: "pending",
+            custom_data: Object.keys(customData).length > 0 ? customData : null,
+          })
+          .select()
+          .single();
+
+        if (bookingError) throw bookingError;
+        finalBookingId = bookingData.id;
+        setPendingBookingId(finalBookingId);
+
+        // Create/Update payment record at wholesale price
+        const { data: paymentData, error: paymentError } = await supabase
+          .from("payments")
+          .upsert({
+            id: pendingPaymentId || undefined,
+            booking_id: bookingData.id,
+            amount: wholesalePrice,
+            method: paymentMethod,
+            status: "pending",
+            proof_of_payment_url: paymentMethod === "bank_transfer" && transferProofUrl ? transferProofUrl : null,
+          })
+          .select()
+          .single();
+
+        if (paymentError) throw paymentError;
+        if (paymentData) setPendingPaymentId(paymentData.id);
+      }
 
       // Card → Paystack Inline Popup
       if (paymentMethod === "paystack") {
@@ -233,7 +281,7 @@ const AgentBookForClient = () => {
 
         const { data: paystackData, error: paystackError } = await supabase.functions.invoke(
           "create-paystack-checkout",
-          { body: { email: user.email, bookingId: bookingData.id } }
+          { body: { email: user.email, bookingId: finalBookingId } }
         );
 
         if (paystackError || !paystackData?.access_code) {
@@ -280,7 +328,7 @@ const AgentBookForClient = () => {
         return;
       }
 
-      setBookingRef(bookingData.reference || bookingData.id.slice(0, 8));
+      setBookingRef(finalBookingId.slice(0, 8));
       setStep(4);
       toast.success("Booking created successfully!");
     } catch (err: any) {
@@ -526,7 +574,30 @@ const AgentBookForClient = () => {
                     <p className="text-xs font-bold">Card / Online</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">Instant activation</p>
                   </button>
+                  <button
+                    onClick={() => setPaymentMethod("wallet")}
+                    className={`p-3 border rounded-xl text-left transition-all col-span-2 ${paymentMethod === "wallet" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-xs font-bold">Agent Wallet</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Deduct instantly from your balance</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-primary">{formatPrice(walletBalance)}</p>
+                        <p className="text-[10px] text-muted-foreground">Current Balance</p>
+                      </div>
+                    </div>
+                  </button>
                 </div>
+
+                {paymentMethod === "wallet" && walletBalance < wholesalePrice && (
+                  <Alert variant="destructive" className="py-2 px-3">
+                    <AlertDescription className="text-xs">
+                      Insufficient wallet balance. You need {formatPrice(wholesalePrice - walletBalance)} more. Please contact Admin.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {/* Bank Transfer: show bank account + require proof upload */}
                 {paymentMethod === "bank_transfer" && (
@@ -583,10 +654,10 @@ const AgentBookForClient = () => {
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1">Back</Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || (paymentMethod === "bank_transfer" && !transferProofUrl)}
+                  disabled={isSubmitting || (paymentMethod === "bank_transfer" && !transferProofUrl) || (paymentMethod === "wallet" && walletBalance < wholesalePrice)}
                   className="flex-1"
                 >
-                  {isSubmitting ? "Creating Booking..." : paymentMethod === "bank_transfer" ? "Confirm Booking" : "Proceed to Payment"}
+                  {isSubmitting ? "Processing..." : paymentMethod === "bank_transfer" ? "Confirm Booking" : paymentMethod === "wallet" ? "Pay via Wallet" : "Proceed to Payment"}
                 </Button>
               </div>
             </CardContent>

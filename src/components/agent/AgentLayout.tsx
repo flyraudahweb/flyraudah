@@ -19,7 +19,7 @@ const AgentLayout = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agents")
-        .select("status")
+        .select("status, rating, is_premium")
         .eq("user_id", user!.id)
         .maybeSingle();
       if (error) throw error;
@@ -31,6 +31,8 @@ const AgentLayout = () => {
   const initials = profile?.full_name
     ? profile.full_name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "AG";
+
+  const isGoldAgent = agent?.is_premium || agent?.rating === 5;
 
   if (loadingAgent) {
     return (
@@ -87,22 +89,29 @@ const AgentLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full text-foreground bg-background">
+      <div className={`min-h-screen flex w-full text-foreground ${isGoldAgent ? 'bg-gradient-to-br from-background via-background to-amber-500/10' : 'bg-background'}`}>
         <AgentSidebar />
 
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 sticky top-0 z-40">
+        <div className="flex-1 flex flex-col min-w-0 relative">
+          {/* Subtle gold overlay for premium agents */}
+          {isGoldAgent && (
+            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500 via-transparent to-transparent z-0"></div>
+          )}
+
+          <header className={`h-14 border-b flex items-center justify-between px-4 sticky top-0 z-40 ${isGoldAgent ? 'bg-background/80 backdrop-blur-md border-amber-500/20' : 'bg-card border-border'}`}>
             <div className="flex items-center gap-2">
               <SidebarTrigger className="hidden md:flex" />
               <div className="md:hidden flex items-center gap-2">
                 <img src="/logo.png" alt="Raudah" className="h-7 w-auto" />
-                <span className="font-heading text-sm font-semibold text-foreground">Agent Portal</span>
+                <span className={`font-heading text-sm font-semibold ${isGoldAgent ? 'text-amber-500 drop-shadow-sm' : 'text-foreground'}`}>
+                  {isGoldAgent ? 'Platinum Agent Portal' : 'Agent Portal'}
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
               <Link to="/agent/profile" title="My Profile">
-                <Avatar className="h-8 w-8 border border-border md:hidden cursor-pointer ring-offset-1 hover:ring-2 hover:ring-secondary/50 transition-all">
+                <Avatar className={`h-8 w-8 border md:hidden cursor-pointer ring-offset-1 transition-all ${isGoldAgent ? 'border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)] ring-2 ring-amber-500/50' : 'border-border hover:ring-2 hover:ring-secondary/50'}`}>
                   <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback className="bg-muted text-muted-foreground text-xs">{initials}</AvatarFallback>
                 </Avatar>
@@ -110,8 +119,8 @@ const AgentLayout = () => {
             </div>
           </header>
 
-          <main className="flex-1 p-4 md:p-6 lg:p-8 pb-20 md:pb-8 overflow-auto">
-            <Outlet />
+          <main className="flex-1 p-4 md:p-6 lg:p-8 pb-20 md:pb-8 overflow-auto relative z-10">
+            <Outlet context={{ isGoldAgent }} />
           </main>
         </div>
 

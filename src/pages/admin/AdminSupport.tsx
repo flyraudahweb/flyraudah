@@ -81,6 +81,7 @@ const AdminSupport = () => {
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
+    const [mySpecialtyOnly, setMySpecialtyOnly] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // ── Fetch staff with specialties
@@ -149,9 +150,15 @@ const AdminSupport = () => {
         },
     });
 
-    const filteredTickets = assignedToMeOnly
-        ? tickets?.filter((t) => t.assigned_to === user?.id) ?? []
-        : tickets ?? [];
+    const mySpecialties = staffSpecs.filter(s => s.user_id === user?.id).map(s => s.category);
+
+    let filteredTickets = tickets ?? [];
+    if (assignedToMeOnly) {
+        filteredTickets = filteredTickets.filter((t) => t.assigned_to === user?.id);
+    }
+    if (mySpecialtyOnly) {
+        filteredTickets = filteredTickets.filter((t) => mySpecialties.includes(t.category));
+    }
 
     // Fetch Messages for selected ticket
     const { data: messages } = useQuery({
@@ -346,17 +353,30 @@ const AdminSupport = () => {
                                 <Filter className="h-4 w-4" /> Support Queue
                             </CardTitle>
                             {/* Assigned-to-me toggle */}
-                            <Button
-                                size="sm"
-                                variant={assignedToMeOnly ? "default" : "ghost"}
-                                className={`h-7 px-2 text-[10px] gap-1 font-bold uppercase tracking-widest transition-all ${assignedToMeOnly ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-                                onClick={() => setAssignedToMeOnly((v) => !v)}
-                                title="Show only tickets assigned to me"
-                            >
-                                <UserCheck className="h-3 w-3" />
-                                My Tickets
-                                {assignedToMeOnly && <X className="h-3 w-3 ml-0.5" onClick={(e) => { e.stopPropagation(); setAssignedToMeOnly(false); }} />}
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    size="sm"
+                                    variant={mySpecialtyOnly ? "default" : "ghost"}
+                                    className={`h-7 px-2 text-[10px] gap-1 font-bold uppercase tracking-widest transition-all ${mySpecialtyOnly ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                                    onClick={() => setMySpecialtyOnly((v) => !v)}
+                                    title="Show only tickets matching my specialties"
+                                >
+                                    <ShieldCheck className="h-3 w-3" />
+                                    Specialties
+                                    {mySpecialtyOnly && <X className="h-3 w-3 ml-0.5" onClick={(e) => { e.stopPropagation(); setMySpecialtyOnly(false); }} />}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={assignedToMeOnly ? "default" : "ghost"}
+                                    className={`h-7 px-2 text-[10px] gap-1 font-bold uppercase tracking-widest transition-all ${assignedToMeOnly ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                                    onClick={() => setAssignedToMeOnly((v) => !v)}
+                                    title="Show only tickets assigned to me"
+                                >
+                                    <UserCheck className="h-3 w-3" />
+                                    My Tickets
+                                    {assignedToMeOnly && <X className="h-3 w-3 ml-0.5" onClick={(e) => { e.stopPropagation(); setAssignedToMeOnly(false); }} />}
+                                </Button>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <div className="relative">
@@ -396,43 +416,53 @@ const AdminSupport = () => {
                                     No tickets matching these criteria.
                                 </div>
                             ) : (
-                                filteredTickets.map((ticket) => (
-                                    <div
-                                        key={ticket.id}
-                                        onClick={() => handleSelectTicket(ticket)}
-                                        className={`p-4 cursor-pointer hover:bg-muted/30 transition-all border-l-4 ${selectedTicket?.id === ticket.id ? "bg-muted/50 border-primary shadow-inner" : "border-transparent"}`}
-                                    >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="font-bold text-sm truncate">{ticket.subject}</h3>
-                                                    {(ticket.unread_count_admin ?? 0) > 0 && (
-                                                        <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                                filteredTickets.map((ticket) => {
+                                    const isMySpecialty = mySpecialties.includes(ticket.category);
+                                    const isUnassigned = !ticket.assigned_to;
+
+                                    return (
+                                        <div
+                                            key={ticket.id}
+                                            onClick={() => handleSelectTicket(ticket)}
+                                            className={`p-4 cursor-pointer hover:bg-muted/30 transition-all border-l-4 ${selectedTicket?.id === ticket.id ? "bg-muted/50 border-primary shadow-inner" : "border-transparent"} ${isMySpecialty && isUnassigned ? "bg-primary/5" : ""}`}
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="font-bold text-sm truncate">{ticket.subject}</h3>
+                                                        {(ticket.unread_count_admin ?? 0) > 0 && (
+                                                            <Badge variant="destructive" className="h-5 min-w-5 shrink-0 items-center justify-center rounded-full p-0 text-[10px]">
+                                                                {ticket.unread_count_admin}
+                                                            </Badge>
+                                                        )}
+                                                        {isMySpecialty && isUnassigned && (
+                                                            <Badge variant="outline" className="border-primary/30 text-[8px] h-3.5 px-1 py-0 bg-primary/10 text-primary uppercase font-bold tracking-widest">Specialty Match</Badge>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate uppercase tracking-tight flex items-center gap-1">
+                                                        <User className="h-2 w-2" /> {ticket.profiles?.full_name || "Unknown"}
+                                                    </p>
+                                                    {ticket.assigned_to && (
+                                                        <p className="text-[10px] text-primary mt-0.5 flex items-center gap-1 truncate">
+                                                            <UserCheck className="h-2 w-2" />
+                                                            {getAssigneeName(ticket.assigned_to)}
+                                                        </p>
                                                     )}
                                                 </div>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5 truncate uppercase tracking-tight flex items-center gap-1">
-                                                    <User className="h-2 w-2" /> {ticket.profiles?.full_name || "Unknown"}
-                                                </p>
-                                                {ticket.assigned_to && (
-                                                    <p className="text-[10px] text-primary mt-0.5 flex items-center gap-1 truncate">
-                                                        <UserCheck className="h-2 w-2" />
-                                                        {getAssigneeName(ticket.assigned_to)}
-                                                    </p>
-                                                )}
+                                                <Badge variant="outline" className={`${statusColors[ticket.status]} text-[9px] h-4 px-1.5 shrink-0 rounded-full`}>
+                                                    {ticket.status.replace('_', ' ')}
+                                                </Badge>
                                             </div>
-                                            <Badge variant="outline" className={`${statusColors[ticket.status]} text-[9px] h-4 px-1.5 shrink-0 rounded-full`}>
-                                                {ticket.status.replace('_', ' ')}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex items-center justify-between mt-3 text-[10px] text-muted-foreground font-medium">
-                                            <div className="flex items-center gap-1">
-                                                <Badge variant="secondary" className="text-[8px] h-3.5 px-1 py-0">{ticket.category}</Badge>
-                                                <Badge className={`${priorityColors[ticket.priority]} text-[8px] h-3.5 px-1 py-0`}>{ticket.priority}</Badge>
+                                            <div className="flex items-center justify-between mt-3 text-[10px] text-muted-foreground font-medium">
+                                                <div className="flex items-center gap-1">
+                                                    <Badge variant="secondary" className="text-[8px] h-3.5 px-1 py-0 capitalize">{ticket.category.replace('_', ' ')}</Badge>
+                                                    <Badge className={`${priorityColors[ticket.priority]} text-[8px] h-3.5 px-1 py-0`}>{ticket.priority}</Badge>
+                                                </div>
+                                                <span>{format(new Date(ticket.last_message_at || ticket.updated_at), "MMM d, p")}</span>
                                             </div>
-                                            <span>{format(new Date(ticket.last_message_at || ticket.updated_at), "MMM d, p")}</span>
                                         </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </ScrollArea>

@@ -15,6 +15,8 @@ import {
     Pencil,
     ShieldCheck,
     Settings,
+    MessageCircle,
+    FormInput,
 } from "lucide-react";
 
 const ALL_NAV_ITEMS = [
@@ -29,7 +31,10 @@ const ALL_NAV_ITEMS = [
     { title: "Activity", url: "/admin/activity", icon: History, permission: "activity" },
     { title: "Amendments", url: "/admin/amendments", icon: Pencil, permission: "amendments" },
     { title: "Support", url: "/admin/support", icon: Headset, permission: "support" },
+    { title: "Chat", url: "/admin/chat", icon: MessageCircle, permission: "overview" },
+    { title: "Visa", url: "/admin/visa-management", icon: ShieldCheck, permission: "visa_management" },
     { title: "Staff", url: "/admin/staff", icon: ShieldCheck, permission: "staff_management" },
+    { title: "Book Form", url: "/admin/booking-form", icon: FormInput, permission: "settings" },
     { title: "Settings", url: "/admin/settings", icon: Settings, permission: "settings" }, // Added Settings item
 ];
 

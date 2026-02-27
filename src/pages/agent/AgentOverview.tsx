@@ -8,10 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Users, Package, CreditCard, PiggyBank, TrendingUp,
   ArrowUpRight, CheckCircle2, Clock, XCircle, AlertCircle,
-  Building2, Phone, Mail, Star, Sparkles
+  Building2, Phone, Mail, Star, Sparkles, Wallet
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { User } from "@supabase/supabase-js";
+import { Link, useOutletContext } from "react-router-dom";
 import { formatPrice } from "@/data/packages";
+import { differenceInMonths, differenceInDays, parseISO } from "date-fns";
 
 const statusConfig: Record<string, { label: string; className: string; icon: typeof CheckCircle2 }> = {
   confirmed: { label: "Confirmed", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: CheckCircle2 },
@@ -20,8 +22,12 @@ const statusConfig: Record<string, { label: string; className: string; icon: typ
   completed: { label: "Completed", className: "bg-primary/10 text-primary border-primary/20", icon: CheckCircle2 },
 };
 
+
+
 const AgentOverview = () => {
   const { user } = useAuth();
+  const context = useOutletContext<{ isGoldAgent?: boolean }>();
+  const isGoldAgent = context?.isGoldAgent || false;
 
   // Agent profile
   const { data: agent, isLoading: loadingAgent } = useQuery({
@@ -78,6 +84,42 @@ const AgentOverview = () => {
     enabled: agentBookings.length > 0,
   });
 
+  // Wallet balance
+  const { data: walletData } = useQuery({
+    queryKey: ["agent-wallet-overview", agent?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_wallets" as any)
+        .select("balance")
+        .eq("agent_id", agent!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as any) || { balance: 0 };
+    },
+    enabled: !!agent?.id,
+  });
+  const walletBalance = Number(walletData?.balance || 0);
+
+  // Passport Watchlist (Upcoming expiries)
+  const { data: watchlist = [] } = useQuery({
+    queryKey: ["agent-passport-watchlist", agent?.id],
+    queryFn: async () => {
+      const nineMonthsFromNow = new Date();
+      nineMonthsFromNow.setMonth(nineMonthsFromNow.getMonth() + 9);
+
+      const { data, error } = await supabase
+        .from("agent_clients")
+        .select("id, full_name, passport_number, passport_expiry")
+        .eq("agent_id", agent!.id)
+        .lte("passport_expiry", nineMonthsFromNow.toISOString().split("T")[0])
+        .order("passport_expiry", { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!agent?.id,
+  });
+
   // Computed stats
   const activeBookings = agentBookings.filter((b) => b.status !== "cancelled").length;
   const confirmedBookings = agentBookings.filter((b) => b.status === "confirmed" || b.status === "completed").length;
@@ -95,8 +137,6 @@ const AgentOverview = () => {
       if (commissionType === "fixed") {
         return sum + Math.min(retailPrice, commissionRate);
       }
-      // For percentage, if amount is wholesale, commission is actually (retail - amount)
-      // but let's keep it simple and just cap it at retail price.
       return sum + Math.min(retailPrice, (retailPrice * commissionRate / 100));
     }, 0);
 
@@ -161,12 +201,12 @@ const AgentOverview = () => {
     { label: "Commissions", href: "/agent/commissions", icon: PiggyBank, color: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40", iconColor: "text-emerald-600" },
   ];
 
-  if (loadingAgent) {
+  if (!user || loadingAgent) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-32 rounded-2xl" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
       </div>
     );
@@ -198,11 +238,20 @@ const AgentOverview = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-primary/80 p-6 text-white shadow-lg">
+      <div className={`relative overflow-hidden rounded-2xl ${isGoldAgent ? 'bg-gradient-to-r from-amber-600 via-amber-500/90 to-amber-700' : 'bg-gradient-to-r from-primary via-primary/90 to-primary/80'} p-6 text-white shadow-lg`}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
         <div className="relative flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex-1">
-            <p className="text-white/70 text-sm font-medium">{greeting} 👋</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-white/80 text-sm font-medium">{greeting} 👋</p>
+              {agent.rating === 5 && (
+                <span className="inline-flex flex-row items-center gap-0.5 px-2.5 py-1 rounded-full bg-white/20 text-white text-xs font-semibold shadow-sm border border-white/10 shrink-0 mt-[-0.5rem] mr-[-0.5rem] sm:mt-0 sm:mr-0 z-10 w-fit self-end">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-yellow-300 text-yellow-300" />
+                  ))}
+                </span>
+              )}
+            </div>
             <h1 className="font-heading text-2xl font-bold mt-0.5">{agent.contact_person || "Agent"}</h1>
             <p className="text-white/80 text-sm mt-0.5">{agent.business_name}</p>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -230,7 +279,49 @@ const AgentOverview = () => {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Premium Wallet Banner */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-6 shadow-sm group hover:shadow-md transition-all">
+        {/* Animated Background Gradients & Stripes */}
+        <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(var(--primary-rgb),0.02)_10px,rgba(var(--primary-rgb),0.02)_20px)]"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-primary/10 transition-colors duration-500"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center border border-primary/20 shadow-inner shrink-0 relative overflow-hidden">
+              <div className="absolute inset-0 bg-[repeating-linear-gradient(-45deg,transparent,transparent_4px,rgba(255,255,255,0.1)_4px,rgba(255,255,255,0.1)_8px)] opacity-50 mix-blend-overlay"></div>
+              <Wallet className="w-7 h-7 text-primary relative z-10" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">Wallet Balance</p>
+              <h2 className="text-4xl font-heading font-black text-foreground tracking-tight drop-shadow-sm">
+                {formatPrice(walletBalance)}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                Ready for instant booking deductions
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Link to="/agent/transactions">
+              <Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors">
+                <TrendingUp className="w-4 h-4" />
+                History
+              </Button>
+            </Link>
+            <Link to="/agent/packages">
+              <Button className="gap-2 shadow-sm">
+                <ArrowUpRight className="w-4 h-4" />
+                Book Now
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {stats.map((stat) => (
           <Card key={stat.label} className={`border ${stat.border} bg-background/50 backdrop-blur-sm hover:-translate-y-1 transition-all duration-300`}>
@@ -313,6 +404,114 @@ const AgentOverview = () => {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Interactive Passport Watchlist */}
+        <Card className="border-border/60 bg-background/50 backdrop-blur-sm shadow-sm overflow-hidden group">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between border-b border-border/40 bg-muted/20">
+            <CardTitle className="font-heading text-base font-bold flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+              </div>
+              Passport Watchlist
+            </CardTitle>
+            <Badge variant="outline" className="text-[10px] bg-background/50">
+              {watchlist.length} Expiries
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-0">
+            {watchlist.length === 0 ? (
+              <div className="text-center py-10">
+                <div className="w-12 h-12 bg-emerald-500/5 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-500/40" />
+                </div>
+                <p className="text-xs text-muted-foreground italic">All client passports are valid and healthy.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/40">
+                {watchlist.slice(0, 3).map((client) => {
+                  const expiry = parseISO(client.passport_expiry);
+                  const daysRemaining = differenceInDays(expiry, new Date());
+                  const monthsRemaining = differenceInMonths(expiry, new Date());
+
+                  // Validity % based on 10 years (approx 3650 days) - just for visual effect
+                  // A more realistic validity for "tracking" might be "How close is it to the 6-7 month limit?"
+                  const validityPercent = Math.max(0, Math.min(100, (daysRemaining / 365) * 100)); // normalized to 1 year for visual progress
+
+                  let colorClass = "text-emerald-500 stroke-emerald-500";
+                  let bgClass = "bg-emerald-500/10";
+                  if (daysRemaining < 210) { // < 7 months
+                    colorClass = "text-red-500 stroke-red-500 animate-pulse-slow";
+                    bgClass = "bg-red-500/10";
+                  } else if (daysRemaining < 270) { // < 9 months
+                    colorClass = "text-amber-500 stroke-amber-500";
+                    bgClass = "bg-amber-500/10";
+                  }
+
+                  return (
+                    <div key={client.id} className="p-4 flex items-center justify-between group/item hover:bg-muted/30 transition-all">
+                      <div className="flex items-center gap-4 min-w-0">
+                        {/* Circular Progress Indicator */}
+                        <div className="relative w-12 h-12 flex-shrink-0">
+                          <svg className="w-full h-full -rotate-90">
+                            <circle
+                              cx="24" cy="24" r="20"
+                              fill="transparent"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              className="text-muted/10"
+                            />
+                            <circle
+                              cx="24" cy="24" r="20"
+                              fill="transparent"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray={126}
+                              strokeDashoffset={126 - (126 * validityPercent) / 100}
+                              strokeLinecap="round"
+                              className={`${colorClass}`}
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className={`text-[10px] font-bold ${colorClass.split(' ')[0]}`}>
+                              {monthsRemaining}m
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate group-hover/item:text-primary transition-colors">
+                            {client.full_name}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] text-muted-foreground font-mono">{client.passport_number}</p>
+                            <span className="text-[10px] text-muted-foreground/40">•</span>
+                            <p className={`text-[10px] font-medium ${daysRemaining < 210 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                              {daysRemaining} days left
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Link to="/agent/clients">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full opacity-0 group-hover/item:opacity-100 transition-opacity">
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {watchlist.length > 3 && (
+              <div className="p-3 border-t border-border/40 bg-muted/10 group-hover:bg-muted/20 transition-colors">
+                <Link to="/agent/clients" className="flex items-center justify-center gap-1.5 text-xs text-primary font-semibold hover:underline">
+                  View full watchlist ({watchlist.length})
+                  <ArrowUpRight className="h-3 w-3" />
+                </Link>
               </div>
             )}
           </CardContent>

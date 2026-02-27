@@ -7,10 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Users, Eye, Printer, Search, Download, FileSpreadsheet, Filter,
+  Users, Eye, Printer, Search, Download, FileSpreadsheet, Filter, UserPlus, Pencil, Loader2
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { downloadMultipleDocuments } from "@/utils/documentExport";
+
 import EditBookingModal from "@/components/bookings/EditBookingModal";
 import AdminPilgrimDetailDialog, { downloadCSV } from "@/components/admin/AdminPilgrimDetailDialog";
 import {
@@ -21,6 +25,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -29,22 +34,69 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const PilgrimAvatar = ({ booking }: { booking: any }) => {
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPhoto = async () => {
+      if (!booking.user_id) return;
+
+      const { data } = await supabase
+        .from("documents")
+        .select("file_url")
+        .eq("user_id", booking.user_id)
+        .eq("type", "passport")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data?.file_url) {
+        let signed = await supabase.storage.from("passport-photos").createSignedUrl(data.file_url, 3600);
+        if (signed.data?.signedUrl) {
+          if (isMounted) setPhotoUrl(signed.data.signedUrl);
+          return;
+        }
+        signed = await supabase.storage.from("documents").createSignedUrl(data.file_url, 3600);
+        if (signed.data?.signedUrl && isMounted) {
+          setPhotoUrl(signed.data.signedUrl);
+        }
+      }
+    };
+    fetchPhoto();
+    return () => { isMounted = false; };
+  }, [booking.user_id]);
+
+  return (
+    <Avatar className="h-8 w-8 shrink-0 border border-border/50">
+      {photoUrl && <AvatarImage src={photoUrl} className="object-cover" />}
+      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+        {booking.full_name?.substring(0, 2).toUpperCase() || "??"}
+      </AvatarFallback>
+    </Avatar>
+  );
+};
+
 const AdminPilgrims = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [genderFilter, setGenderFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [editingBooking, setEditingBooking] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["admin-all-bookings"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("*, packages(name, type, price, currency, duration)")
+        .select("*, packages(name, type, price, currency, duration), payments(status)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -59,9 +111,19 @@ const AdminPilgrims = () => {
         (b.passport_number || "").toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "all" || b.status === statusFilter;
       const matchesType = typeFilter === "all" || (b as any).packages?.type === typeFilter;
-      return matchesSearch && matchesStatus && matchesType;
+      const matchesGender = genderFilter === "all" || (b.gender && b.gender.toLowerCase() === genderFilter);
+
+      const payments = (b as any).payments || [];
+      const isVerified = payments.some((p: any) => p.status === "verified");
+      const isPending = payments.some((p: any) => p.status === "pending") && !isVerified;
+
+      let matchesPayment = true;
+      if (paymentFilter === "verified") matchesPayment = isVerified;
+      if (paymentFilter === "pending") matchesPayment = isPending || payments.length === 0;
+
+      return matchesSearch && matchesStatus && matchesType && matchesPayment && matchesGender;
     });
-  }, [bookings, search, statusFilter, typeFilter]);
+  }, [bookings, search, statusFilter, typeFilter, paymentFilter, genderFilter]);
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice(
@@ -158,6 +220,42 @@ const AdminPilgrims = () => {
     w.document.close();
   };
 
+  const handleBulkDownload = async () => {
+    setIsDownloading(true);
+    try {
+      const bookingIds = someSelected
+        ? Array.from(selectedIds)
+        : filtered.map(b => b.id);
+
+      const { data: docs, error } = await supabase
+        .from("documents")
+        .select("*, bookings:booking_id(full_name)")
+        .in("booking_id", bookingIds);
+
+      if (error) throw error;
+
+      if (!docs || docs.length === 0) {
+        toast.error("No documents found for selected pilgrims.");
+        return;
+      }
+
+      const downloadList = docs.map((d: any) => ({
+        url: d.file_url,
+        fileName: d.file_name,
+        type: d.type,
+        pilgrimName: d.bookings?.full_name || "Unknown",
+      }));
+
+      toast.info(`Preparing ${downloadList.length} documents for download...`);
+      await downloadMultipleDocuments(downloadList, `pilgrim_documents_${format(new Date(), "yyyyMMdd")}.zip`);
+      toast.success(`Downloaded ${downloadList.length} documents successfully.`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to download documents");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -170,6 +268,10 @@ const AdminPilgrims = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+          <Button onClick={() => navigate("/admin/book-pilgrim")} className="gap-2 shrink-0">
+            <UserPlus className="h-4 w-4" /> Register Pilgrim
+          </Button>
+
           {/* Search */}
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -212,6 +314,34 @@ const AdminPilgrims = () => {
               <SelectItem value="flight_only">Flight Only</SelectItem>
             </SelectContent>
           </Select>
+          {/* Payment filter */}
+          <Select value={paymentFilter} onValueChange={(v) => { setPaymentFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full sm:w-36 bg-card">
+              <div className="flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Payment" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Payments</SelectItem>
+              <SelectItem value="verified">Verified</SelectItem>
+              <SelectItem value="pending">Pending/None</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* Gender filter */}
+          <Select value={genderFilter} onValueChange={(v) => { setGenderFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full sm:w-36 bg-card">
+              <div className="flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Gender" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Genders</SelectItem>
+              <SelectItem value="male">Male</SelectItem>
+              <SelectItem value="female">Female</SelectItem>
+            </SelectContent>
+          </Select>
           {/* Export all */}
           <Button variant="outline" size="sm" onClick={exportAll} className="gap-2 whitespace-nowrap">
             <FileSpreadsheet className="h-4 w-4" /> Export CSV
@@ -219,6 +349,11 @@ const AdminPilgrims = () => {
           {/* Print all */}
           <Button variant="outline" size="sm" onClick={handlePrintBulk} className="gap-2 whitespace-nowrap">
             <Printer className="h-4 w-4" /> Print List
+          </Button>
+          {/* Bulk Download all */}
+          <Button variant="default" size="sm" onClick={handleBulkDownload} disabled={isDownloading} className="gap-2 whitespace-nowrap">
+            {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Download Docs
           </Button>
         </div>
       </div>
@@ -232,6 +367,10 @@ const AdminPilgrims = () => {
           </Button>
           <Button size="sm" variant="outline" onClick={handlePrintBulk} className="gap-2">
             <Printer className="h-4 w-4" /> Print Selected
+          </Button>
+          <Button size="sm" variant="default" onClick={handleBulkDownload} disabled={isDownloading} className="gap-2 ml-2">
+            {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Download Docs
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="ml-auto text-muted-foreground">
             Clear selection
@@ -285,7 +424,12 @@ const AdminPilgrims = () => {
                           aria-label={`Select ${b.full_name}`}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{b.full_name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <PilgrimAvatar booking={b} />
+                          <span className="font-medium whitespace-nowrap">{b.full_name}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-xs font-mono">{b.reference || b.id.slice(0, 8)}</TableCell>
                       <TableCell>
                         <div>
@@ -305,6 +449,15 @@ const AdminPilgrims = () => {
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedBooking(b)} title="View Details">
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                            onClick={() => setEditingBooking(b)}
+                            title="Edit Booking / Visa Information"
+                          >
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadCSV([b], `${b.full_name}.csv`)} title="Export CSV">
                             <Download className="h-4 w-4" />

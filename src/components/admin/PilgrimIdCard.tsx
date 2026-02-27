@@ -12,6 +12,11 @@ export interface Booking {
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;
   package: { name: string; type: string };
+  visa_provider?: string | null;
+  visa_type?: string | null;
+  flight_number?: string | null;
+  arrival_date?: string | null;
+  departure_date?: string | null;
 }
 
 export type CardOrientation = "portrait" | "landscape";
@@ -120,7 +125,8 @@ const PilgrimIdCard = ({ booking, orientation = "portrait", theme = "classic" }:
                   <Field label="Passport" value={booking.passport_number || "—"} />
                   <Field label="Gender" value={booking.gender || "—"} capitalize />
                   <Field label="Departure" value={booking.departure_city || "—"} />
-                  <Field label="Type" value={booking.package.type} capitalize />
+                  <Field label="Visa/Type" value={booking.visa_provider ? `${booking.visa_provider.split(' ')[0]} ${booking.visa_type ? `(${booking.visa_type})` : ''}` : "—"} />
+                  <Field label="Flight" value={booking.flight_number || "—"} />
                 </div>
                 <div className="mt-2 pt-1 border-t border-border/50 text-[9px]">
                   <span className="text-muted-foreground">Emergency: </span>
@@ -204,7 +210,8 @@ const PilgrimIdCard = ({ booking, orientation = "portrait", theme = "classic" }:
             <Field label="Passport No." value={booking.passport_number || "—"} />
             <Field label="Gender" value={booking.gender || "—"} capitalize />
             <Field label="Departure" value={booking.departure_city || "—"} />
-            <Field label="Type" value={booking.package.type} capitalize />
+            <Field label="Visa/Type" value={booking.visa_provider ? `${booking.visa_provider.split(' ')[0]} ${booking.visa_type ? `(${booking.visa_type})` : ''}` : "—"} />
+            <Field label="Flight" value={booking.flight_number || "—"} />
           </div>
           <div className="mt-2 pt-1.5 border-t border-border/50 text-[10px]">
             <span className="text-muted-foreground">Emergency: </span>

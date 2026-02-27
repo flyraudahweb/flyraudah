@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-    X, User, Shield, PhoneCall, Heart, Star, Lock, Loader2, CheckCircle2
+    X, User, Shield, PhoneCall, Heart, Star, Lock, Loader2, CheckCircle2,
+    Package, FileText, Upload, Trash2, Plane
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,14 +28,17 @@ interface EditBookingModalProps {
     adminMode?: boolean;
 }
 
-type TabKey = "personal" | "passport" | "emergency" | "mahram" | "special";
+type TabKey = "personal" | "passport" | "emergency" | "mahram" | "special" | "package" | "visa_flight" | "documents";
 
-const TABS: { key: TabKey; label: string; icon: typeof User }[] = [
+const TABS: { key: TabKey; label: string; icon: any }[] = [
     { key: "personal", label: "Personal", icon: User },
     { key: "passport", label: "Travel", icon: Shield },
+    { key: "visa_flight", label: "Visa/Flight", icon: Plane },
     { key: "emergency", label: "Emergency", icon: PhoneCall },
     { key: "mahram", label: "Mahram", icon: Heart },
     { key: "special", label: "Requests", icon: Star },
+    { key: "package", label: "Package", icon: Package },
+    { key: "documents", label: "Docs", icon: FileText },
 ];
 
 // Fields allowed to edit on confirmed bookings
@@ -41,6 +46,9 @@ const CONFIRMED_EDITABLE = new Set([
     "phone", "address", "emergency_contact_name",
     "emergency_contact_phone", "emergency_contact_relationship",
     "special_requests",
+    "package_id", "package_date_id", "documents",
+    "visa_provider", "visa_document_url", "flight_number",
+    "arrival_date", "departure_date", "visa_type"
 ]);
 
 const EditBookingModal = ({ booking, onClose, adminMode = false }: EditBookingModalProps) => {
@@ -84,10 +92,65 @@ const EditBookingModal = ({ booking, onClose, adminMode = false }: EditBookingMo
             mahram_passport: booking.mahram_passport || "",
             // Special
             special_requests: booking.special_requests || "",
+            // Package & Dates
+            package_id: booking.package_id || "",
+            package_date_id: booking.package_date_id || "",
+            // Visa & Flight
+            visa_provider: booking.visa_provider || "",
+            visa_document_url: booking.visa_document_url || "",
+            flight_number: booking.flight_number || "",
+            arrival_date: booking.arrival_date || "",
+            departure_date: booking.departure_date || "",
+            visa_type: booking.visa_type || "",
+            // Staged documents for amendment
+            documents: [] as any[],
         },
     });
 
     const gender = watch("gender");
+    const packageId = watch("package_id");
+    const stagedDocuments = watch("documents") || [];
+
+    // Fetch packages
+    const { data: packages = [] } = useQuery({
+        queryKey: ["packages-minimal"],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("packages")
+                .select("id, name")
+                .eq("status", "active");
+            if (error) throw error;
+            return data;
+        },
+    });
+
+    // Fetch dates for selected package
+    const { data: packageDates = [] } = useQuery({
+        queryKey: ["package-dates-minimal", packageId],
+        queryFn: async () => {
+            if (!packageId) return [];
+            const { data, error } = await supabase
+                .from("package_dates")
+                .select("id, outbound")
+                .eq("package_id", packageId);
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!packageId,
+    });
+
+    // Fetch visa providers
+    const { data: visaProviders = [] } = useQuery({
+        queryKey: ["visa-providers-active"],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("visa_providers")
+                .select("name")
+                .eq("is_active", true);
+            if (error) throw error;
+            return data;
+        },
+    });
 
     const isFieldEditable = (field: string) => {
         if (isPending) return true;
@@ -105,6 +168,8 @@ const EditBookingModal = ({ booking, onClose, adminMode = false }: EditBookingMo
                         payload[key] = val !== "" && val != null ? Number(val) : null;
                     } else if (key === "previous_umrah") {
                         payload[key] = val === "true";
+                    } else if (key === "documents") {
+                        // Skip documents in regular update
                     } else {
                         payload[key] = val === "" ? null : val;
                     }
@@ -125,9 +190,11 @@ const EditBookingModal = ({ booking, onClose, adminMode = false }: EditBookingMo
                         changedFields[key] = (formData as any)[key];
                     }
                 }
+
                 if (Object.keys(changedFields).length === 0) {
                     throw new Error("No changes detected.");
                 }
+
                 const { error } = await supabase
                     .from("booking_amendment_requests")
                     .insert({
@@ -141,6 +208,7 @@ const EditBookingModal = ({ booking, onClose, adminMode = false }: EditBookingMo
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["user-bookings-full"] });
             queryClient.invalidateQueries({ queryKey: ["admin-all-bookings"] });
+            queryClient.invalidateQueries({ queryKey: ["admin-amendment-requests"] });
             setSaved(true);
             if (isPending) {
                 toast.success("Booking updated successfully!");
@@ -354,6 +422,94 @@ const EditBookingModal = ({ booking, onClose, adminMode = false }: EditBookingMo
                         </div>
                     )}
 
+                    {/* VISA & FLIGHT TAB */}
+                    {activeTab === "visa_flight" && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="sm:col-span-2 flex justify-end">
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 text-primary border-primary/30 bg-primary/5 hover:bg-primary hover:text-white transition-colors">
+                                            <HelpCircle className="h-3.5 w-3.5" />
+                                            Need Visa Support?
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[400px]">
+                                        <DialogHeader>
+                                            <DialogTitle className="flex items-center gap-2 text-primary">
+                                                <Shield className="h-5 w-5" />
+                                                Visa Support Center
+                                            </DialogTitle>
+                                            <DialogDescription className="pt-2 text-sm leading-relaxed">
+                                                If you are an agent experiencing delays or issues with a visa application, you can request prioritized processing.
+                                                <br /><br />
+                                                High-rated Premium Agents have direct access to the <strong>Platinum Live Chat</strong> for instant visa processing support in their Dashboard.
+                                                <br /><br />
+                                                Alternatively, you can message the <span className="font-semibold text-foreground">Visa Processing</span> department via the Support Center.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="flex justify-end pt-4">
+                                            <Button type="button" onClick={() => window.location.href = '/agent/support'} className="gold-gradient text-secondary-foreground text-sm font-semibold w-full">
+                                                Go to Support Center
+                                            </Button>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+
+                            <Field label="Visa Provider" locked={!isFieldEditable("visa_provider")}>
+                                <Select
+                                    disabled={!isFieldEditable("visa_provider") || isSaving}
+                                    value={watch("visa_provider")}
+                                    onValueChange={(v) => setValue("visa_provider", v, { shouldDirty: true })}
+                                >
+                                    <SelectTrigger className={`h-9 text-sm ${!isFieldEditable("visa_provider") ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}>
+                                        <SelectValue placeholder="Select provider" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="None">None / Other</SelectItem>
+                                        {visaProviders.map((p: any) => (
+                                            <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                            <Field label="Visa Type" locked={!isFieldEditable("visa_type")}>
+                                <Select
+                                    disabled={!isFieldEditable("visa_type") || isSaving}
+                                    value={watch("visa_type")}
+                                    onValueChange={(v) => setValue("visa_type", v, { shouldDirty: true })}
+                                >
+                                    <SelectTrigger className={`h-9 text-sm ${!isFieldEditable("visa_type") ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}>
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Umrah">Umrah</SelectItem>
+                                        <SelectItem value="Hajj">Hajj</SelectItem>
+                                        <SelectItem value="Tourist">Tourist</SelectItem>
+                                        <SelectItem value="Business">Business</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                            <Field label="Flight Number" locked={!isFieldEditable("flight_number")}>
+                                <Input {...fieldProps("flight_number")} placeholder="e.g. SV-102" />
+                            </Field>
+                            <Field label="Visa Document URL" locked={!isFieldEditable("visa_document_url")}>
+                                <Input {...fieldProps("visa_document_url")} placeholder="https://..." />
+                            </Field>
+                            <Field label="Arrival Date" locked={!isFieldEditable("arrival_date")}>
+                                <Input type="date" {...fieldProps("arrival_date")} />
+                            </Field>
+                            <Field label="Departure Date" locked={!isFieldEditable("departure_date")}>
+                                <Input type="date" {...fieldProps("departure_date")} />
+                            </Field>
+                            <div className="col-span-1 sm:col-span-2 mt-2">
+                                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <Plane className="h-4 w-4 text-primary" /> Note: Ensure the flight numbers match the latest ticket details. You can upload physical visa copies in the "Docs" tab safely.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* MAHRAM TAB (female only) */}
                     {activeTab === "mahram" && gender === "female" && (
                         <div className="space-y-3">
@@ -385,6 +541,149 @@ const EditBookingModal = ({ booking, onClose, adminMode = false }: EditBookingMo
                                     className={`min-h-[120px] text-sm resize-none ${!isFieldEditable("special_requests") ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}
                                 />
                             </Field>
+                        </div>
+                    )}
+
+                    {/* PACKAGE & DATES TAB */}
+                    {activeTab === "package" && (
+                        <div className="grid grid-cols-1 gap-4">
+                            <Field label="Selected Package" locked={!isFieldEditable("package_id")}>
+                                <Select
+                                    disabled={!isFieldEditable("package_id") || isSaving}
+                                    value={watch("package_id")}
+                                    onValueChange={(v) => {
+                                        setValue("package_id", v, { shouldDirty: true });
+                                        setValue("package_date_id", "", { shouldDirty: true });
+                                    }}
+                                >
+                                    <SelectTrigger className={`h-9 text-sm ${!isFieldEditable("package_id") ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}>
+                                        <SelectValue placeholder="Select package" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {packages.map((pkg: any) => (
+                                            <SelectItem key={pkg.id} value={pkg.id}>{pkg.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+
+                            <Field label="Travel Date" locked={!isFieldEditable("package_date_id")}>
+                                <Select
+                                    disabled={!isFieldEditable("package_date_id") || !packageId || isSaving}
+                                    value={watch("package_date_id")}
+                                    onValueChange={(v) => setValue("package_date_id", v, { shouldDirty: true })}
+                                >
+                                    <SelectTrigger className={`h-9 text-sm ${!isFieldEditable("package_date_id") ? "opacity-50 cursor-not-allowed bg-muted" : ""}`}>
+                                        <SelectValue placeholder={packageId ? "Select date" : "Select package first"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {packageDates.map((d: any) => (
+                                            <SelectItem key={d.id} value={d.id}>
+                                                {new Date(d.outbound).toLocaleDateString()}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                            {isConfirmed && (
+                                <p className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded border border-amber-100 italic">
+                                    Changing package or dates may require price adjustments. Admin will contact you after review.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* DOCUMENTS TAB */}
+                    {activeTab === "documents" && (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-foreground italic flex items-center gap-2">
+                                    Request Document Update
+                                </h3>
+                                <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                                    {stagedDocuments.length} pending update
+                                </Badge>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                {["passport", "visa", "vaccine_certificate"].map((type) => {
+                                    const staged = stagedDocuments.find((d: any) => d.type === type);
+                                    return (
+                                        <Card key={type} className="border-border/40 bg-muted/20">
+                                            <CardContent className="p-3">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-semibold capitalize text-foreground">{type.replace("_", " ")}</p>
+                                                            <p className="text-[10px] text-muted-foreground truncate">
+                                                                {staged ? staged.file_name : "No new file uploaded"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {staged ? (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7 text-destructive"
+                                                                onClick={() => {
+                                                                    const next = stagedDocuments.filter((d: any) => d.type !== type);
+                                                                    setValue("documents", next, { shouldDirty: true });
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        ) : (
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="file"
+                                                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                                                    accept="image/*,.pdf"
+                                                                    onChange={async (e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (!file) return;
+
+                                                                        toast.loading("Uploading temporary file...", { id: "upload" });
+                                                                        try {
+                                                                            const path = `${user?.id}/amendment_${Date.now()}_${file.name}`;
+                                                                            const { data, error } = await supabase.storage
+                                                                                .from("documents")
+                                                                                .upload(path, file);
+
+                                                                            if (error) throw error;
+
+                                                                            const newDoc = {
+                                                                                type,
+                                                                                file_url: data.path,
+                                                                                file_name: file.name
+                                                                            };
+
+                                                                            const next = [...stagedDocuments.filter((d: any) => d.type !== type), newDoc];
+                                                                            setValue("documents", next, { shouldDirty: true });
+                                                                            toast.success(`${type.replace("_", " ")} staged for update`, { id: "upload" });
+                                                                        } catch (err: any) {
+                                                                            toast.error("Upload failed: " + err.message, { id: "upload" });
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 px-2">
+                                                                    <Upload className="h-3 w-3" />
+                                                                    Upload New
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+
+                            <p className="text-[10px] text-muted-foreground italic bg-muted/50 p-2 rounded text-center">
+                                Uploaded documents are staged for review and won't replace your current files until approved.
+                            </p>
                         </div>
                     )}
                 </form>
