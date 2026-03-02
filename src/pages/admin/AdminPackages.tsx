@@ -130,7 +130,7 @@ const AdminPackages = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Package Management</h1>
+          <h1 className="admin-section-title">Package Management</h1>
           <p className="text-sm text-muted-foreground mt-1">Create and manage travel packages</p>
         </div>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm(emptyForm); } }}>
@@ -293,7 +293,7 @@ const AdminPackages = () => {
           {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse" />)}
         </div>
       ) : (
-        <Card className="border-border">
+        <div className="admin-card overflow-hidden">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -342,7 +342,7 @@ const AdminPackages = () => {
               </TableBody>
             </Table>
           </CardContent>
-        </Card>
+        </div>
       )}
     </div>
   );

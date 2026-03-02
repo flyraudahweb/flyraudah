@@ -149,7 +149,7 @@ const AdminActivity = () => {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="font-heading text-2xl font-bold text-foreground">Activity Tracking</h1>
+                <h1 className="admin-section-title">Activity Tracking</h1>
                 <p className="text-sm text-muted-foreground mt-1">
                     Monitor all user and agent interactions — identify issues and reach out to help
                 </p>

@@ -57,6 +57,7 @@ const AgentBookings = lazyWithRetry(() => import("./pages/agent/AgentBookings"))
 const AgentCommissions = lazyWithRetry(() => import("./pages/agent/AgentCommissions"));
 const AgentWalletHistory = lazyWithRetry(() => import("./pages/agent/AgentWalletHistory"));
 const AgentRules = lazyWithRetry(() => import("./pages/agent/AgentRules"));
+const AgentVisas = lazyWithRetry(() => import("./pages/agent/AgentVisas"));
 const Proposal = lazyWithRetry(() => import("./pages/Proposal"));
 const AboutUs = lazyWithRetry(() => import("./pages/AboutUs"));
 const Services = lazyWithRetry(() => import("./pages/Services"));
@@ -65,6 +66,8 @@ const TermsAndConditions = lazyWithRetry(() => import("./pages/TermsAndCondition
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
 const AdminSettings = lazyWithRetry(() => import("./pages/admin/AdminSettings"));
 const AdminBookingForm = lazyWithRetry(() => import("./pages/admin/AdminBookingForm"));
+const AdminRegisterPilgrim = lazyWithRetry(() => import("./pages/admin/AdminRegisterPilgrim"));
+const DashboardVisas = lazyWithRetry(() => import("./pages/dashboard/DashboardVisas"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -138,6 +141,7 @@ const App = () => (
                     <Route path="documents" element={<DashboardDocuments />} />
                     <Route path="profile" element={<DashboardProfile />} />
                     <Route path="support" element={<DashboardSupport />} />
+                    <Route path="visas" element={<DashboardVisas />} />
                     <Route path="book/:id" element={<BookingWizard />} />
                   </Route>
                   <Route
@@ -201,7 +205,7 @@ const App = () => (
                     <Route path="staff" element={
                       <ProtectedRoute requiredPermission="staff_management"><AdminStaffManagement /></ProtectedRoute>
                     } />
-                    <Route path="chat" element={<AdminTeamChat />} />
+                    <Route path="team-chat" element={<AdminTeamChat />} />
                     <Route path="profile" element={<DashboardProfile />} />
                   </Route>
                   <Route
@@ -219,6 +223,7 @@ const App = () => (
                     <Route path="bookings" element={<AgentBookings />} />
                     <Route path="commissions" element={<AgentCommissions />} />
                     <Route path="transactions" element={<AgentWalletHistory />} />
+                    <Route path="visas" element={<AgentVisas />} />
                     <Route path="profile" element={<DashboardProfile />} />
                     <Route path="support" element={<DashboardSupport />} />
                     <Route path="rules" element={<AgentRules />} />

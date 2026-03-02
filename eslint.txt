@@ -1,0 +1,31 @@
+﻿
+C:\Users\DEEPMIND\Desktop\Raudah\raudahtravels\src\pages\admin\AdminBookPilgrim.tsx
+  117:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  239:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  293:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  343:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  356:73  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\DEEPMIND\Desktop\Raudah\raudahtravels\src\pages\dashboard\BookingWizard.tsx
+  145:19  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  194:19  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  239:34  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  247:22  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  277:31  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  278:46  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  308:6   warning  React Hook useEffect has missing dependencies: 'loadDraft', 'pilgrimForm', and 'travelForm'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  328:15  error    Empty block statement                                                                                                                            no-empty
+  416:14  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  504:25  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  515:36  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  520:32  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  522:62  error    Empty block statement                                                                                                                            no-empty
+  536:56  error    Empty block statement                                                                                                                            no-empty
+  549:21  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  570:60  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  571:61  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+  637:52  error    Unexpected any. Specify a different type                                                                                                         @typescript-eslint/no-explicit-any
+
+Γ£û 24 problems (23 errors, 1 warning)
+

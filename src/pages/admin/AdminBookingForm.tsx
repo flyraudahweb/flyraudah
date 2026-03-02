@@ -222,7 +222,7 @@ const AdminBookingForm = () => {
                     <FormInput className="h-5 w-5 text-secondary" />
                 </div>
                 <div>
-                    <h1 className="font-heading text-2xl font-bold text-foreground">Booking Form Builder</h1>
+                    <h1 className="admin-section-title">Booking Form Builder</h1>
                     <p className="text-sm text-muted-foreground">Manage booking form fields — enable/disable, relabel, reorder, add custom fields</p>
                 </div>
             </div>

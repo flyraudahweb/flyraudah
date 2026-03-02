@@ -1,0 +1,52 @@
+
+> vite_react_shadcn_ts@0.0.0 build
+> vite build
+
+[36mvite v5.4.19 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 51 modules transformed.
+[31mx[39m Build failed in 2.00s
+[31merror during build:
+[31m[vite-plugin-pwa:build] [plugin vite-plugin-pwa:build] src/pages/admin/AdminBookPilgrim.tsx (446:26): There was an error during the build:
+  Transform failed with 3 errors:
+C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/src/pages/admin/AdminBookPilgrim.tsx:446:26: ERROR: Unexpected closing "div" tag does not match opening "CardContent" tag
+C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/src/pages/admin/AdminBookPilgrim.tsx:455:22: ERROR: Unexpected closing "CardContent" tag does not match opening "Card" tag
+C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/src/pages/admin/AdminBookPilgrim.tsx:456:27: ERROR: Unterminated regular expression
+Additionally, handling the error in the 'buildEnd' hook caused the following error:
+  Transform failed with 3 errors:
+C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/src/pages/admin/AdminBookPilgrim.tsx:446:26: ERROR: Unexpected closing "div" tag does not match opening "CardContent" tag
+C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/src/pages/admin/AdminBookPilgrim.tsx:455:22: ERROR: Unexpected closing "CardContent" tag does not match opening "Card" tag
+C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/src/pages/admin/AdminBookPilgrim.tsx:456:27: ERROR: Unterminated regular expression[31m
+file: [36mC:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/src/pages/admin/AdminBookPilgrim.tsx:446:26[31m
+[33m
+[33mUnexpected closing "div" tag does not match opening "CardContent" tag[33m
+444|                                  </div>
+445|                              </div>
+446|                          </div>
+   |                            ^
+447|  
+448|                          <div className="flex gap-2 pt-4">
+
+[33mUnexpected closing "CardContent" tag does not match opening "Card" tag[33m
+453|                              }} className="flex-1">Continue</Button>
+454|                          </div>
+455|                      </CardContent>
+   |                        ^
+456|                      </Card>
+457|                  )}
+
+[33mUnterminated regular expression[33m
+454|                          </div>
+455|                      </CardContent>
+456|                      </Card>
+   |                             ^
+457|                  )}
+458|  
+[31m
+    at getRollupError (file:///C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/node_modules/vite/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at file:///C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/node_modules/vite/node_modules/rollup/dist/es/shared/node-entry.js:23444:39
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async catchUnfinishedHookActions (file:///C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/node_modules/vite/node_modules/rollup/dist/es/shared/node-entry.js:22902:16)
+    at async rollupInternal (file:///C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/node_modules/vite/node_modules/rollup/dist/es/shared/node-entry.js:23427:5)
+    at async build (file:///C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:65693:14)
+    at async CAC.<anonymous> (file:///C:/Users/DEEPMIND/Desktop/Raudah/raudahtravels/node_modules/vite/dist/node/cli.js:829:5)[39m

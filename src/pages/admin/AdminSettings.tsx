@@ -211,7 +211,7 @@ const AdminSettings = () => {
                     <Settings className="h-5 w-5 text-secondary" />
                 </div>
                 <div>
-                    <h1 className="font-heading text-2xl font-bold text-foreground">Settings</h1>
+                    <h1 className="admin-section-title">Settings</h1>
                     <p className="text-sm text-muted-foreground">Configure site features and security</p>
                 </div>
             </div>

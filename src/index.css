@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Inter:wght@300;400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,44 +6,48 @@
 
 @layer base {
   :root {
-    --background: 40 33% 99%;
-    --foreground: 160 30% 10%;
+    --background: 210 20% 96%;
+    /* Very light gray #f3f4f6 */
+    --foreground: 220 39% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 160 30% 10%;
+    /* Pure white */
+    --card-foreground: 220 39% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 160 30% 10%;
+    --popover-foreground: 220 39% 11%;
 
     --primary: 162 90% 17%;
-    --primary-foreground: 28 50% 95%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 28 55% 44%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 39% 11%;
 
-    --muted: 30 20% 95%;
-    --muted-foreground: 160 10% 40%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 28 55% 44%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 39% 11%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 80%;
-    --input: 30 20% 80%;
-    --ring: 28 55% 44%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 162 90% 17%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    --sidebar-background: 162 90% 12%;
-    --sidebar-foreground: 30 20% 95%;
-    --sidebar-primary: 28 55% 50%;
+    --sidebar-background: 210 20% 96%;
+    /* Match page body background exactly */
+    --sidebar-foreground: 220 10% 40%;
+    --sidebar-primary: 162 90% 17%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 162 70% 20%;
-    --sidebar-accent-foreground: 30 20% 95%;
-    --sidebar-border: 162 50% 25%;
-    --sidebar-ring: 28 55% 44%;
+    --sidebar-accent: 0 0% 100%;
+    --sidebar-accent-foreground: 220 39% 11%;
+    --sidebar-border: 210 20% 96%;
+    /* Invisible border */
+    --sidebar-ring: 162 90% 17%;
 
     /* Custom luxury tokens */
     --emerald: 162 90% 17%;
@@ -104,7 +108,12 @@
   }
 
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground;
+    font-family: 'Lato', sans-serif;
+  }
+
+  * {
+    font-family: inherit;
   }
 
   h1,
@@ -113,7 +122,8 @@
   h4,
   h5,
   h6 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
   }
 
   [dir="rtl"] {
@@ -123,11 +133,12 @@
 
 @layer utilities {
   .font-heading {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
   }
 
   .font-body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Lato', sans-serif;
   }
 
   .font-arabic {
@@ -161,15 +172,36 @@
   }
 
   .sidebar-stripe-bg {
-    background:
-      repeating-linear-gradient(135deg,
-        transparent,
-        transparent 10px,
-        rgba(255, 255, 255, 0.03) 10px,
-        rgba(255, 255, 255, 0.03) 20px);
+    background: transparent;
   }
 
-  /* Ornamental divider */
+  /* Remove sidebar right border injected by Shadcn's data attributes */
+  [data-sidebar="sidebar"] {
+    border-right: none !important;
+  }
+
+  .group[data-side="left"]>div,
+  [data-side="left"]>div {
+    border-right: none !important;
+  }
+
+  /* New admin design system cards */
+  .admin-card {
+    @apply bg-white rounded-2xl shadow-sm;
+  }
+
+  .admin-stat-inset {
+    @apply bg-gray-50 rounded-xl shadow-inner;
+  }
+
+  .admin-section-title {
+    @apply text-4xl font-bold text-foreground tracking-tight;
+  }
+
+  .admin-card-title {
+    @apply text-base font-bold text-foreground;
+  }
+
   .ornament-divider {
     display: flex;
     align-items: center;
@@ -326,7 +358,7 @@
   }
 
   .glass-panel {
-    @apply bg-background/60 backdrop-blur-xl border border-border/50 shadow-lg;
+    @apply bg-white border-0 shadow-sm rounded-2xl;
   }
 
   .glass-gradient {

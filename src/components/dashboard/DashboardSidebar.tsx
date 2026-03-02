@@ -10,6 +10,7 @@ import {
   User,
   HelpCircle,
   LogOut,
+  FileCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ const menuItems = [
   { titleKey: "dashboard.nav.packages", url: "/dashboard/packages", icon: Package },
   { titleKey: "dashboard.nav.payments", url: "/dashboard/payments", icon: CreditCard },
   { titleKey: "dashboard.nav.documents", url: "/dashboard/documents", icon: FileText },
+  { titleKey: "dashboard.nav.visas", url: "/dashboard/visas", icon: FileCheck, fallback: "Visas" },
   { titleKey: "dashboard.nav.profile", url: "/dashboard/profile", icon: User },
   { titleKey: "dashboard.nav.support", url: "/dashboard/support", icon: HelpCircle },
 ];
@@ -85,13 +87,13 @@ const DashboardSidebar = () => {
                             activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                           >
                             <item.icon className="h-4 w-4 shrink-0" />
-                            {!collapsed && <span className="text-sm">{t(item.titleKey)}</span>}
+                            {!collapsed && <span className="text-sm">{t(item.titleKey, item.fallback || '')}</span>}
                           </NavLink>
                         </SidebarMenuButton>
                       </TooltipTrigger>
                       {collapsed && (
                         <TooltipContent side="right" className="font-medium">
-                          {t(item.titleKey)}
+                          {t(item.titleKey, item.fallback || '')}
                         </TooltipContent>
                       )}
                     </Tooltip>

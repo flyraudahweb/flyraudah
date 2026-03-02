@@ -1,31 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Package, CalendarCheck, CreditCard, Users, TrendingUp, UserCheck,
-  ArrowUpRight, ArrowDownRight, Bot, Eye, CheckCircle2, ShieldCheck
+  Package, CalendarCheck, CreditCard, Users,
+  ArrowUpRight, ArrowDownRight, ShieldCheck, ChevronRight
 } from "lucide-react";
 import { formatPrice } from "@/data/packages";
 import { Link } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent
 } from "@/components/ui/chart";
 import {
-  AreaChart, Area, XAxis, YAxis, PieChart, Pie, Cell, ResponsiveContainer
+  AreaChart, Area, XAxis, YAxis
 } from "recharts";
-import { format, subMonths, startOfMonth, subDays, startOfDay } from "date-fns";
+import { format, subMonths, startOfMonth, subDays } from "date-fns";
 
 const AdminOverview = () => {
   // Main stats
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
       const now = new Date();
-      const currentMonthStart = startOfMonth(now);
-
-      // Weekly boundaries for "Real" trends
       const sevenDaysAgo = subDays(now, 7);
       const fourteenDaysAgo = subDays(now, 14);
 
@@ -41,7 +38,6 @@ const AdminOverview = () => {
         .filter((p) => p.status === "verified")
         .reduce((sum, p) => sum + Number(p.amount), 0);
 
-      // Weekly Trends (Last 7 Days vs Previous 7 Days)
       const currentWeekPayments = (payRes.data || [])
         .filter(p => p.status === "verified" && new Date(p.created_at) >= sevenDaysAgo);
       const prevWeekPayments = (payRes.data || [])
@@ -50,7 +46,6 @@ const AdminOverview = () => {
       const currentRev = currentWeekPayments.reduce((sum, p) => sum + Number(p.amount), 0);
       const prevRev = prevWeekPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
-      // Display absolute amount if baseline is 0, otherwise percentage
       const revenueTrend = prevRev > 0
         ? `${Math.round(((currentRev - prevRev) / prevRev) * 100)}%`
         : (currentRev > 0 ? `+${formatPrice(currentRev)}` : "0%");
@@ -67,21 +62,19 @@ const AdminOverview = () => {
       const pendingPayments = (payRes.data || []).filter((p) => p.status === "pending").length;
       const totalBookings = bookRes.data?.length || 0;
       const confirmedBookings = (bookRes.data || []).filter((b) => b.status === "confirmed").length;
-      const activeBookings = (bookRes.data || []).filter((b) => b.status !== "cancelled").length;
-      const conversionRate = totalBookings > 0 ? Math.round((confirmedBookings / totalBookings) * 100) : 0;
 
       return {
         packages: pkgRes.count || 0,
         totalBookings,
-        activeBookings,
         confirmedBookings,
         totalRevenue,
         pendingPayments,
         agents: agentRes.count || 0,
         pilgrims: profileRes.count || 0,
-        conversionRate,
         revenueTrend,
-        bookingTrend
+        bookingTrend,
+        revUp: !revenueTrend.startsWith("-") && revenueTrend !== "0%",
+        bookUp: !bookingTrend.startsWith("-") && bookingTrend !== "0%",
       };
     },
   });
@@ -111,30 +104,6 @@ const AdminOverview = () => {
     },
   });
 
-  // Booking status breakdown
-  const { data: bookingBreakdown = [] } = useQuery({
-    queryKey: ["admin-booking-breakdown"],
-    queryFn: async () => {
-      const { data } = await supabase.from("bookings").select("status");
-      const counts: Record<string, number> = { pending: 0, confirmed: 0, cancelled: 0, completed: 0 };
-      (data || []).forEach((b) => { counts[b.status] = (counts[b.status] || 0) + 1; });
-      return Object.entries(counts)
-        .filter(([, v]) => v > 0)
-        .map(([status, count]) => ({ status, count }));
-    },
-  });
-
-  // Package type split
-  const { data: packageSplit = [] } = useQuery({
-    queryKey: ["admin-package-split"],
-    queryFn: async () => {
-      const { data } = await supabase.from("packages").select("type");
-      const counts: Record<string, number> = {};
-      (data || []).forEach((p) => { counts[p.type] = (counts[p.type] || 0) + 1; });
-      return Object.entries(counts).map(([type, count]) => ({ type: type.charAt(0).toUpperCase() + type.slice(1), count }));
-    },
-  });
-
   // Recent bookings
   const { data: recentBookings = [] } = useQuery({
     queryKey: ["admin-recent-bookings"],
@@ -143,7 +112,7 @@ const AdminOverview = () => {
         .from("bookings")
         .select("id, full_name, reference, status, created_at, package_id")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(6);
       return data || [];
     },
   });
@@ -156,50 +125,10 @@ const AdminOverview = () => {
         .from("payments")
         .select("id, amount, status, method, created_at, booking_id")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(6);
       return data || [];
     },
   });
-
-  const statCards = [
-    {
-      label: "Total Revenue",
-      value: formatPrice(stats?.totalRevenue || 0),
-      icon: CreditCard,
-      color: "text-primary",
-      bg: "bg-primary/10",
-      trend: stats?.revenueTrend,
-      up: stats?.revenueTrend && !stats.revenueTrend.startsWith("-") && stats.revenueTrend !== "0%"
-    },
-    {
-      label: "Total Bookings",
-      value: String(stats?.totalBookings || 0),
-      icon: CalendarCheck,
-      color: "text-secondary",
-      bg: "bg-secondary/10",
-      trend: stats?.bookingTrend,
-      up: stats?.bookingTrend && !stats.bookingTrend.startsWith("-") && stats.bookingTrend !== "0%"
-    },
-    { label: "Active Pilgrims", value: String(stats?.confirmedBookings || 0), icon: UserCheck, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Pending Payments", value: String(stats?.pendingPayments || 0), icon: CreditCard, color: "text-destructive", bg: "bg-destructive/10", urgent: (stats?.pendingPayments || 0) > 0 },
-    { label: "Total Agents", value: String(stats?.agents || 0), icon: Users, color: "text-secondary", bg: "bg-secondary/10" },
-    { label: "Conversion Rate", value: `${stats?.conversionRate || 0}%`, icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
-  ];
-
-  const statusColors: Record<string, string> = {
-    pending: "hsl(43, 72%, 52%)",
-    confirmed: "hsl(162, 90%, 17%)",
-    cancelled: "hsl(0, 84%, 60%)",
-    completed: "hsl(162, 70%, 25%)",
-  };
-
-  const pieColors = ["hsl(162, 90%, 17%)", "hsl(43, 72%, 52%)"];
-
-  const quickActions = [
-    { label: "Manage Packages", icon: Package, href: "/admin/packages", color: "bg-primary/10 text-primary" },
-    { label: "Verify Payments", icon: CheckCircle2, href: "/admin/payments", color: "bg-destructive/10 text-destructive" },
-    { label: "View Pilgrims", icon: Eye, href: "/admin/pilgrims", color: "bg-secondary/10 text-secondary" },
-  ];
 
   const statusBadgeVariant = (status: string) => {
     switch (status) {
@@ -214,233 +143,284 @@ const AdminOverview = () => {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
-      <Card className="border-0 overflow-hidden relative">
-        <div className="absolute inset-0 emerald-gradient opacity-95" />
-        <div className="absolute inset-0 geometric-overlay opacity-20" />
-        <CardContent className="relative p-6 md:p-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck className="h-5 w-5 text-white/80" />
-                <span className="text-xs text-white/60 font-medium uppercase tracking-wider">Admin Dashboard</span>
-              </div>
-              <h1 className="font-heading text-xl md:text-2xl font-bold text-white">
-                Welcome back! 👋
-              </h1>
-              <p className="text-sm text-white/70 mt-1">
-                Here's what's happening with your Hajj & Umrah operations today
-              </p>
-            </div>
-            <div className="hidden md:block text-right">
-              <p className="text-xs text-white/50">{format(new Date(), "EEEE")}</p>
-              <p className="text-sm font-semibold text-white/90">{format(new Date(), "MMMM d, yyyy")}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        {statCards.map((c) => (
-          <Card key={c.label} className="glass-panel border-white/20 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div className={`p-2 rounded-lg ${c.bg}`}>
-                  <c.icon className={`h-4 w-4 ${c.color}`} />
-                </div>
-                {c.urgent && (
-                  <span className="flex h-2 w-2 rounded-full bg-destructive animate-pulse" />
-                )}
-                {c.trend && (
-                  <span className={`flex items-center text-xs font-medium ${c.up ? "text-primary" : "text-destructive"}`}>
-                    {c.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                    {c.trend}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground truncate">{c.label}</p>
-              <p className="text-lg font-heading font-bold text-foreground truncate">{c.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">Dashboard</h1>
+        <div className="flex items-center gap-3">
+          <Link to="/admin/payments">
+            <Button size="sm" className="rounded-xl font-semibold">
+              Verify Payments
+              {(stats?.pendingPayments || 0) > 0 && (
+                <span className="ml-1.5 bg-white/20 text-white text-xs rounded-full px-1.5 py-0.5">
+                  {stats?.pendingPayments}
+                </span>
+              )}
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Revenue Trend */}
-        <Card className="lg:col-span-2 glass-panel border-white/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-heading">Revenue Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={{ revenue: { label: "Revenue", color: "hsl(var(--primary))" } }} className="h-[200px] w-full">
+      {/* Main layout: left content + right panel */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+        {/* ── LEFT MAIN COLUMN ── */}
+        <div className="xl:col-span-2 space-y-5">
+
+          {/* Overview card — big metrics */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h2 className="text-lg font-bold text-foreground mb-5">Overview</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Total Bookings */}
+              <div className="bg-gray-50 rounded-xl p-5 shadow-inner">
+                <div className="flex items-center gap-2 mb-3 text-muted-foreground">
+                  <CalendarCheck className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Total Bookings</span>
+                </div>
+                {statsLoading ? (
+                  <div className="space-y-2 mt-2">
+                    <Skeleton className="h-12 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-end gap-3">
+                      <span className="text-5xl font-bold text-foreground tracking-tight">
+                        {(stats?.totalBookings || 0).toLocaleString()}
+                      </span>
+                      {stats?.bookingTrend && (
+                        <span className={`flex items-center gap-0.5 text-sm font-semibold mb-1.5 px-2 py-0.5 rounded-lg ${stats.bookUp
+                          ? "bg-green-100 text-green-600"
+                          : "bg-red-100 text-red-500"
+                          }`}>
+                          {stats.bookUp
+                            ? <ArrowUpRight className="h-3.5 w-3.5" />
+                            : <ArrowDownRight className="h-3.5 w-3.5" />}
+                          {stats.bookingTrend}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">vs last week</p>
+                  </>
+                )}
+              </div>
+
+              {/* Total Revenue */}
+              <div className="bg-gray-50 rounded-xl p-5 shadow-inner">
+                <div className="flex items-center gap-2 mb-3 text-muted-foreground">
+                  <CreditCard className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Total Revenue</span>
+                </div>
+                {statsLoading ? (
+                  <div className="space-y-2 mt-2">
+                    <Skeleton className="h-12 w-32" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-end gap-3">
+                      <span className="text-5xl font-bold text-foreground tracking-tight">
+                        {formatPrice(stats?.totalRevenue || 0)}
+                      </span>
+                      {stats?.revenueTrend && (
+                        <span className={`flex items-center gap-0.5 text-sm font-semibold mb-1.5 px-2 py-0.5 rounded-lg ${stats.revUp
+                          ? "bg-green-100 text-green-600"
+                          : "bg-red-100 text-red-500"
+                          }`}>
+                          {stats.revUp
+                            ? <ArrowUpRight className="h-3.5 w-3.5" />
+                            : <ArrowDownRight className="h-3.5 w-3.5" />}
+                          {stats.revenueTrend}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">vs last week</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Secondary stats row */}
+            <div className="grid grid-cols-4 gap-4 mt-8 pt-5 border-t border-border/50">
+              <div className="text-center">
+                {statsLoading ? <Skeleton className="h-8 w-12 mx-auto mb-1" /> : (
+                  <p className="text-2xl font-bold text-foreground">{stats?.pilgrims || 0}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-0.5">Pilgrims</p>
+              </div>
+              <div className="text-center">
+                {statsLoading ? <Skeleton className="h-8 w-12 mx-auto mb-1" /> : (
+                  <p className="text-2xl font-bold text-foreground">{stats?.confirmedBookings || 0}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-0.5">Confirmed</p>
+              </div>
+              <div className="text-center">
+                {statsLoading ? <Skeleton className="h-8 w-12 mx-auto mb-1" /> : (
+                  <p className="text-2xl font-bold text-foreground">{stats?.agents || 0}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-0.5">Agents</p>
+              </div>
+              <div className="text-center">
+                {statsLoading ? <Skeleton className="h-8 w-12 mx-auto mb-1" /> : (
+                  <p className={`text-2xl font-bold ${(stats?.pendingPayments || 0) > 0 ? "text-amber-500" : "text-foreground"}`}>
+                    {stats?.pendingPayments || 0}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-0.5">Pending Pay.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Revenue chart */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-foreground">Revenue Trend</h2>
+              <span className="text-xs text-muted-foreground bg-muted/60 px-3 py-1 rounded-full">Last 6 months</span>
+            </div>
+            <ChartContainer config={{ revenue: { label: "Revenue", color: "hsl(var(--primary))" } }} className="h-[220px] w-full">
               <AreaChart data={revenueTrend}>
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
                     <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} />
-                <YAxis tickLine={false} axisLine={false} fontSize={11} tickFormatter={(v) => `₦${(v / 1000000).toFixed(0)}M`} />
+                <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tickLine={false} axisLine={false} fontSize={12} tick={{ fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `₦${(v / 1000000).toFixed(0)}M`} />
                 <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatPrice(Number(value))} />} />
-                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="url(#revenueGrad)" strokeWidth={2} />
+                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="url(#revenueGrad)" strokeWidth={2.5} dot={false} />
               </AreaChart>
             </ChartContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Booking Status Donut */}
-        <Card className="glass-panel border-white/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-heading">Booking Status</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center">
-            <div className="h-[160px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={bookingBreakdown} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3}>
-                    {bookingBreakdown.map((entry) => (
-                      <Cell key={entry.status} fill={statusColors[entry.status] || "hsl(var(--muted))"} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap gap-3 mt-2 justify-center">
-              {bookingBreakdown.map((entry) => (
-                <div key={entry.status} className="flex items-center gap-1.5 text-xs">
-                  <span className="h-2 w-2 rounded-full" style={{ background: statusColors[entry.status] }} />
-                  <span className="capitalize text-muted-foreground">{entry.status}</span>
-                  <span className="font-medium text-foreground">{entry.count}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* ── RIGHT PANEL ── */}
+        <div className="space-y-5">
 
-      {/* Package Split + Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-heading">Package Types</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center">
-            <div className="h-[140px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={packageSplit} dataKey="count" nameKey="type" cx="50%" cy="50%" outerRadius={55} paddingAngle={4}>
-                    {packageSplit.map((_, i) => (
-                      <Cell key={i} fill={pieColors[i % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex gap-4 mt-2">
-              {packageSplit.map((entry, i) => (
-                <div key={entry.type} className="flex items-center gap-1.5 text-xs">
-                  <span className="h-2 w-2 rounded-full" style={{ background: pieColors[i % pieColors.length] }} />
-                  <span className="text-muted-foreground">{entry.type}</span>
-                  <span className="font-medium text-foreground">{entry.count}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Recent Bookings */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h2 className="text-base font-bold text-foreground mb-5">Recent Bookings</h2>
 
-        {/* Quick Actions */}
-        <Card className="lg:col-span-2 glass-panel border-white/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-heading">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {quickActions.map((a) => (
-                <Link key={a.label} to={a.href}>
-                  <div className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer text-center">
-                    <div className={`p-2.5 rounded-lg ${a.color}`}>
-                      <a.icon className="h-5 w-5" />
+            {recentBookings.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No bookings yet</p>
+            ) : (
+              <>
+                <div className="divide-y divide-border/40">
+                  {recentBookings.map((b) => (
+                    <div key={b.id} className="flex items-center gap-3 py-3.5 first:pt-0 last:pb-0">
+                      {/* Avatar thumbnail */}
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-primary">
+                          {b.full_name?.charAt(0)?.toUpperCase() || "?"}
+                        </span>
+                      </div>
+                      {/* Name + reference */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate leading-tight">{b.full_name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{b.reference || b.id.slice(0, 8)}</p>
+                      </div>
+                      {/* Status badge */}
+                      <div className="shrink-0 text-right">
+                        <Badge
+                          variant={statusBadgeVariant(b.status)}
+                          className="text-[10px] capitalize rounded-lg px-2 py-0.5"
+                        >
+                          {b.status}
+                        </Badge>
+                      </div>
                     </div>
-                    <span className="text-xs font-medium text-foreground">{a.label}</span>
+                  ))}
+                </div>
+                {/* Pill view-all button */}
+                <div className="mt-4 pt-3 border-t border-border/30">
+                  <Link to="/admin/pilgrims">
+                    <button className="w-full text-sm text-muted-foreground font-medium py-2 rounded-xl border border-border/60 hover:border-border hover:text-foreground transition-all">
+                      All bookings
+                    </button>
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Recent Payments */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h2 className="text-base font-bold text-foreground mb-5">Recent Payments</h2>
+
+            {recentPayments.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No payments yet</p>
+            ) : (
+              <>
+                <div className="divide-y divide-border/40">
+                  {recentPayments.map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 py-3.5 first:pt-0 last:pb-0">
+                      {/* Payment icon thumbnail */}
+                      <div className="h-10 w-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                        <CreditCard className="h-4 w-4 text-green-600" />
+                      </div>
+                      {/* Amount + method */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-tight">{formatPrice(p.amount)}</p>
+                        <p className="text-xs text-muted-foreground capitalize mt-0.5">{p.method?.replace("_", " ")}</p>
+                      </div>
+                      {/* Status + verify */}
+                      <div className="shrink-0 text-right space-y-1">
+                        <Badge
+                          variant={statusBadgeVariant(p.status)}
+                          className="text-[10px] capitalize rounded-lg px-2 py-0.5"
+                        >
+                          {p.status}
+                        </Badge>
+                        {p.status === "pending" && (
+                          <Link to="/admin/payments" className="block">
+                            <ShieldCheck className="h-3.5 w-3.5 text-primary ml-auto cursor-pointer hover:text-primary/70 transition-colors" />
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Pill view-all button */}
+                <div className="mt-4 pt-3 border-t border-border/30">
+                  <Link to="/admin/payments">
+                    <button className="w-full text-sm text-muted-foreground font-medium py-2 rounded-xl border border-border/60 hover:border-border hover:text-foreground transition-all">
+                      All payments
+                    </button>
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Quick links */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h2 className="text-base font-bold text-foreground mb-4">Quick Access</h2>
+            <div className="space-y-2">
+              {[
+                { label: "Manage Packages", icon: Package, href: "/admin/packages", count: stats?.packages },
+                { label: "View Pilgrims", icon: Users, href: "/admin/pilgrims", count: stats?.pilgrims },
+                { label: "Agent Applications", icon: Users, href: "/admin/agent-applications" },
+              ].map((item) => (
+                <Link key={item.label} to={item.href}>
+                  <div className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-muted/50 transition-colors group cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <item.icon className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{item.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {item.count !== undefined && (
+                        <span className="text-xs font-semibold text-muted-foreground">{item.count}</span>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
                   </div>
                 </Link>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
 
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Recent Bookings */}
-        <Card className="glass-panel border-white/20">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-heading">Recent Bookings</CardTitle>
-            <Link to="/admin/pilgrims">
-              <Button variant="ghost" size="sm" className="text-xs">View All</Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentBookings.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No bookings yet</p>
-            ) : (
-              <div className="space-y-3">
-                {recentBookings.map((b) => (
-                  <div key={b.id} className="flex items-center justify-between gap-2 text-sm">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground truncate">{b.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{b.reference || b.id.slice(0, 8)}</p>
-                    </div>
-                    <Badge variant={statusBadgeVariant(b.status)} className="text-[10px] capitalize shrink-0">
-                      {b.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Payments */}
-        <Card className="glass-panel border-white/20">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-heading">Recent Payments</CardTitle>
-            <Link to="/admin/payments">
-              <Button variant="ghost" size="sm" className="text-xs">View All</Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentPayments.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No payments yet</p>
-            ) : (
-              <div className="space-y-3">
-                {recentPayments.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 text-sm">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground">{formatPrice(p.amount)}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{p.method.replace("_", " ")}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant={statusBadgeVariant(p.status)} className="text-[10px] capitalize">
-                        {p.status}
-                      </Badge>
-                      {p.status === "pending" && (
-                        <Link to="/admin/payments">
-                          <ShieldCheck className="h-4 w-4 text-primary cursor-pointer" />
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        </div>
       </div>
     </div>
   );
