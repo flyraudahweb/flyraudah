@@ -21,6 +21,8 @@ export const AgentWalletManager = ({ agentId }: AgentWalletManagerProps) => {
     const [amount, setAmount] = useState("");
     const [reference, setReference] = useState("");
     const [description, setDescription] = useState("");
+    const [otpStep, setOtpStep] = useState(false);
+    const [otpCode, setOtpCode] = useState("");
 
     const { data: wallet, isLoading: loadingWallet } = useQuery({
         queryKey: ["agent-wallet", agentId],
@@ -60,55 +62,56 @@ export const AgentWalletManager = ({ agentId }: AgentWalletManagerProps) => {
                 throw new Error("Invalid amount");
             }
 
-            // Start transaction logic
-            // Note: In Supabase, usually we perform this via an RPC. 
-            // Since we don't know if an RPC exists, we'll try to do it client-side.
-            // 1. Check if wallet exists
-            const { data: currentWallet } = await supabase
-                .from("agent_wallets")
-                .select("id, balance")
-                .eq("agent_id", agentId)
-                .maybeSingle();
-
-            if (!currentWallet) {
-                // Create wallet
-                await supabase.from("agent_wallets").insert({
-                    agent_id: agentId,
-                    balance: numAmount
-                });
-            } else {
-                // Update wallet
-                await supabase.from("agent_wallets")
-                    .update({ balance: Number(currentWallet.balance) + numAmount, updated_at: new Date().toISOString() })
-                    .eq("id", currentWallet.id);
-            }
-
-            // Add transaction
-            await supabase.from("wallet_transactions").insert({
-                agent_id: agentId,
-                amount: numAmount,
-                type: "credit",
-                reference: reference || null,
-                description: description || "Manual Top-up by Admin"
+            const { data, error } = await supabase.functions.invoke("admin-topup-wallet", {
+                body: { agent_id: agentId, amount: numAmount }
             });
+
+            if (error) throw error;
+            return data;
         },
         onSuccess: () => {
-            toast.success("Wallet topped up successfully");
+            toast.success("Verification code sent to your email!");
+            setOtpStep(true);
+        },
+        onError: (error: any) => {
+            toast.error(error.message || "Failed to initiate top-up");
+        }
+    });
+
+    const verifyOtpMutation = useMutation({
+        mutationFn: async () => {
+            if (!otpCode || otpCode.length < 6) throw new Error("Please enter a valid 6-digit code");
+
+            const { data, error } = await supabase.functions.invoke("verify-topup-otp", {
+                body: { agent_id: agentId, otp: otpCode }
+            });
+
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            toast.success("Wallet topped up successfully!");
             setTopUpOpen(false);
+            setOtpStep(false);
             setAmount("");
             setReference("");
             setDescription("");
+            setOtpCode("");
             queryClient.invalidateQueries({ queryKey: ["agent-wallet", agentId] });
             queryClient.invalidateQueries({ queryKey: ["agent-wallet-transactions", agentId] });
         },
         onError: (error: any) => {
-            toast.error(error.message || "Failed to top up wallet");
+            toast.error(error.message || "Invalid or expired OTP");
         }
     });
 
     const handleTopUp = (e: React.FormEvent) => {
         e.preventDefault();
-        topUpMutation.mutate();
+        if (otpStep) {
+            verifyOtpMutation.mutate();
+        } else {
+            topUpMutation.mutate();
+        }
     };
 
     return (
@@ -132,7 +135,11 @@ export const AgentWalletManager = ({ agentId }: AgentWalletManagerProps) => {
                                 </div>
                             </div>
                             <Button
-                                onClick={() => setTopUpOpen(true)}
+                                onClick={() => {
+                                    setTopUpOpen(true);
+                                    setOtpStep(false);
+                                    setOtpCode("");
+                                }}
                                 className="gap-2 shadow-sm relative overflow-hidden group"
                             >
                                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform" />
@@ -198,42 +205,72 @@ export const AgentWalletManager = ({ agentId }: AgentWalletManagerProps) => {
                         <DialogTitle>Top-up Agent Wallet</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleTopUp} className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Amount (₦)</label>
-                            <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                                placeholder="0.00"
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Reference (Optional)</label>
-                            <Input
-                                value={reference}
-                                onChange={(e) => setReference(e.target.value)}
-                                placeholder="Bank receipt, transaction ID..."
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Description</label>
-                            <Input
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="e.g. Bank Transfer Deposit"
-                            />
-                        </div>
-                        <div className="pt-2 flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setTopUpOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={topUpMutation.isPending || !amount}>
-                                {topUpMutation.isPending ? "Processing..." : "Top-up Wallet"}
-                            </Button>
-                        </div>
+                        {!otpStep ? (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Amount (₦)</label>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        placeholder="0.00"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Reference (Optional)</label>
+                                    <Input
+                                        value={reference}
+                                        onChange={(e) => setReference(e.target.value)}
+                                        placeholder="Bank receipt, transaction ID..."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Description</label>
+                                    <Input
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="e.g. Bank Transfer Deposit"
+                                    />
+                                </div>
+                                <div className="pt-2 flex justify-end gap-2">
+                                    <Button type="button" variant="outline" onClick={() => setTopUpOpen(false)}>
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" disabled={topUpMutation.isPending || !amount}>
+                                        {topUpMutation.isPending ? "Sending OTP..." : "Continue"}
+                                    </Button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="p-3 bg-primary/10 border border-primary/20 rounded-md text-sm text-primary mb-4">
+                                    A 6-digit verification code has been sent to your admin email address.
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Verification Code (OTP)</label>
+                                    <Input
+                                        type="text"
+                                        maxLength={6}
+                                        value={otpCode}
+                                        onChange={(e) => setOtpCode(e.target.value)}
+                                        placeholder="Enter 6-digit OTP"
+                                        className="text-center tracking-[0.5em] font-mono text-lg py-6"
+                                        required
+                                    />
+                                </div>
+                                <div className="pt-2 flex justify-end gap-2">
+                                    <Button type="button" variant="outline" onClick={() => setOtpStep(false)} disabled={verifyOtpMutation.isPending}>
+                                        Back
+                                    </Button>
+                                    <Button type="submit" disabled={verifyOtpMutation.isPending || otpCode.length < 6}>
+                                        {verifyOtpMutation.isPending ? "Verifying..." : "Confirm Top-up"}
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </form>
                 </DialogContent>
             </Dialog>
