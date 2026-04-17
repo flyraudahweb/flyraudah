@@ -6,7 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronDown, Sparkles, MapPin, Calendar, Users } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, ChevronDown, Sparkles, MapPin, Calendar, Users, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
 
@@ -21,6 +22,7 @@ const Hero = () => {
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("Nigeria");
   const [persons, setPersons] = useState("");
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -173,61 +175,80 @@ const Hero = () => {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.1 }}
-          className="mt-12 lg:mt-[-3rem] max-w-5xl mx-auto bg-white/95 backdrop-blur-md rounded-3xl md:rounded-full p-2 md:pl-2 shadow-soft-xl relative z-20 flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-gray-200"
+          className="mt-12 md:mt-[-3rem] lg:mt-[-4rem] max-w-6xl mx-auto bg-white/95 backdrop-blur-md rounded-3xl md:rounded-full p-2 md:pl-2 shadow-soft-xl relative z-20 flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-gray-200"
         >
+          {/* Country */}
+          <div className="flex-1 flex items-center gap-3 w-full p-4 md:px-5">
+            <Globe className="h-6 w-6 text-[#2BB673]" strokeWidth={1.5} />
+            <div className="flex-1 text-left">
+              <label className="block text-sm font-bold text-gray-900 mb-0.5">Country</label>
+              <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                <SelectTrigger className="w-full border-0 bg-transparent p-0 h-auto font-normal text-sm text-gray-500 focus:ring-0 shadow-none hover:bg-transparent [&>svg]:hidden">
+                  <SelectValue placeholder="Select country" />
+                  <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border border-gray-100 shadow-xl overflow-hidden p-1">
+                  <SelectItem value="Nigeria" className="rounded-lg cursor-pointer focus:bg-[#2BB673]/10 focus:text-[#2BB673]">Nigeria</SelectItem>
+                  <SelectItem value="Niger" className="rounded-lg cursor-pointer focus:bg-[#2BB673]/10 focus:text-[#2BB673]">Niger</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Package Type */}
-          <div className="flex-1 flex items-center gap-3 w-full p-4 md:px-6">
-            <MapPin className="h-6 w-6 text-gray-700" strokeWidth={1.5} />
+          <div className="flex-1 flex items-center gap-3 w-full p-4 md:px-5">
+            <MapPin className="h-6 w-6 text-[#2BB673]" strokeWidth={1.5} />
             <div className="flex-1 text-left">
               <label className="block text-sm font-bold text-gray-900 mb-0.5">Package Type</label>
-              <div className="relative">
-                <select
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className="w-full bg-transparent text-sm text-gray-500 focus:outline-none appearance-none cursor-pointer"
-                >
-                  <option value="">Select your type</option>
-                  <option value="hajj">{t("packages.hajj")}</option>
-                  <option value="umrah">{t("packages.umrah")}</option>
-                </select>
-                <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              </div>
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-full border-0 bg-transparent p-0 h-auto font-normal text-sm text-gray-500 focus:ring-0 shadow-none hover:bg-transparent [&>svg]:hidden">
+                  <SelectValue placeholder="Select your type" />
+                  <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border border-gray-100 shadow-xl overflow-hidden p-1">
+                  <SelectItem value="none" disabled className="hidden">Select your type</SelectItem>
+                  <SelectItem value="hajj" className="rounded-lg cursor-pointer focus:bg-[#2BB673]/10 focus:text-[#2BB673]">{t("packages.hajj")}</SelectItem>
+                  <SelectItem value="umrah" className="rounded-lg cursor-pointer focus:bg-[#2BB673]/10 focus:text-[#2BB673]">{t("packages.umrah")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Month */}
-          <div className="flex-1 flex items-center gap-3 w-full p-4 md:px-6">
-            <Calendar className="h-6 w-6 text-gray-700" strokeWidth={1.5} />
+          <div className="flex-1 flex items-center gap-3 w-full p-4 md:px-5">
+            <Calendar className="h-6 w-6 text-[#2BB673]" strokeWidth={1.5} />
             <div className="flex-1 text-left">
               <label className="block text-sm font-bold text-gray-900 mb-0.5">Month</label>
-              <div className="relative">
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full bg-transparent text-sm text-gray-500 focus:outline-none appearance-none cursor-pointer"
-                >
-                  <option value="">Add a date</option>
-                  {monthOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              </div>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-full border-0 bg-transparent p-0 h-auto font-normal text-sm text-gray-500 focus:ring-0 shadow-none hover:bg-transparent [&>svg]:hidden">
+                  <SelectValue placeholder="Add a date" />
+                  <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border border-gray-100 shadow-xl overflow-hidden p-1">
+                  {monthOptions.length === 0 ? (
+                    <SelectItem value="none" disabled className="rounded-lg">No dates available</SelectItem>
+                  ) : (
+                    monthOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="rounded-lg cursor-pointer focus:bg-[#2BB673]/10 focus:text-[#2BB673]">{opt.label}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Persons */}
-          <div className="flex-1 flex items-center gap-3 w-full p-4 md:px-6">
-            <Users className="h-6 w-6 text-gray-700" strokeWidth={1.5} />
+          <div className="flex-1 flex items-center gap-3 w-full p-4 md:px-5">
+            <Users className="h-6 w-6 text-[#2BB673]" strokeWidth={1.5} />
             <div className="flex-1 text-left">
-              <label className="block text-sm font-bold text-gray-900 mb-0.5">Number of Persons</label>
+              <label className="block text-sm font-bold text-gray-900 mb-0.5">Persons</label>
               <input
                 type="number"
                 min="1"
-                placeholder="Enter number"
+                placeholder="Number"
                 value={persons}
                 onChange={(e) => setPersons(e.target.value)}
-                className="w-full bg-transparent text-sm text-gray-500 focus:outline-none placeholder:text-gray-400"
+                className="w-full bg-transparent text-sm text-gray-500 focus:outline-none placeholder:text-gray-400 border-0 p-0 shadow-none ring-0"
               />
             </div>
           </div>
@@ -235,11 +256,12 @@ const Hero = () => {
           {/* Search Button */}
           <div className="w-full md:w-auto p-2">
             <Button
-              className="w-full md:w-16 md:h-16 rounded-2xl md:rounded-full bg-[#111827] hover:bg-black text-white flex items-center justify-center p-0 transition-transform hover:scale-105 shadow-md"
+              className="w-full md:w-16 md:h-16 rounded-2xl md:rounded-full bg-[#2BB673] hover:bg-[#239960] text-white flex items-center justify-center p-0 transition-transform hover:scale-105 shadow-[0_4px_14px_0_rgba(43,182,115,0.39)]"
               onClick={() => {
                 const params = new URLSearchParams();
-                if (selectedType) params.set("type", selectedType);
-                if (selectedMonth) params.set("month", selectedMonth);
+                if (selectedCountry) params.set("country", selectedCountry);
+                if (selectedType && selectedType !== "none") params.set("type", selectedType);
+                if (selectedMonth && selectedMonth !== "none") params.set("month", selectedMonth);
                 if (persons) params.set("persons", persons);
                 navigate(`/packages${params.toString() ? `?${params.toString()}` : ""}`);
               }}
