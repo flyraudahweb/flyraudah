@@ -9,11 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Users, Eye, Printer, Search, Download, FileSpreadsheet, Filter, UserPlus, Pencil, Loader2
 } from "lucide-react";
-<<<<<<< HEAD
-import { useState, useMemo, useEffect } from "react";
-=======
 import { useState, useEffect, useRef, useCallback } from "react";
->>>>>>> 21a21f1 (Performance hardening: Server-side pagination and filtering for Admin pages)
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -96,48 +92,6 @@ const PilgrimAvatar = ({ booking }: { booking: any }) => {
   );
 };
 
-const PilgrimAvatar = ({ booking }: { booking: any }) => {
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchPhoto = async () => {
-      if (!booking.user_id) return;
-
-      const { data } = await supabase
-        .from("documents")
-        .select("file_url")
-        .eq("user_id", booking.user_id)
-        .eq("type", "passport")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (data?.file_url) {
-        let signed = await supabase.storage.from("passport-photos").createSignedUrl(data.file_url, 3600);
-        if (signed.data?.signedUrl) {
-          if (isMounted) setPhotoUrl(signed.data.signedUrl);
-          return;
-        }
-        signed = await supabase.storage.from("documents").createSignedUrl(data.file_url, 3600);
-        if (signed.data?.signedUrl && isMounted) {
-          setPhotoUrl(signed.data.signedUrl);
-        }
-      }
-    };
-    fetchPhoto();
-    return () => { isMounted = false; };
-  }, [booking.user_id]);
-
-  return (
-    <Avatar className="h-8 w-8 shrink-0 border border-border/50">
-      {photoUrl && <AvatarImage src={photoUrl} className="object-cover" />}
-      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-        {booking.full_name?.substring(0, 2).toUpperCase() || "??"}
-      </AvatarFallback>
-    </Avatar>
-  );
-};
 
 const AdminPilgrims = () => {
   const navigate = useNavigate();
@@ -147,11 +101,8 @@ const AdminPilgrims = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [genderFilter, setGenderFilter] = useState("all");
-<<<<<<< HEAD
-=======
   const [visaFilter, setVisaFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
->>>>>>> 21a21f1 (Performance hardening: Server-side pagination and filtering for Admin pages)
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
@@ -180,10 +131,7 @@ const AdminPilgrims = () => {
 
       let q = supabase
         .from("bookings")
-<<<<<<< HEAD
-        .select("*, packages(name, type, price, currency, duration), payments(status)")
-        .order("created_at", { ascending: false });
-=======
+
         .select(`
           id, full_name, reference, passport_number, gender, phone, status,
           visa_status, visa_expiry_date, departure_city, created_at,
@@ -239,35 +187,11 @@ const AdminPilgrims = () => {
     staleTime: 300_000, // agents list rarely changes — cache 5 min
     queryFn: async () => {
       const { data, error } = await supabase.from("agents").select("id, business_name").eq("status", "approved").order("business_name");
->>>>>>> 21a21f1 (Performance hardening: Server-side pagination and filtering for Admin pages)
       if (error) throw error;
       return data || [];
     },
   });
 
-<<<<<<< HEAD
-  const filtered = useMemo(() => {
-    return bookings.filter((b) => {
-      const matchesSearch =
-        b.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        (b.reference || "").toLowerCase().includes(search.toLowerCase()) ||
-        (b.passport_number || "").toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || b.status === statusFilter;
-      const matchesType = typeFilter === "all" || (b as any).packages?.type === typeFilter;
-      const matchesGender = genderFilter === "all" || (b.gender && b.gender.toLowerCase() === genderFilter);
-
-      const payments = (b as any).payments || [];
-      const isVerified = payments.some((p: any) => p.status === "verified");
-      const isPending = payments.some((p: any) => p.status === "pending") && !isVerified;
-
-      let matchesPayment = true;
-      if (paymentFilter === "verified") matchesPayment = isVerified;
-      if (paymentFilter === "pending") matchesPayment = isPending || payments.length === 0;
-
-      return matchesSearch && matchesStatus && matchesType && matchesPayment && matchesGender;
-    });
-  }, [bookings, search, statusFilter, typeFilter, paymentFilter, genderFilter]);
-=======
   const bookings = (queryResult?.rows || []) as any[];
   // Apply payment filter client-side (only to the 15 rows already fetched)
   const paginated = paymentFilter !== "all" && paymentFilteredIds
@@ -278,7 +202,6 @@ const AdminPilgrims = () => {
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   // filtered alias for export helpers (use paginated visible rows or all if no payment filter)
   const filtered = paginated;
->>>>>>> 21a21f1 (Performance hardening: Server-side pagination and filtering for Admin pages)
 
 
   const statusColors: Record<string, string> = {
@@ -417,91 +340,7 @@ const AdminPilgrims = () => {
           </p>
         </div>
 
-<<<<<<< HEAD
-  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
-    <Button onClick={() => navigate("/admin/book-pilgrim")} className="gap-2 shrink-0">
-      <UserPlus className="h-4 w-4" /> Register Pilgrim
-    </Button>
-
-    {/* Search */}
-    <div className="relative w-full sm:w-64">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <Input
-        placeholder="Search pilgrims…"
-        className="pl-10"
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-      />
-    </div>
-    {/* Status filter */}
-    <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
-      <SelectTrigger className="w-full sm:w-36 bg-card">
-        <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-          <SelectValue placeholder="Status" />
-        </div>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Status</SelectItem>
-        <SelectItem value="pending">Pending</SelectItem>
-        <SelectItem value="confirmed">Confirmed</SelectItem>
-        <SelectItem value="cancelled">Cancelled</SelectItem>
-        <SelectItem value="completed">Completed</SelectItem>
-      </SelectContent>
-    </Select>
-    {/* Type filter */}
-    <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
-      <SelectTrigger className="w-full sm:w-36 bg-card">
-        <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-          <SelectValue placeholder="Pkg Type" />
-        </div>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Types</SelectItem>
-        <SelectItem value="umrah">Umrah</SelectItem>
-        <SelectItem value="hajj">Hajj</SelectItem>
-        <SelectItem value="visa_only">Visa Only</SelectItem>
-        <SelectItem value="flight_only">Flight Only</SelectItem>
-      </SelectContent>
-    </Select>
-    {/* Payment filter */}
-    <Select value={paymentFilter} onValueChange={(v) => { setPaymentFilter(v); setCurrentPage(1); }}>
-      <SelectTrigger className="w-full sm:w-36 bg-card">
-        <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-          <SelectValue placeholder="Payment" />
-        </div>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Payments</SelectItem>
-        <SelectItem value="verified">Verified</SelectItem>
-        <SelectItem value="pending">Pending/None</SelectItem>
-      </SelectContent>
-    </Select>
-    {/* Gender filter */}
-    <Select value={genderFilter} onValueChange={(v) => { setGenderFilter(v); setCurrentPage(1); }}>
-      <SelectTrigger className="w-full sm:w-36 bg-card">
-        <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-          <SelectValue placeholder="Gender" />
-        </div>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Genders</SelectItem>
-        <SelectItem value="male">Male</SelectItem>
-        <SelectItem value="female">Female</SelectItem>
-      </SelectContent>
-    </Select>
-    {/* Export all */}
-    <Button variant="outline" size="sm" onClick={exportAll} className="gap-2 whitespace-nowrap">
-      <FileSpreadsheet className="h-4 w-4" /> Export CSV
-    </Button>
-    {/* Print all */}
-    <Button variant="outline" size="sm" onClick={handlePrintBulk} className="gap-2 whitespace-nowrap">
-      <Printer className="h-4 w-4" /> Print List
-=======
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2 whitespace-nowrap">
@@ -526,7 +365,6 @@ const AdminPilgrims = () => {
 
         <Button onClick={() => navigate("/admin/book-pilgrim")} className="gap-2 shrink-0">
           <UserPlus className="h-4 w-4" /> Register Pilgrim
->>>>>>> 21a21f1 (Performance hardening: Server-side pagination and filtering for Admin pages)
         </Button>
         {/* Bulk Download all */}
         <Button variant="default" size="sm" onClick={handleBulkDownload} disabled={isDownloading} className="gap-2 whitespace-nowrap">
