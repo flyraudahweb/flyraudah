@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ["Playfair Display", "serif"],
-        body: ["Inter", "sans-serif"],
+        heading: ["Lato", "sans-serif"],
+        body: ["Lato", "sans-serif"],
         arabic: ["Amiri", "serif"],
       },
       colors: {

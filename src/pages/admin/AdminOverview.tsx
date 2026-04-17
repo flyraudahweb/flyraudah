@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { formatPrice } from "@/data/packages";
 import { Link } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent
 } from "@/components/ui/chart";
@@ -19,7 +18,7 @@ import { format, subMonths, startOfMonth, subDays } from "date-fns";
 
 const AdminOverview = () => {
   // Main stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
       const now = new Date();
@@ -176,32 +175,23 @@ const AdminOverview = () => {
                   <CalendarCheck className="h-4 w-4" />
                   <span className="text-sm font-semibold">Total Bookings</span>
                 </div>
-                {statsLoading ? (
-                  <div className="space-y-2 mt-2">
-                    <Skeleton className="h-12 w-24" />
-                    <Skeleton className="h-4 w-20" />
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-end gap-3">
-                      <span className="text-5xl font-bold text-foreground tracking-tight">
-                        {(stats?.totalBookings || 0).toLocaleString()}
-                      </span>
-                      {stats?.bookingTrend && (
-                        <span className={`flex items-center gap-0.5 text-sm font-semibold mb-1.5 px-2 py-0.5 rounded-lg ${stats.bookUp
-                          ? "bg-green-100 text-green-600"
-                          : "bg-red-100 text-red-500"
-                          }`}>
-                          {stats.bookUp
-                            ? <ArrowUpRight className="h-3.5 w-3.5" />
-                            : <ArrowDownRight className="h-3.5 w-3.5" />}
-                          {stats.bookingTrend}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">vs last week</p>
-                  </>
-                )}
+                <div className="flex items-end gap-3">
+                  <span className="text-5xl font-bold text-foreground tracking-tight">
+                    {(stats?.totalBookings || 0).toLocaleString()}
+                  </span>
+                  {stats?.bookingTrend && (
+                    <span className={`flex items-center gap-0.5 text-sm font-semibold mb-1.5 px-2 py-0.5 rounded-lg ${stats.bookUp
+                      ? "bg-green-100 text-green-600"
+                      : "bg-red-100 text-red-500"
+                      }`}>
+                      {stats.bookUp
+                        ? <ArrowUpRight className="h-3.5 w-3.5" />
+                        : <ArrowDownRight className="h-3.5 w-3.5" />}
+                      {stats.bookingTrend}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">vs last week</p>
               </div>
 
               {/* Total Revenue */}
@@ -210,61 +200,44 @@ const AdminOverview = () => {
                   <CreditCard className="h-4 w-4" />
                   <span className="text-sm font-semibold">Total Revenue</span>
                 </div>
-                {statsLoading ? (
-                  <div className="space-y-2 mt-2">
-                    <Skeleton className="h-12 w-32" />
-                    <Skeleton className="h-4 w-20" />
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-end gap-3">
-                      <span className="text-5xl font-bold text-foreground tracking-tight">
-                        {formatPrice(stats?.totalRevenue || 0)}
-                      </span>
-                      {stats?.revenueTrend && (
-                        <span className={`flex items-center gap-0.5 text-sm font-semibold mb-1.5 px-2 py-0.5 rounded-lg ${stats.revUp
-                          ? "bg-green-100 text-green-600"
-                          : "bg-red-100 text-red-500"
-                          }`}>
-                          {stats.revUp
-                            ? <ArrowUpRight className="h-3.5 w-3.5" />
-                            : <ArrowDownRight className="h-3.5 w-3.5" />}
-                          {stats.revenueTrend}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">vs last week</p>
-                  </>
-                )}
+                <div className="flex items-end gap-3">
+                  <span className="text-5xl font-bold text-foreground tracking-tight">
+                    {formatPrice(stats?.totalRevenue || 0)}
+                  </span>
+                  {stats?.revenueTrend && (
+                    <span className={`flex items-center gap-0.5 text-sm font-semibold mb-1.5 px-2 py-0.5 rounded-lg ${stats.revUp
+                      ? "bg-green-100 text-green-600"
+                      : "bg-red-100 text-red-500"
+                      }`}>
+                      {stats.revUp
+                        ? <ArrowUpRight className="h-3.5 w-3.5" />
+                        : <ArrowDownRight className="h-3.5 w-3.5" />}
+                      {stats.revenueTrend}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">vs last week</p>
               </div>
             </div>
 
             {/* Secondary stats row */}
             <div className="grid grid-cols-4 gap-4 mt-8 pt-5 border-t border-border/50">
               <div className="text-center">
-                {statsLoading ? <Skeleton className="h-8 w-12 mx-auto mb-1" /> : (
-                  <p className="text-2xl font-bold text-foreground">{stats?.pilgrims || 0}</p>
-                )}
+                <p className="text-2xl font-bold text-foreground">{stats?.pilgrims || 0}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Pilgrims</p>
               </div>
               <div className="text-center">
-                {statsLoading ? <Skeleton className="h-8 w-12 mx-auto mb-1" /> : (
-                  <p className="text-2xl font-bold text-foreground">{stats?.confirmedBookings || 0}</p>
-                )}
+                <p className="text-2xl font-bold text-foreground">{stats?.confirmedBookings || 0}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Confirmed</p>
               </div>
               <div className="text-center">
-                {statsLoading ? <Skeleton className="h-8 w-12 mx-auto mb-1" /> : (
-                  <p className="text-2xl font-bold text-foreground">{stats?.agents || 0}</p>
-                )}
+                <p className="text-2xl font-bold text-foreground">{stats?.agents || 0}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Agents</p>
               </div>
               <div className="text-center">
-                {statsLoading ? <Skeleton className="h-8 w-12 mx-auto mb-1" /> : (
-                  <p className={`text-2xl font-bold ${(stats?.pendingPayments || 0) > 0 ? "text-amber-500" : "text-foreground"}`}>
-                    {stats?.pendingPayments || 0}
-                  </p>
-                )}
+                <p className={`text-2xl font-bold ${(stats?.pendingPayments || 0) > 0 ? "text-amber-500" : "text-foreground"}`}>
+                  {stats?.pendingPayments || 0}
+                </p>
                 <p className="text-xs text-muted-foreground mt-0.5">Pending Pay.</p>
               </div>
             </div>

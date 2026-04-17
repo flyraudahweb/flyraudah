@@ -12,7 +12,7 @@ import { Lock } from "lucide-react";
 export const tierConfig: Record<string, { border: string; badge: string; badgeLabel: string; glowClass: string }> = {
   premium: {
     border: "tier-premium",
-    badge: "bg-secondary text-secondary-foreground",
+    badge: "bg-secondary text-primary-foreground",
     badgeLabel: "PREMIUM",
     glowClass: "hover:shadow-gold-glow",
   },
@@ -63,12 +63,12 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
         hover:-translate-y-2`}
     >
       {/* Card Header */}
-      <div className={`px-6 pt-6 pb-4 glass-gradient ${pkg.category === "premium" ? "bg-gradient-to-br from-primary/10 to-secondary/10" : ""}`}>
+      <div className={`px-6 pt-6 pb-4 glass-gradient ${pkg.category === "premium" ? "bg-gradient-to-br from-primary/10 to-primary/10" : ""}`}>
         <div className="flex items-start justify-between mb-3">
           <Badge className={`${tier.badge} font-bold text-xs tracking-wider`}>
             {tier.badgeLabel}
           </Badge>
-          <Badge variant="outline" className="border-secondary/50 text-secondary text-xs">
+          <Badge variant="outline" className="border-primary/50 text-primary text-xs">
             {pkg.type === "hajj" ? t("packages.hajj") : t("packages.umrah")}
           </Badge>
         </div>
@@ -81,7 +81,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
         <div className="mb-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">From</p>
           <span
-            className="font-heading text-3xl font-bold text-secondary"
+            className="font-heading text-3xl font-bold text-primary"
             style={{ textShadow: "0 2px 12px hsla(43, 56%, 52%, 0.2)" }}
           >
             {formatPrice(pkg.price)}
@@ -103,15 +103,15 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
         {/* Details */}
         <div className="space-y-2 text-sm text-muted-foreground mb-4">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-secondary" />
+            <CalendarDays className="h-4 w-4 text-primary" />
             <span>{t("packages.duration")}: {pkg.duration}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Plane className="h-4 w-4 text-secondary" />
+            <Plane className="h-4 w-4 text-primary" />
             <span>{pkg.airlines?.join(" / ")}</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-secondary" />
+            <MapPin className="h-4 w-4 text-primary" />
             <span>{departureCities.join(", ")}</span>
           </div>
         </div>
@@ -120,7 +120,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
         <div className="grid grid-cols-2 gap-x-2 gap-y-1 mb-4">
           {(pkg.inclusions || []).slice(0, 4).map((item: string) => (
             <div key={item} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Check className="h-3 w-3 text-secondary shrink-0" />
+              <Check className="h-3 w-3 text-primary shrink-0" />
               <span className="truncate">{item}</span>
             </div>
           ))}
@@ -190,7 +190,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
                 <div className="grid grid-cols-1 gap-1">
                   {(pkg.inclusions || []).map((item: string) => (
                     <div key={item} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Check className="h-3 w-3 text-secondary shrink-0" />
+                      <Check className="h-3 w-3 text-primary shrink-0" />
                       <span>{item}</span>
                     </div>
                   ))}
@@ -206,13 +206,13 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
                 ].filter((acc) => acc.data).map((acc) => (
                   <div key={acc.label} className="bg-muted/50 rounded-lg p-3">
                     <p className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
-                      <Hotel className="h-3 w-3 text-secondary" />
+                      <Hotel className="h-3 w-3 text-primary" />
                       {acc.label}
                     </p>
                     <p className="text-xs text-muted-foreground">{acc.data.hotel}</p>
                     <div className="flex gap-0.5 mt-1">
                       {Array.from({ length: acc.data.rating || 0 }).map((_, i) => (
-                        <Star key={i} className="h-3 w-3 fill-secondary text-secondary" />
+                        <Star key={i} className="h-3 w-3 fill-primary text-primary" />
                       ))}
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1">
@@ -233,7 +233,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
                     </p>
                   ))}
                   {dates.length > 3 && (
-                    <p className="text-xs text-secondary font-medium">+{dates.length - 3} more dates</p>
+                    <p className="text-xs text-primary font-medium">+{dates.length - 3} more dates</p>
                   )}
                 </div>
               </div>
@@ -244,7 +244,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
         {/* Expand toggle */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-center gap-1 text-xs text-secondary font-medium py-2 mb-4 hover:text-secondary/80 transition-colors"
+          className="w-full flex items-center justify-center gap-1 text-xs text-primary font-medium py-2 mb-4 hover:text-primary/80 transition-colors"
         >
           {expanded ? (
             <>Less Details <ChevronUp className="h-3 w-3" /></>
@@ -266,7 +266,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
                 className="flex-1"
                 onClick={() => trackActivity({ eventType: "package_view", packageId: pkg.id, metadata: { packageName: pkg.name } })}
               >
-                <Button variant="outline" className="w-full border-secondary/40 text-secondary hover:bg-secondary/10 font-medium">
+                <Button variant="outline" className="w-full border-primary/40 text-primary hover:bg-secondary/10 font-medium">
                   {t("packages.viewDetails")}
                 </Button>
               </Link>
@@ -280,7 +280,7 @@ const PackageCard = ({ pkg, index }: { pkg: any; index: number }) => {
                   className="flex-1"
                   onClick={() => trackActivity({ eventType: "booking_start", packageId: pkg.id, metadata: { packageName: pkg.name } })}
                 >
-                  <Button className="w-full gold-gradient text-secondary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold">
+                  <Button className="w-full gold-gradient text-primary-foreground shadow-gold hover:shadow-gold-lg transition-all font-semibold">
                     {t("packages.bookNow")}
                   </Button>
                 </Link>

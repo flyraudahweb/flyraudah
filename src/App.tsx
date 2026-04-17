@@ -205,39 +205,43 @@ const App = () => (
                     <Route path="staff" element={
                       <ProtectedRoute requiredPermission="staff_management"><AdminStaffManagement /></ProtectedRoute>
                     } />
+                    <Route path="chat" element={<AdminTeamChat />} />
                     <Route path="team-chat" element={<AdminTeamChat />} />
+                    <Route path="register-pilgrim" element={
+                      <ProtectedRoute requiredPermission="pilgrims"><AdminRegisterPilgrim /></ProtectedRoute>
+                    } />
                     <Route path="profile" element={<DashboardProfile />} />
-                  </Route>
-                  <Route
-                    path="/agent"
-                    element={
-                      <ProtectedRoute requiredRole="agent">
-                        <AgentLayout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<AgentOverview />} />
-                    <Route path="clients" element={<AgentClients />} />
-                    <Route path="packages" element={<AgentPackages />} />
-                    <Route path="book/:id" element={<AgentBookForClient />} />
-                    <Route path="bookings" element={<AgentBookings />} />
-                    <Route path="commissions" element={<AgentCommissions />} />
+                  </Route >
+  <Route
+    path="/agent"
+    element={
+      <ProtectedRoute requiredRole="agent">
+        <AgentLayout />
+      </ProtectedRoute>
+    }
+  >
+    <Route index element={<AgentOverview />} />
+    <Route path="clients" element={<AgentClients />} />
+    <Route path="packages" element={<AgentPackages />} />
+    <Route path="book/:id" element={<AgentBookForClient />} />
+    <Route path="bookings" element={<AgentBookings />} />
+    <Route path="commissions" element={<AgentCommissions />} />
                     <Route path="transactions" element={<AgentWalletHistory />} />
                     <Route path="visas" element={<AgentVisas />} />
                     <Route path="profile" element={<DashboardProfile />} />
                     <Route path="support" element={<DashboardSupport />} />
                     <Route path="rules" element={<AgentRules />} />
-                  </Route>
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ErrorBoundary>
-    </QueryClientProvider>
-  </HelmetProvider>
+                  </Route >
+  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */ }
+  < Route path = "*" element = {< NotFound />} />
+                </Routes >
+              </Suspense >
+            </AuthProvider >
+          </BrowserRouter >
+        </TooltipProvider >
+      </ErrorBoundary >
+    </QueryClientProvider >
+  </HelmetProvider >
 );
 
 export default App;

@@ -33,7 +33,7 @@ const PackageDetail = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-        <Header />
+        <Header forceDark={true} />
         <section className="container mx-auto px-4 py-20">
           <Skeleton className="h-96 w-full mb-8" />
           <Skeleton className="h-20 w-full mb-4" />
@@ -47,7 +47,7 @@ const PackageDetail = () => {
   if (error || !pkg) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-        <Header />
+        <Header forceDark={true} />
         <section className="container mx-auto px-4 py-20 text-center">
           <h1 className="text-3xl font-bold text-foreground mb-4">Package Not Found</h1>
           <Button onClick={() => navigate("/packages")}>Back to Packages</Button>
@@ -58,7 +58,7 @@ const PackageDetail = () => {
   }
 
   const tierConfig: any = {
-    premium: { badge: "bg-secondary text-secondary-foreground", label: "PREMIUM" },
+    premium: { badge: "bg-primary text-primary-foreground", label: "PREMIUM" },
     standard: { badge: "bg-primary text-primary-foreground", label: "STANDARD" },
     budget: { badge: "bg-muted text-muted-foreground", label: "VALUE" },
   };
@@ -75,7 +75,7 @@ const PackageDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-      <Header />
+      <Header forceDark={true} />
 
       {/* Hero */}
       <section className="relative pt-28 pb-12 bg-muted/20 border-b border-border/50">
@@ -93,7 +93,7 @@ const PackageDetail = () => {
           </nav>
           <h1 className="font-heading text-4xl font-bold text-foreground">{pkg.name}</h1>
           <div className="ornament-divider mt-3 mb-0 [&::before]:bg-gradient-to-r [&::before]:from-transparent [&::before]:via-border [&::before]:to-transparent [&::after]:bg-gradient-to-r [&::after]:from-transparent [&::after]:via-border [&::after]:to-transparent">
-            <div className="diamond !bg-secondary/40" />
+            <div className="diamond !bg-primary/40" />
           </div>
         </div>
       </section>
@@ -112,7 +112,7 @@ const PackageDetail = () => {
 
               <div className="mb-6">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">From</p>
-                <p className="text-4xl font-bold text-secondary">{formatPrice(pkg.price)}</p>
+                <p className="text-4xl font-bold text-primary">{formatPrice(pkg.price)}</p>
                 {pkg.deposit_allowed && pkg.minimum_deposit && (
                   <p className="text-sm text-muted-foreground mt-2">Deposit: {formatPrice(pkg.minimum_deposit)}</p>
                 )}
@@ -121,19 +121,19 @@ const PackageDetail = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 {pkg.duration && (
                   <div className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-secondary" />
+                    <CalendarDays className="h-4 w-4 text-primary" />
                     <span>{pkg.duration}</span>
                   </div>
                 )}
                 {pkg.airlines?.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <Plane className="h-4 w-4 text-secondary" />
+                    <Plane className="h-4 w-4 text-primary" />
                     <span>{pkg.airlines.join("/")}</span>
                   </div>
                 )}
                 {pkg.departure_cities?.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-secondary" />
+                    <MapPin className="h-4 w-4 text-primary" />
                     <span>{pkg.departure_cities.length} Cities</span>
                   </div>
                 )}
@@ -173,7 +173,7 @@ const PackageDetail = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {pkg.inclusions.map((item: string) => (
                     <div key={item} className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-secondary shrink-0 mt-0.5" />
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                       <span className="text-sm text-muted-foreground">{item}</span>
                     </div>
                   ))}
@@ -189,13 +189,13 @@ const PackageDetail = () => {
                   accom && (
                     <div key={idx} className="border border-border rounded-lg p-4">
                       <p className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                        <Hotel className="h-4 w-4 text-secondary" />
+                        <Hotel className="h-4 w-4 text-primary" />
                         {accom.city}
                       </p>
                       <p className="text-sm font-medium text-foreground mb-1">{accom.hotel}</p>
                       <div className="flex gap-0.5 mb-2">
                         {Array.from({ length: accom.rating }).map((_, i) => (
-                          <Star key={i} className="h-3 w-3 fill-secondary text-secondary" />
+                          <Star key={i} className="h-3 w-3 fill-primary text-primary" />
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -252,13 +252,13 @@ const PackageDetail = () => {
             >
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Total Price</p>
-                <p className="text-3xl font-bold text-secondary">{formatPrice(pkg.price)}</p>
+                <p className="text-3xl font-bold text-primary">{formatPrice(pkg.price)}</p>
               </div>
 
               {available > 0 ? (
                 <Button
                   onClick={() => navigate(`/dashboard/book/${pkg.id}`)}
-                  className="w-full gold-gradient text-secondary-foreground font-semibold py-6"
+                  className="w-full gold-gradient text-primary-foreground font-semibold py-6"
                 >
                   Book Now
                 </Button>

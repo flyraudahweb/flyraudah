@@ -97,14 +97,13 @@ const AuthLayout = ({ children, title, subtitle }: Props) => {
         </div>
 
         {/* Form area */}
-        <div className="w-full max-w-md px-6 py-8 sm:py-12 space-y-8">
-          <div className="text-center space-y-2">
-            <h1 className="font-heading text-2xl sm:text-3xl font-bold text-foreground">{title}</h1>
-            {subtitle && <p className="text-muted-foreground font-body text-sm sm:text-base">{subtitle}</p>}
+        <div className="w-full max-w-md px-6 py-8 sm:py-12">
+          <div className="text-left space-y-2 mb-8 mt-4">
+            <h1 className="font-heading text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">{title}</h1>
+            {subtitle && <p className="text-gray-500 font-body text-base mt-2">{subtitle}</p>}
           </div>
 
-          {/* Glassmorphic form card */}
-          <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-6 sm:p-8 shadow-lg">
+          <div className="w-full">
             {children}
           </div>
         </div>

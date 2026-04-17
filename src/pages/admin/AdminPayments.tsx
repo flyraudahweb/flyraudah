@@ -12,14 +12,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Check, X, Eye, CreditCard, Search, DollarSign,
   Clock, CheckCircle2, XCircle, RefreshCw, TrendingUp,
   User, Calendar, Package, Hash, Building2, Image, Phone, Mail,
-  FileText, Wallet,
 } from "lucide-react";
 import { formatPrice } from "@/data/packages";
 import { toast } from "@/hooks/use-toast";
@@ -348,67 +345,51 @@ const AdminPayments = () => {
         <p className="text-sm text-muted-foreground mt-1">Review and verify pilgrim payments</p>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-border/50 flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
-                <CheckCircle2 className="h-4 w-4" />
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="admin-card p-5">
+          <div className="admin-stat-inset p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
               </div>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Revenue</span>
+              <span className="text-xs font-semibold text-muted-foreground">Total Verified</span>
             </div>
-            {!statsData ? <Skeleton className="h-8 w-24" /> : (
-              <p className="text-2xl font-bold text-foreground tracking-tight">{formatPrice(totalRevenue)}</p>
-            )}
+            <p className="text-2xl font-bold text-foreground">{formatPrice(totalRevenue)}</p>
           </div>
         </div>
-
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-border/50 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-500/10 to-transparent rounded-bl-full -z-0" />
-          <div className="space-y-3 relative z-10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600">
-                  <Clock className="h-4 w-4" />
-                </div>
-                <span className="text-xs font-semibold text-amber-700/80 uppercase tracking-wider">Pending Value</span>
+        <div className="admin-card p-5">
+          <div className="admin-stat-inset p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 rounded-lg bg-amber-500/10">
+                <Clock className="h-4 w-4 text-amber-600" />
               </div>
+              <span className="text-xs font-semibold text-muted-foreground">Pending</span>
             </div>
-            {!statsData ? <Skeleton className="h-8 w-24" /> : (
-              <p className="text-2xl font-bold text-foreground tracking-tight">{formatPrice(pendingAmount)}</p>
-            )}
+            <p className="text-2xl font-bold text-foreground">{pendingCount}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{formatPrice(pendingAmount)}</p>
           </div>
         </div>
-
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-border/50 flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600">
-                <FileText className="h-4 w-4" />
+        <div className="admin-card p-5">
+          <div className="admin-stat-inset p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               </div>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending Tasks</span>
+              <span className="text-xs font-semibold text-muted-foreground">Verified</span>
             </div>
-            {!statsData ? <Skeleton className="h-8 w-16" /> : (
-              <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold text-foreground">{pendingCount}</p>
-                <span className="text-sm font-medium text-muted-foreground">payments</span>
-              </div>
-            )}
+            <p className="text-2xl font-bold text-foreground">{verifiedCount}</p>
           </div>
         </div>
-
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-border/50 flex flex-col justify-between hover:shadow-md transition-shadow">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-gray-500/10 text-gray-600">
-                <Wallet className="h-4 w-4" />
+        <div className="admin-card p-5">
+          <div className="admin-stat-inset p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <TrendingUp className="h-4 w-4 text-primary" />
               </div>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Payments</span>
+              <span className="text-xs font-semibold text-muted-foreground">Total Payments</span>
             </div>
-            {!statsData ? <Skeleton className="h-8 w-16" /> : (
-              <p className="text-2xl font-bold text-foreground tracking-tight">{totalPaymentsCount.toLocaleString()}</p>
-            )}
+            <p className="text-2xl font-bold text-foreground">{totalPaymentsCount.toLocaleString()}</p>
           </div>
         </div>
       </div>
